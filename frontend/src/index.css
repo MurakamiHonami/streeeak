@@ -18,6 +18,15 @@ body {
   background: #f6f8f6;
 }
 
+@font-face {
+  font-family: "din";
+  src: url("../fonts/din1451alt.ttf") format("truetype");
+}
+
+h1 {
+  font-family: "din";
+}
+
 .appContainer {
   max-width: 430px;
   margin: 0 auto;
@@ -41,10 +50,25 @@ body {
   font-weight: 600;
 }
 
+.e {
+  color: #13ec37;
+  letter-spacing: -0.015em;
+}
+
+.comp {
+  background: rgba(19, 236, 55, 0.12);
+  border: 2px solid #13ec37;
+  border-radius: 16px;
+  margin: 8px;
+  padding: 8px;
+  font-weight: 700;
+  color: #0fbf2c;
+}
+
 .headerTitle {
-  margin: 2px 0 0;
-  font-size: 24px;
-  letter-spacing: -0.02em;
+  margin: 0;
+  font-size: 40px;
+  letter-spacing: -0.015em;
 }
 
 .headerAvatar {

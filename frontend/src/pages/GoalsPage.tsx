@@ -9,6 +9,8 @@ import {
   revisionChat,
 } from "../lib/api";
 import type { DraftTask, RevisionChatMessage, TaskRevisionProposal } from "../types";
+import EditIcon from '@mui/icons-material/Edit';
+import BackspaceIcon from '@mui/icons-material/Backspace';
 
 export function GoalsPage() {
   const [title, setTitle] = useState("");
@@ -135,22 +137,55 @@ export function GoalsPage() {
 
   const acceptedProposals = proposals.filter((p) => decisionMap[p.proposal_id] === "accepted");
 
+  const latestGoal = goals.data && goals.data.length > 0 
+    ? goals.data[goals.data.length - 1] 
+    : null;
   return (
     <section className="page">
       <section className="visionCard">
         <p className="chip">Goal Setup</p>
         <h2>長期目標をAIで12ヶ月分に分解</h2>
-        <p className="mutedText">直近1ヶ月の週次、直近1週間の日次TODOまで自動生成します。</p>
+        <p className="mutedText">メンターAIと相談して、直近1ヶ月の週次、直近1週間の日次TODOを設定しましょう</p>
       </section>
 
       <form className="card" onSubmit={handleCreateGoal}>
-        <h3>長期目標を入力</h3>
+        <h3 className="font-medium text-2xl">長期目標を入力</h3>
         <input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="長期目標を入力"
         />
-        <input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} />
+        <input className="mb-4"type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} />
+        <div className="relative inline-flex flex-col items-center mt-6">
+          <span
+            className={[
+              "whitespace-nowrap",
+              "rounded-lg",
+              "bg-gray-800",
+              "mt-1",
+              "px-3",
+              "py-1.5",
+              "text-sm",
+              "text-white",
+              "shadow-md",
+              "absolute",
+              "-top-10",
+              "left-1/2",
+              "-translate-x-1/2",
+              "after:content-['']",
+              "after:absolute",
+              "after:top-full",
+              "after:left-1/2",
+              "after:-translate-x-1/2",
+              "after:border-[6px]",
+              "after:border-transparent",
+              "after:border-t-gray-800",
+            ].join(" ")}
+          >
+            僕と相談しながら決めよう!
+          </span>
+          <img src="/panda.png" alt="Mentor Panda" className="h-20 object-contain drop-shadow-sm" />
+        </div>
         <button type="submit" disabled={!canSubmit}>
           {breakdownMutation.isPending ? "AIで生成中..." : "ブレイクダウンする"}
         </button>
@@ -162,7 +197,7 @@ export function GoalsPage() {
       </form>
 
       <div className="card">
-        <h3>保存済みの長期目標</h3>
+        <h3 className="font-medium text-2xl">保存済みの長期目標</h3>
         {goals.data?.map((goal) => (
           <div key={goal.id} className="taskRow">
             <div>
@@ -170,7 +205,7 @@ export function GoalsPage() {
               <small>{goal.deadline ?? "期限未設定"}</small>
             </div>
             <div className="rowActions">
-              <button onClick={() => setActiveGoalId(goal.id)}>修正相談</button>
+              <button onClick={() => setActiveGoalId(goal.id)}>{<EditIcon/>}</button>
               <button
                 onClick={() => {
                   if (!window.confirm("この長期目標を削除しますか？")) return;
@@ -178,7 +213,7 @@ export function GoalsPage() {
                 }}
                 style={{ background: "#dc2626", color: "#fff" }}
               >
-                削除
+                {<BackspaceIcon/>}
               </button>
             </div>
           </div>
@@ -247,7 +282,7 @@ export function GoalsPage() {
       {activeGoalId && (
         <>
           <div className="card">
-            <h3>Gemini修正チャット</h3>
+            <h3>修正を依頼する</h3>
             <div className="chatBox">
               {chatHistory.map((msg, idx) => (
                 <p key={idx}>
@@ -272,7 +307,7 @@ export function GoalsPage() {
 
           <div className="card">
             <h3>修正提案（Accept / Reject）</h3>
-            {!proposals.length && <p>提案待ちです。Geminiに修正依頼を送信してください。</p>}
+            {!proposals.length && <p>提案待ちです。AIに修正依頼を送信してください。</p>}
             {proposals.map((proposal) => (
               <div key={proposal.proposal_id} className="proposalCard">
                 <p>

@@ -34,12 +34,12 @@ export function ResultsPage() {
       <div className="card">
         <h3>タスク振り返り</h3>
         {weeklyTasks.data?.map((task) => (
-          <div key={task.id} className="taskRow">
+          <div key={task.id} className="taskRow flex flex-col">
             <div>
               <p>{task.title}</p>
-              <small>タグ: {task.tags ?? "なし"} / メモ: {task.note ?? "なし"}</small>
+              {/* <small>タグ: {task.tags ?? "なし"} / メモ: {task.note ?? "なし"}</small> */}
             </div>
-            <span>{task.is_done ? "完了" : "未完了"}</span>
+            <p className="comp">{task.is_done ? "完了" : "未完了"}</p>
           </div>
         ))}
       </div>

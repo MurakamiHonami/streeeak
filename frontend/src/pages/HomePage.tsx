@@ -1,6 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { carryOverTask, fetchDailyTasks, fetchRanking, toggleTaskDone } from "../lib/api";
-
+import { carryOverTask, fetchDailyTasks, fetchRanking, toggleTaskDone, fetchGoals } from "../lib/api";
+import CheckIcon from '@mui/icons-material/Check';
+import MoveDownIcon from '@mui/icons-material/MoveDown';
+import UndoIcon from '@mui/icons-material/Undo';
+import Button from '@mui/material/Button';
 export function HomePage() {
   const queryClient = useQueryClient();
   const dailyTasks = useQuery({ queryKey: ["dailyTasks"], queryFn: fetchDailyTasks });
@@ -15,16 +18,21 @@ export function HomePage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["dailyTasks"] }),
   });
 
+  const goals = useQuery({ queryKey: ["goals"], queryFn: fetchGoals });
+
   const tasks = dailyTasks.data ?? [];
   const doneCount = tasks.filter((task) => task.is_done).length;
   const firstPendingId = tasks.find((task) => !task.is_done)?.id;
   const doneRate = tasks.length ? Math.round((doneCount / tasks.length) * 100) : 0;
-
+  const latestGoal = goals.data && goals.data.length > 0 
+    ? goals.data[goals.data.length - 1] 
+    : null;
+  
   return (
     <section className="page">
       <section className="visionCard">
         <p className="chip">Long-term Vision</p>
-        <h2>毎日の積み上げで理想のキャリアに近づく</h2>
+        <h2>{latestGoal ? latestGoal.title : "長期目標が未設定です"}</h2>
         <p className="mutedText">今日の達成率: {doneRate}%</p>
         <div className="progressTrack">
           <div className="progressFill" style={{ width: `${doneRate}%` }} />
@@ -45,8 +53,9 @@ export function HomePage() {
       </div>
 
       <section className="card">
-        <div className="sectionHead">
-          <h3>Today's Focus</h3>
+        <div className="flex gap-0 items-start">
+          <h3 className="font-medium text-2xl">Today's Tasks</h3>
+          <img src="/panda.png" alt="Mentor Panda" className="h-20 object-contain drop-shadow-sm" />
         </div>
         {tasks.length ? (
           tasks.map((task) => (
@@ -72,12 +81,12 @@ export function HomePage() {
                   </ul>
                 )}
               </div>
-              <div className="rowActions">
-                <button onClick={() => doneMutation.mutate(task.id)}>
-                  {task.is_done ? "取消" : "チェック"}
+              <div className="rowActions flex flex-col">
+                <button onClick={() => doneMutation.mutate(task.id)} className="text-sm hover:opacity-70" >
+                  {task.is_done ? <UndoIcon/> : <CheckIcon/>}
                 </button>
                 {!task.is_done && (
-                  <button onClick={() => carryOverMutation.mutate(task.id)}>持ち越し</button>
+                  <button onClick={() => carryOverMutation.mutate(task.id)} className="text-sm bg-gray-200 hover:opacity-70">{<MoveDownIcon/>}</button>
                 )}
               </div>
             </div>
