@@ -1,0 +1,109 @@
+import axios from "axios";
+import type { Goal, Post, RankingItem, Task } from "../types";
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
+const USER_ID = Number(import.meta.env.VITE_DEFAULT_USER_ID ?? "1");
+
+export const apiClient = axios.create({
+  baseURL: API_BASE,
+});
+
+const today = new Date().toISOString().slice(0, 10);
+const isoWeek = (() => {
+  const now = new Date();
+  const jan4 = new Date(Date.UTC(now.getUTCFullYear(), 0, 4));
+  const dayOfWeek = jan4.getUTCDay() || 7;
+  jan4.setUTCDate(jan4.getUTCDate() - dayOfWeek + 1);
+  const diff = now.getTime() - jan4.getTime();
+  return Math.floor(diff / 604800000) + 1;
+})();
+
+export const appContext = { userId: USER_ID, today, week: isoWeek };
+
+export async function fetchDailyTasks() {
+  const res = await apiClient.get<Task[]>("/tasks", {
+    params: { user_id: USER_ID, type: "daily", date: today },
+  });
+  return res.data;
+}
+
+export async function toggleTaskDone(taskId: number) {
+  const res = await apiClient.patch<Task>(`/tasks/${taskId}/done`);
+  return res.data;
+}
+
+export async function carryOverTask(taskId: number) {
+  const res = await apiClient.post<Task>(`/tasks/${taskId}/carry-over`);
+  return res.data;
+}
+
+export async function fetchGoals() {
+  const res = await apiClient.get<Goal[]>("/goals", { params: { user_id: USER_ID } });
+  return res.data;
+}
+
+export async function createGoal(payload: { title: string; deadline?: string }) {
+  const res = await apiClient.post<Goal>("/goals", {
+    user_id: USER_ID,
+    title: payload.title,
+    deadline: payload.deadline || null,
+  });
+  return res.data;
+}
+
+export async function deleteGoal(goalId: number) {
+  await apiClient.delete(`/goals/${goalId}`);
+}
+
+export async function generateBreakdown(goalId: number) {
+  const res = await apiClient.post(`/goals/${goalId}/tasks/breakdown`, {
+    months: 12,
+    weeks_per_month: 4,
+    days_per_week: 7,
+    persist: true,
+  });
+  return res.data;
+}
+
+export async function createGoalAndBreakdown(payload: { title: string; deadline?: string }) {
+  const goal = await createGoal(payload);
+  const breakdown = await generateBreakdown(goal.id);
+  return { goal, breakdown };
+}
+
+export async function fetchWeeklyTasks() {
+  const res = await apiClient.get<Task[]>("/tasks", {
+    params: { user_id: USER_ID, type: "weekly", week_number: isoWeek },
+  });
+  return res.data;
+}
+
+export async function updateTask(taskId: number, payload: Partial<Task>) {
+  const res = await apiClient.put<Task>(`/tasks/${taskId}`, payload);
+  return res.data;
+}
+
+export async function fetchPosts() {
+  const res = await apiClient.get<Post[]>("/posts", {
+    params: { user_id: USER_ID, week: isoWeek },
+  });
+  return res.data;
+}
+
+export async function createPost(payload: { comment: string; achieved: number; group_id?: number }) {
+  const res = await apiClient.post<Post>("/posts", {
+    user_id: USER_ID,
+    date: today,
+    comment: payload.comment,
+    achieved: payload.achieved,
+    group_id: payload.group_id ?? null,
+  });
+  return res.data;
+}
+
+export async function fetchRanking() {
+  const res = await apiClient.get<RankingItem[]>("/analytics/ranking", {
+    params: { user_id: USER_ID, week: isoWeek, top_n: 3 },
+  });
+  return res.data;
+}

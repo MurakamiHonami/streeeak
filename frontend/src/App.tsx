@@ -1,35 +1,38 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { Route, Routes } from "react-router-dom";
+import { NavBar } from "./components/NavBar";
+import { GoalsPage } from "./pages/GoalsPage";
+import { HomePage } from "./pages/HomePage";
+import { ResultsPage } from "./pages/ResultsPage";
+import { SharePage } from "./pages/SharePage";
 
 function App() {
-  const [count, setCount] = useState(0)
+  const dateStr = new Date().toLocaleDateString("ja-JP", {
+    month: "long",
+    day: "numeric",
+    weekday: "short",
+  });
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
+    <div className="appShell">
+      <div className="appContainer">
+        <header className="topHeader">
+          <div>
+            <p className="headerDate">{dateStr}</p>
+            <h1 className="headerTitle">Streeeak</h1>
+          </div>
+          <div className="headerAvatar">あ</div>
+        </header>
+
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/goals" element={<GoalsPage />} />
+          <Route path="/results" element={<ResultsPage />} />
+          <Route path="/share" element={<SharePage />} />
+        </Routes>
       </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+      <NavBar />
+    </div>
+  );
 }
 
-export default App
+export default App;

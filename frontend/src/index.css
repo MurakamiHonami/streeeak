@@ -1,68 +1,339 @@
-:root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
-
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
+* {
+  box-sizing: border-box;
 }
 
 body {
   margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
+  font-family: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #f6f8f6;
+  color: #0f1f10;
+}
+
+#root {
   min-height: 100vh;
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
+.appShell {
+  min-height: 100vh;
+  background: #f6f8f6;
+}
+
+.appContainer {
+  max-width: 430px;
+  margin: 0 auto;
+  min-height: 100vh;
+  background: #f6f8f6;
+  box-shadow: 0 0 60px rgba(0, 0, 0, 0.12);
+  padding: 0 24px 132px;
+}
+
+.topHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 28px 0 18px;
+}
+
+.headerDate {
+  margin: 0;
+  font-size: 12px;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.headerTitle {
+  margin: 2px 0 0;
+  font-size: 24px;
+  letter-spacing: -0.02em;
+}
+
+.headerAvatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(19, 236, 55, 0.12);
+  border: 2px solid #13ec37;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: #0fbf2c;
+}
+
+.page {
+  display: grid;
+  gap: 16px;
+}
+
+.visionCard {
+  background: #0f172a;
+  color: #fff;
+  border-radius: 20px;
+  padding: 22px;
+}
+
+.visionCard h2 {
+  margin: 0 0 6px;
+  font-size: 20px;
+}
+
+.chip {
+  margin: 0 0 10px;
+  display: inline-flex;
+  background: rgba(19, 236, 55, 0.15);
+  border: 1px solid rgba(19, 236, 55, 0.3);
+  color: #13ec37;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.mutedText {
+  margin: 0;
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+.progressTrack {
+  margin-top: 12px;
+  height: 8px;
+  border-radius: 999px;
+  background: #1e293b;
+  overflow: hidden;
+}
+
+.progressTrack.light {
+  background: #f1f5f9;
+}
+
+.progressFill {
+  height: 100%;
+  background: #13ec37;
+  border-radius: 999px;
+  transition: width 0.4s ease;
+}
+
+.statsGrid {
+  display: flex;
+  gap: 12px;
+}
+
+.statCard {
+  flex: 1;
+  background: #fff;
+  border: 1px solid #e8ede8;
+  border-radius: 16px;
+  padding: 14px;
+}
+
+.statLabel {
+  margin: 0;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: #64748b;
+  text-transform: uppercase;
+}
+
+.statValue {
+  margin: 8px 0 0;
+  font-size: 26px;
+  font-weight: 800;
+}
+
+.statValue span {
+  font-size: 15px;
+  color: #64748b;
+}
+
+.card {
+  background: #fff;
+  border-radius: 20px;
+  border: 1px solid #e8ede8;
+  padding: 16px;
+  display: grid;
+  gap: 10px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+}
+
+.card h3 {
+  margin: 0;
+}
+
+.sectionHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.taskRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid #e8ede8;
+  border-radius: 14px;
+  padding: 12px;
+}
+
+.taskRow p {
+  margin: 0;
+}
+
+.detailTodoList {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  color: #4b5563;
+  font-size: 12px;
+}
+
+.detailTodoList li {
+  margin-bottom: 4px;
+}
+
+.nextTask {
+  border-color: rgba(19, 236, 55, 0.4);
+}
+
+.rowActions {
+  display: flex;
+  gap: 8px;
+}
+
+button,
+input {
+  padding: 8px;
+  border: 1px solid #d9deea;
+  border-radius: 8px;
+  font: inherit;
+}
+
+input {
+  width: 100%;
 }
 
 button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
+  background: #13ec37;
+  color: #0f1f10;
+  border: none;
   cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+  font-weight: 700;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+pre {
+  white-space: pre-wrap;
+  background: #f8f9ff;
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.done {
+  text-decoration: line-through;
+  color: #6c7480;
+}
+
+.rankRow {
+  display: grid;
+  grid-template-columns: 44px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid #edf2ed;
+}
+
+.rankRow:last-child {
+  border-bottom: none;
+}
+
+.radioRow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.chatBox {
+  max-height: 180px;
+  overflow: auto;
+  background: #f8faf8;
+  border: 1px solid #e8ede8;
+  border-radius: 10px;
+  padding: 10px;
+}
+
+.chatBox p {
+  margin: 0 0 8px;
+  font-size: 13px;
+}
+
+.chatInputRow {
+  display: flex;
+  gap: 8px;
+}
+
+.tabRow {
+  display: flex;
+  gap: 8px;
+}
+
+.tabBtn {
+  flex: 1;
+  background: #fff;
+  border: 1px solid #e8ede8;
+  color: #64748b;
+}
+
+.tabBtn.active {
+  background: rgba(19, 236, 55, 0.12);
+  border-color: rgba(19, 236, 55, 0.35);
+  color: #0fbf2c;
+}
+
+.bottomNav {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 0;
+  width: 100%;
+  max-width: 430px;
+  z-index: 50;
+}
+
+.bottomNavInner {
+  display: flex;
+  justify-content: space-around;
+  background: rgba(246, 248, 246, 0.9);
+  backdrop-filter: blur(12px);
+  border-top: 1px solid #e8ede8;
+  padding: 12px 16px 24px;
+}
+
+.bottomNavLink {
+  color: #64748b;
+  text-decoration: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.bottomNavLink.active {
+  color: #13ec37;
+}
+
+.bottomNavIcon {
+  font-size: 19px;
+}
+
+.bottomNavText {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 700;
 }
