@@ -1,5 +1,14 @@
 import axios from "axios";
-import type { Goal, Post, RankingItem, Task } from "../types";
+import type {
+  DraftTask,
+  Goal,
+  Post,
+  RankingItem,
+  RevisionChatMessage,
+  RevisionChatResponse,
+  Task,
+  TaskRevisionProposal,
+} from "../types";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 const USER_ID = Number(import.meta.env.VITE_DEFAULT_USER_ID ?? "1");
@@ -69,6 +78,41 @@ export async function createGoalAndBreakdown(payload: { title: string; deadline?
   const goal = await createGoal(payload);
   const breakdown = await generateBreakdown(goal.id);
   return { goal, breakdown };
+}
+
+export async function fetchGoalTasks(goalId: number) {
+  const res = await apiClient.get<Task[]>(`/goals/${goalId}/tasks`);
+  return res.data;
+}
+
+export async function revisionChat(payload: {
+  goalId: number;
+  message: string;
+  draftTasks: DraftTask[];
+  chatHistory: RevisionChatMessage[];
+}) {
+  const res = await apiClient.post<RevisionChatResponse>(
+    `/goals/${payload.goalId}/tasks/revision-chat`,
+    {
+      message: payload.message,
+      draft_tasks: payload.draftTasks,
+      chat_history: payload.chatHistory,
+    }
+  );
+  return res.data;
+}
+
+export async function applyAcceptedRevisions(payload: {
+  goalId: number;
+  acceptedProposals: TaskRevisionProposal[];
+}) {
+  const res = await apiClient.post<{ updated_tasks: Task[] }>(
+    `/goals/${payload.goalId}/tasks/revisions/apply`,
+    {
+      accepted_proposals: payload.acceptedProposals,
+    }
+  );
+  return res.data;
 }
 
 export async function fetchWeeklyTasks() {

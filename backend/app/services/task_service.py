@@ -2,6 +2,7 @@ import datetime as dt
 import json
 import logging
 import re
+import uuid
 from collections.abc import Sequence
 
 import httpx
@@ -9,7 +10,14 @@ import httpx
 from app.core.config import settings
 from app.models.goal import Goal
 from app.models.task import TaskType
-from app.schemas.task import BreakdownResponse, BreakdownTask
+from app.schemas.task import (
+    BreakdownResponse,
+    BreakdownTask,
+    DraftTask,
+    RevisionChatMessage,
+    RevisionChatResponse,
+    TaskRevisionProposal,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -216,6 +224,177 @@ def _request_gemini_breakdown(goal_title: str, months: int, weeks_per_month: int
     if start != -1 and end != -1:
         return json.loads(cleaned[start : end + 1])
     raise ValueError("Gemini response is not valid JSON")
+
+
+def _call_gemini_json(prompt: str) -> dict:
+    payload = {
+        "contents": [{"parts": [{"text": prompt}]}],
+        "generationConfig": {
+            "temperature": 0.6,
+            "response_mime_type": "application/json",
+        },
+    }
+    model_candidates = [
+        settings.GEMINI_MODEL,
+        "gemini-2.5-flash",
+        "gemini-2.0-flash",
+        "gemini-1.5-flash-latest",
+        "gemini-1.5-flash",
+    ]
+    model_candidates = list(dict.fromkeys(model_candidates))
+    base_versions = ["v1beta", "v1"]
+    last_error: Exception | None = None
+
+    for version in base_versions:
+        for model in model_candidates:
+            url = (
+                f"https://generativelanguage.googleapis.com/{version}/models/"
+                f"{model}:generateContent?key={settings.GEMINI_API_KEY}"
+            )
+            response = httpx.post(url, json=payload, timeout=45.0)
+            if response.status_code == 404:
+                continue
+            try:
+                response.raise_for_status()
+            except Exception as e:
+                last_error = e
+                continue
+            body = response.json()
+            text = (
+                body.get("candidates", [{}])[0]
+                .get("content", {})
+                .get("parts", [{}])[0]
+                .get("text", "{}")
+            )
+            cleaned = text.strip()
+            cleaned = re.sub(r"^```json\s*", "", cleaned)
+            cleaned = re.sub(r"```$", "", cleaned).strip()
+            if cleaned.startswith("{") and cleaned.endswith("}"):
+                return json.loads(cleaned)
+            start = cleaned.find("{")
+            end = cleaned.rfind("}")
+            if start != -1 and end != -1:
+                return json.loads(cleaned[start : end + 1])
+            raise ValueError("Gemini response is not valid JSON")
+    if last_error:
+        raise last_error
+    raise ValueError("No available Gemini model/endpoint was found (404).")
+
+
+def parse_note_subtasks(note: str | None) -> list[str]:
+    if not note:
+        return []
+    return [
+        line.replace("- ", "", 1).strip()
+        for line in note.splitlines()
+        if line.replace("- ", "", 1).strip()
+    ]
+
+
+def compose_note_subtasks(subtasks: list[str]) -> str:
+    return "\n".join([f"- {item.strip()}" for item in subtasks if item.strip()])
+
+
+def generate_revision_suggestions(
+    goal_title: str,
+    message: str,
+    draft_tasks: list[DraftTask],
+    chat_history: list[RevisionChatMessage],
+) -> RevisionChatResponse:
+    if not draft_tasks:
+        return RevisionChatResponse(
+            source="fallback",
+            assistant_message="編集中のタスクが見つかりません。",
+            proposals=[],
+        )
+
+    if not settings.GEMINI_API_KEY:
+        return RevisionChatResponse(
+            source="fallback",
+            assistant_message="Geminiキー未設定のため提案を作成できません。",
+            proposals=[],
+        )
+
+    draft_payload = [
+        {
+            "task_id": task.task_id,
+            "task_type": task.task_type.value,
+            "title": task.title,
+            "subtasks": task.subtasks,
+        }
+        for task in draft_tasks
+    ]
+    history_payload = [{"role": m.role, "content": m.content} for m in chat_history]
+
+    prompt = (
+        "あなたはタスク編集アシスタントです。以下のドラフトタスクに対して、"
+        "ユーザー要望に沿う修正提案を作成してください。JSONのみで返してください。\n"
+        "ルール:\n"
+        "- proposalsは最大8件\n"
+        "- target_type は monthly/weekly/daily/subtask のいずれか\n"
+        "- subtask提案時は subtask_index を必ず指定\n"
+        "- task提案時は before/after はタイトル文言\n"
+        "- subtask提案時は before/after はサブタスク文言\n"
+        '形式: {"assistant_message":"...","proposals":[{"target_task_id":1,"target_type":"daily","subtask_index":0,"before":"...","after":"...","reason":"..."}]}\n'
+        f"長期目標: {goal_title}\n"
+        f"会話履歴: {json.dumps(history_payload, ensure_ascii=False)}\n"
+        f"ユーザーメッセージ: {message}\n"
+        f"ドラフトタスク: {json.dumps(draft_payload, ensure_ascii=False)}"
+    )
+
+    try:
+        parsed = _call_gemini_json(prompt)
+    except Exception as e:
+        logger.exception("Gemini revision failed: %s", e)
+        return RevisionChatResponse(
+            source="fallback",
+            assistant_message="Gemini提案の生成に失敗しました。再度試してください。",
+            proposals=[],
+        )
+
+    proposals_raw = parsed.get("proposals")
+    assistant_message = str(parsed.get("assistant_message", "提案を作成しました。"))
+    if not isinstance(proposals_raw, list):
+        return RevisionChatResponse(source="fallback", assistant_message=assistant_message, proposals=[])
+
+    valid_task_map = {task.task_id: task for task in draft_tasks}
+    proposals: list[TaskRevisionProposal] = []
+    for item in proposals_raw:
+        if not isinstance(item, dict):
+            continue
+        task_id = item.get("target_task_id")
+        target_type = str(item.get("target_type", ""))
+        if task_id not in valid_task_map:
+            continue
+        if target_type not in {"monthly", "weekly", "daily", "subtask"}:
+            continue
+        subtask_index = item.get("subtask_index")
+        if target_type == "subtask":
+            if not isinstance(subtask_index, int):
+                continue
+            subtasks = valid_task_map[task_id].subtasks
+            if subtask_index < 0 or subtask_index >= len(subtasks):
+                continue
+        else:
+            subtask_index = None
+
+        proposals.append(
+            TaskRevisionProposal(
+                proposal_id=str(uuid.uuid4()),
+                target_task_id=task_id,
+                target_type=target_type,
+                subtask_index=subtask_index,
+                before=str(item.get("before", "")).strip(),
+                after=str(item.get("after", "")).strip(),
+                reason=str(item.get("reason", "改善提案")).strip(),
+            )
+        )
+
+    return RevisionChatResponse(
+        source="gemini",
+        assistant_message=assistant_message,
+        proposals=proposals,
+    )
 
 
 def build_breakdown(goal: Goal, months: int, weeks_per_month: int, days_per_week: int) -> BreakdownResponse:

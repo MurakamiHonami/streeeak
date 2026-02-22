@@ -1,22 +1,45 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createGoalAndBreakdown, deleteGoal, fetchGoals } from "../lib/api";
+import {
+  applyAcceptedRevisions,
+  createGoalAndBreakdown,
+  deleteGoal,
+  fetchGoals,
+  fetchGoalTasks,
+  revisionChat,
+} from "../lib/api";
+import type { DraftTask, RevisionChatMessage, TaskRevisionProposal } from "../types";
 
 export function GoalsPage() {
   const [title, setTitle] = useState("");
   const [deadline, setDeadline] = useState("");
+  const [activeGoalId, setActiveGoalId] = useState<number | null>(null);
+  const [chatInput, setChatInput] = useState("");
+  const [chatHistory, setChatHistory] = useState<RevisionChatMessage[]>([]);
+  const [proposals, setProposals] = useState<TaskRevisionProposal[]>([]);
+  const [decisionMap, setDecisionMap] = useState<Record<string, "accepted" | "rejected">>({});
   const queryClient = useQueryClient();
 
   const goals = useQuery({ queryKey: ["goals"], queryFn: fetchGoals });
+  const goalTasks = useQuery({
+    queryKey: ["goalTasks", activeGoalId],
+    queryFn: () => fetchGoalTasks(activeGoalId!),
+    enabled: !!activeGoalId,
+  });
 
   const breakdownMutation = useMutation({
     mutationFn: createGoalAndBreakdown,
-    onSuccess: () => {
+    onSuccess: (data) => {
       setTitle("");
       setDeadline("");
+      setActiveGoalId(data.goal.id);
+      setChatHistory([]);
+      setProposals([]);
+      setDecisionMap({});
       queryClient.invalidateQueries({ queryKey: ["goals"] });
       queryClient.invalidateQueries({ queryKey: ["dailyTasks"] });
       queryClient.invalidateQueries({ queryKey: ["weeklyTasks"] });
+      queryClient.invalidateQueries({ queryKey: ["goalTasks", data.goal.id] });
     },
   });
 
@@ -29,6 +52,64 @@ export function GoalsPage() {
 
   const canSubmit = title.trim().length > 0 && !breakdownMutation.isPending;
 
+  const toDraftTasks = (tasks: typeof goalTasks.data): DraftTask[] =>
+    (tasks ?? []).map((task) => ({
+      task_id: task.id,
+      task_type: task.type,
+      title: task.title,
+      note: task.note,
+      subtasks: task.note
+        ? task.note
+            .split("\n")
+            .map((line) => line.replace(/^- /, "").trim())
+            .filter(Boolean)
+        : [],
+    }));
+
+  const appliedDraftTasks = useMemo(() => {
+    const base = toDraftTasks(goalTasks.data);
+    const accepted = proposals.filter((p) => decisionMap[p.proposal_id] === "accepted");
+    for (const proposal of accepted) {
+      const target = base.find((task) => task.task_id === proposal.target_task_id);
+      if (!target) continue;
+      if (proposal.target_type === "subtask" && proposal.subtask_index !== null) {
+        if (proposal.subtask_index >= 0 && proposal.subtask_index < target.subtasks.length) {
+          target.subtasks[proposal.subtask_index] = proposal.after;
+          target.note = target.subtasks.map((x) => `- ${x}`).join("\n");
+        }
+      } else {
+        target.title = proposal.after;
+      }
+    }
+    return base;
+  }, [goalTasks.data, proposals, decisionMap]);
+
+  const revisionMutation = useMutation({
+    mutationFn: revisionChat,
+    onSuccess: (data) => {
+      setChatHistory((prev) => [...prev, { role: "assistant", content: data.assistant_message }]);
+      setProposals((prev) => [...prev, ...data.proposals]);
+    },
+  });
+
+  const applyMutation = useMutation({
+    mutationFn: applyAcceptedRevisions,
+    onSuccess: () => {
+      if (!activeGoalId) return;
+      queryClient.invalidateQueries({ queryKey: ["goalTasks", activeGoalId] });
+      queryClient.invalidateQueries({ queryKey: ["dailyTasks"] });
+      queryClient.invalidateQueries({ queryKey: ["weeklyTasks"] });
+      setProposals((prev) => prev.filter((p) => decisionMap[p.proposal_id] !== "accepted"));
+      setDecisionMap((prev) => {
+        const next = { ...prev };
+        for (const key of Object.keys(next)) {
+          if (next[key] === "accepted") delete next[key];
+        }
+        return next;
+      });
+    },
+  });
+
   const handleCreateGoal = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
@@ -37,6 +118,22 @@ export function GoalsPage() {
       deadline: deadline || undefined,
     });
   };
+
+  const handleSendRevisionChat = () => {
+    if (!activeGoalId || !chatInput.trim()) return;
+    const userMessage = chatInput.trim();
+    const nextHistory = [...chatHistory, { role: "user" as const, content: userMessage }];
+    setChatHistory(nextHistory);
+    revisionMutation.mutate({
+      goalId: activeGoalId,
+      message: userMessage,
+      draftTasks: appliedDraftTasks,
+      chatHistory: nextHistory,
+    });
+    setChatInput("");
+  };
+
+  const acceptedProposals = proposals.filter((p) => decisionMap[p.proposal_id] === "accepted");
 
   return (
     <section className="page">
@@ -72,15 +169,18 @@ export function GoalsPage() {
               <p>{goal.title}</p>
               <small>{goal.deadline ?? "期限未設定"}</small>
             </div>
-            <button
-              onClick={() => {
-                if (!window.confirm("この長期目標を削除しますか？")) return;
-                deleteMutation.mutate(goal.id);
-              }}
-              style={{ background: "#dc2626", color: "#fff" }}
-            >
-              削除
-            </button>
+            <div className="rowActions">
+              <button onClick={() => setActiveGoalId(goal.id)}>修正相談</button>
+              <button
+                onClick={() => {
+                  if (!window.confirm("この長期目標を削除しますか？")) return;
+                  deleteMutation.mutate(goal.id);
+                }}
+                style={{ background: "#dc2626", color: "#fff" }}
+              >
+                削除
+              </button>
+            </div>
           </div>
         ))}
       </div>
@@ -140,6 +240,86 @@ export function GoalsPage() {
               )
             )}
             <p className="mutedText">作成された当日のTODOはホーム画面に表示されます。</p>
+          </div>
+        </>
+      )}
+
+      {activeGoalId && (
+        <>
+          <div className="card">
+            <h3>Gemini修正チャット</h3>
+            <div className="chatBox">
+              {chatHistory.map((msg, idx) => (
+                <p key={idx}>
+                  <strong>{msg.role === "user" ? "You" : "Gemini"}:</strong> {msg.content}
+                </p>
+              ))}
+            </div>
+            <div className="chatInputRow">
+              <input
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                placeholder="例: 週次タスクをもっと具体化して"
+              />
+              <button onClick={handleSendRevisionChat} disabled={!chatInput.trim()}>
+                送信
+              </button>
+            </div>
+            {revisionMutation.isError && (
+              <p style={{ color: "#c0392b", margin: 0 }}>提案生成に失敗しました。再試行してください。</p>
+            )}
+          </div>
+
+          <div className="card">
+            <h3>修正提案（Accept / Reject）</h3>
+            {!proposals.length && <p>提案待ちです。Geminiに修正依頼を送信してください。</p>}
+            {proposals.map((proposal) => (
+              <div key={proposal.proposal_id} className="proposalCard">
+                <p>
+                  <strong>{proposal.target_type}</strong> / task_id: {proposal.target_task_id}
+                </p>
+                <p>理由: {proposal.reason}</p>
+                <p>Before: {proposal.before}</p>
+                <p>After: {proposal.after}</p>
+                <div className="rowActions">
+                  <button
+                    onClick={() =>
+                      setDecisionMap((prev) => ({ ...prev, [proposal.proposal_id]: "accepted" }))
+                    }
+                  >
+                    Accept
+                  </button>
+                  <button
+                    onClick={() =>
+                      setDecisionMap((prev) => ({ ...prev, [proposal.proposal_id]: "rejected" }))
+                    }
+                    style={{ background: "#475569", color: "#fff" }}
+                  >
+                    Reject
+                  </button>
+                </div>
+                <small>
+                  現在:{" "}
+                  {decisionMap[proposal.proposal_id] === "accepted"
+                    ? "Accepted"
+                    : decisionMap[proposal.proposal_id] === "rejected"
+                      ? "Rejected"
+                      : "未選択"}
+                </small>
+              </div>
+            ))}
+
+            <button
+              onClick={() =>
+                applyMutation.mutate({
+                  goalId: activeGoalId,
+                  acceptedProposals,
+                })
+              }
+              disabled={!acceptedProposals.length}
+            >
+              Accept済み提案を反映
+            </button>
           </div>
         </>
       )}

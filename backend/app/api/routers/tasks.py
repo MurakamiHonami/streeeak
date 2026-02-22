@@ -8,14 +8,23 @@ from app.db.session import get_db
 from app.models.goal import Goal
 from app.models.task import Task, TaskType
 from app.schemas.task import (
+    ApplyRevisionsRequest,
+    ApplyRevisionsResponse,
     BreakdownRequest,
     BreakdownResponse,
+    RevisionChatRequest,
+    RevisionChatResponse,
     TaskBulkCreate,
     TaskCreate,
     TaskRead,
     TaskUpdate,
 )
-from app.services.task_service import build_breakdown
+from app.services.task_service import (
+    build_breakdown,
+    compose_note_subtasks,
+    generate_revision_suggestions,
+    parse_note_subtasks,
+)
 
 router = APIRouter(tags=["tasks"])
 
@@ -45,6 +54,59 @@ def create_breakdown(goal_id: int, payload: BreakdownRequest, db: Session = Depe
             )
         db.commit()
     return breakdown
+
+
+@router.get("/goals/{goal_id}/tasks", response_model=list[TaskRead])
+def list_goal_tasks(goal_id: int, db: Session = Depends(get_db)):
+    if not db.get(Goal, goal_id):
+        raise HTTPException(status_code=404, detail="Goal not found")
+    stmt = select(Task).where(Task.goal_id == goal_id).order_by(Task.type, Task.date, Task.id)
+    return list(db.scalars(stmt))
+
+
+@router.post("/goals/{goal_id}/tasks/revision-chat", response_model=RevisionChatResponse)
+def revision_chat(goal_id: int, payload: RevisionChatRequest, db: Session = Depends(get_db)):
+    goal = db.get(Goal, goal_id)
+    if not goal:
+        raise HTTPException(status_code=404, detail="Goal not found")
+    return generate_revision_suggestions(
+        goal_title=goal.title,
+        message=payload.message,
+        draft_tasks=payload.draft_tasks,
+        chat_history=payload.chat_history,
+    )
+
+
+@router.post("/goals/{goal_id}/tasks/revisions/apply", response_model=ApplyRevisionsResponse)
+def apply_revisions(goal_id: int, payload: ApplyRevisionsRequest, db: Session = Depends(get_db)):
+    if not db.get(Goal, goal_id):
+        raise HTTPException(status_code=404, detail="Goal not found")
+
+    touched_ids: set[int] = set()
+    for proposal in payload.accepted_proposals:
+        task = db.get(Task, proposal.target_task_id)
+        if not task or task.goal_id != goal_id:
+            continue
+        if proposal.target_type == "subtask":
+            if proposal.subtask_index is None:
+                continue
+            subtasks = parse_note_subtasks(task.note)
+            if proposal.subtask_index < 0 or proposal.subtask_index >= len(subtasks):
+                continue
+            subtasks[proposal.subtask_index] = proposal.after
+            task.note = compose_note_subtasks(subtasks)
+        else:
+            task.title = proposal.after
+        touched_ids.add(task.id)
+
+    db.commit()
+    updated_tasks: list[Task] = []
+    for task_id in touched_ids:
+        task = db.get(Task, task_id)
+        if task:
+            db.refresh(task)
+            updated_tasks.append(task)
+    return ApplyRevisionsResponse(updated_tasks=updated_tasks)
 
 
 @router.post("/tasks", response_model=TaskRead, status_code=status.HTTP_201_CREATED)

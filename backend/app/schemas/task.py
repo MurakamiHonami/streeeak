@@ -1,6 +1,7 @@
 import datetime as dt
 
 from pydantic import BaseModel
+from typing import Literal
 
 from app.models.task import TaskType
 
@@ -66,3 +67,46 @@ class BreakdownResponse(BaseModel):
     monthly: list[BreakdownTask]
     weekly: list[BreakdownTask]
     daily: list[BreakdownTask]
+
+
+class DraftTask(BaseModel):
+    task_id: int
+    task_type: TaskType
+    title: str
+    note: str | None = None
+    subtasks: list[str] = []
+
+
+class RevisionChatMessage(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str
+
+
+class RevisionChatRequest(BaseModel):
+    message: str
+    draft_tasks: list[DraftTask]
+    chat_history: list[RevisionChatMessage] = []
+
+
+class TaskRevisionProposal(BaseModel):
+    proposal_id: str
+    target_task_id: int
+    target_type: Literal["monthly", "weekly", "daily", "subtask"]
+    subtask_index: int | None = None
+    before: str
+    after: str
+    reason: str
+
+
+class RevisionChatResponse(BaseModel):
+    source: str = "fallback"
+    assistant_message: str
+    proposals: list[TaskRevisionProposal]
+
+
+class ApplyRevisionsRequest(BaseModel):
+    accepted_proposals: list[TaskRevisionProposal]
+
+
+class ApplyRevisionsResponse(BaseModel):
+    updated_tasks: list[TaskRead]

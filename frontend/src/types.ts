@@ -42,3 +42,32 @@ export type RankingItem = {
   user_name: string;
   achieved_avg: number;
 };
+
+export type DraftTask = {
+  task_id: number;
+  task_type: TaskType;
+  title: string;
+  note?: string | null;
+  subtasks: string[];
+};
+
+export type RevisionChatMessage = {
+  role: "user" | "assistant";
+  content: string;
+};
+
+export type TaskRevisionProposal = {
+  proposal_id: string;
+  target_task_id: number;
+  target_type: "monthly" | "weekly" | "daily" | "subtask";
+  subtask_index: number | null;
+  before: string;
+  after: string;
+  reason: string;
+};
+
+export type RevisionChatResponse = {
+  source: "gemini" | "fallback";
+  assistant_message: string;
+  proposals: TaskRevisionProposal[];
+};

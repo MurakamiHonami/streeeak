@@ -277,6 +277,19 @@ pre {
   gap: 8px;
 }
 
+.proposalCard {
+  border: 1px solid #e8ede8;
+  border-radius: 12px;
+  padding: 10px;
+  display: grid;
+  gap: 6px;
+}
+
+.proposalCard p {
+  margin: 0;
+  font-size: 13px;
+}
+
 .tabRow {
   display: flex;
   gap: 8px;
