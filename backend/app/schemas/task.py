@@ -51,6 +51,7 @@ class BreakdownRequest(BaseModel):
     weeks_per_month: int = 4
     days_per_week: int = 7
     persist: bool = True
+    current_situation: str | None = None
 
 
 class BreakdownTask(BaseModel):

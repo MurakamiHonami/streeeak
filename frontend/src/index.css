@@ -260,14 +260,16 @@ h1 {
 }
 
 button,
-input {
+input,
+textarea {
   padding: 8px;
   border: 1px solid #d9deea;
   border-radius: 8px;
   font: inherit;
 }
 
-input {
+input,
+textarea {
   width: 100%;
 }
 
@@ -363,6 +365,91 @@ pre {
   background: rgba(19, 236, 55, 0.12);
   border-color: rgba(19, 236, 55, 0.35);
   color: #0fbf2c;
+}
+
+.slideViewport {
+  display: flex;
+  gap: 12px;
+  overflow-x: scroll;
+  scroll-snap-type: x mandatory;
+  scrollbar-gutter: stable both-edges;
+  padding-bottom: 4px;
+}
+
+.slidePage {
+  min-width: 100%;
+  scroll-snap-align: start;
+  display: grid;
+  gap: 10px;
+}
+
+.dailySlideViewport {
+  max-height: 300px;
+}
+
+.dailySlidePage {
+  max-height: 300px;
+  overflow-y: scroll;
+  scrollbar-gutter: stable both-edges;
+  padding-right: 4px;
+}
+
+.compactTaskRow p {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.slideViewport::-webkit-scrollbar,
+.dailySlidePage::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.slideViewport::-webkit-scrollbar-thumb,
+.dailySlidePage::-webkit-scrollbar-thumb {
+  background: rgba(15, 23, 42, 0.25);
+  border-radius: 999px;
+}
+
+.slideViewport::-webkit-scrollbar-track,
+.dailySlidePage::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.08);
+  border-radius: 999px;
+}
+
+.planScrollArea {
+  max-height: 340px;
+  overflow-y: scroll;
+  scrollbar-gutter: stable both-edges;
+  display: grid;
+  gap: 10px;
+  padding-right: 4px;
+}
+
+.planScrollArea::-webkit-scrollbar {
+  width: 8px;
+}
+
+.planScrollArea::-webkit-scrollbar-thumb {
+  background: rgba(15, 23, 42, 0.25);
+  border-radius: 999px;
+}
+
+.planScrollArea::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.08);
+  border-radius: 999px;
+}
+
+.planUnit {
+  display: grid;
+  gap: 10px;
+}
+
+.planUnit h4 {
+  margin: 0;
+  font-size: 16px;
 }
 
 .authSection {

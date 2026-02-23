@@ -138,19 +138,29 @@ export async function deleteGoal(goalId: number) {
   await apiClient.delete(`/goals/${goalId}`);
 }
 
-export async function generateBreakdown(goalId: number) {
+export async function generateBreakdown(
+  goalId: number,
+  payload?: { currentSituation?: string }
+) {
   const res = await apiClient.post(`/goals/${goalId}/tasks/breakdown`, {
     months: 12,
     weeks_per_month: 4,
     days_per_week: 7,
     persist: true,
+    current_situation: payload?.currentSituation ?? null,
   });
   return res.data;
 }
 
-export async function createGoalAndBreakdown(payload: { title: string; deadline?: string }) {
+export async function createGoalAndBreakdown(payload: {
+  title: string;
+  deadline?: string;
+  currentSituation?: string;
+}) {
   const goal = await createGoal(payload);
-  const breakdown = await generateBreakdown(goal.id);
+  const breakdown = await generateBreakdown(goal.id, {
+    currentSituation: payload.currentSituation,
+  });
   return { goal, breakdown };
 }
 

@@ -16,6 +16,8 @@ type DisplayTask = DraftTask & { date?: string; month?: number; week_number?: nu
 export function GoalsPage() {
   const [title, setTitle] = useState("");
   const [deadline, setDeadline] = useState("");
+  const [currentSituation, setCurrentSituation] = useState("");
+  const [isGoalInputActive, setIsGoalInputActive] = useState(false);
   const [activeGoalId, setActiveGoalId] = useState<number | null>(null);
   const [chatInput, setChatInput] = useState("");
   const [chatHistory, setChatHistory] = useState<RevisionChatMessage[]>([]);
@@ -56,7 +58,9 @@ export function GoalsPage() {
     },
   });
 
-  const canSubmit = title.trim().length > 0 && !breakdownMutation.isPending;
+  const hasGoalAndDeadline = title.trim().length > 0 && deadline.trim().length > 0;
+  const hasAllInputs = hasGoalAndDeadline && currentSituation.trim().length > 0;
+  const canSubmit = hasAllInputs && !breakdownMutation.isPending;
 
   const toDraftTasks = (tasks: typeof goalTasks.data): DraftTask[] =>
     (tasks ?? []).map((task) => ({
@@ -98,6 +102,43 @@ export function GoalsPage() {
   const monthlyTasks = appliedDraftTasks.filter((t) => t.task_type === "monthly");
   const weeklyTasks = appliedDraftTasks.filter((t) => t.task_type === "weekly");
   const dailyTasks = appliedDraftTasks.filter((t) => t.task_type === "daily");
+  const yearlyTasks = monthlyTasks.filter((t) => t.title.startsWith("1年目の目標:") || t.title.includes("年目の目標:"));
+  const monthlyPlanTasks = monthlyTasks.filter((t) => !t.title.includes("年目の目標:"));
+  const dailyTasksByDate = useMemo(() => {
+    const groups = new Map<string, DisplayTask[]>();
+    for (const task of dailyTasks) {
+      const key = task.date ?? "no-date";
+      if (!groups.has(key)) {
+        groups.set(key, []);
+      }
+      groups.get(key)!.push(task);
+    }
+
+    return Array.from(groups.entries()).sort(([a], [b]) => {
+      if (a === "no-date") return 1;
+      if (b === "no-date") return -1;
+      return a.localeCompare(b);
+    });
+  }, [dailyTasks]);
+
+  const formatDateLabel = (value: string) => {
+    if (value === "no-date") return "日付未設定";
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return value;
+    return parsed.toLocaleDateString("ja-JP", { month: "numeric", day: "numeric", weekday: "short" });
+  };
+
+  const stripMonthPrefix = (title: string) =>
+    title
+      .replace(/^\d+\s*ヶ?月目[:：]?\s*/, "")
+      .replace(/^\d+\s*ヶ?月後[:：]?\s*/, "");
+
+  const stripWeekPrefix = (title: string) =>
+    title
+      .replace(/^\d+\s*週目[:：]?\s*/, "")
+      .replace(/^\d+\s*週間目[:：]?\s*/, "")
+      .replace(/^\d+\s*週後[:：]?\s*/, "")
+      .replace(/^\d+\s*週間後[:：]?\s*/, "");
 
   const revisionMutation = useMutation({
     mutationFn: revisionChat,
@@ -127,10 +168,11 @@ export function GoalsPage() {
 
   const handleCreateGoal = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim()) return;
+    if (!title.trim() || !deadline.trim() || !currentSituation.trim()) return;
     breakdownMutation.mutate({
       title: title.trim(),
       deadline: deadline || undefined,
+      currentSituation: currentSituation.trim(),
     });
   };
 
@@ -154,39 +196,161 @@ export function GoalsPage() {
     <section className="page">
       <section className="visionCard">
         <p className="chip">Goal Setup</p>
-        <h2>長期目標をAIで12ヶ月分に分解</h2>
-        <p className="mutedText">メンターAIと相談して、直近1ヶ月の週次、直近1週間の日次TODOを設定しましょう</p>
+        <h2>長期目標を期限ベースで分解</h2>
+        <p className="mutedText">期限までの期間に合わせて、年次・月次・週次・日次の計画を自動生成します</p>
       </section>
 
       <form className="card" onSubmit={handleCreateGoal}>
-        <h3 className="font-medium text-xl">長期目標を入力（新規作成）</h3>
-        <input
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="長期目標を入力"
-        />
-        <input className="mb-4" type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} />
-        <div className="relative inline-flex flex-col items-center mt-6">
-          <span
-            className={[
-              "whitespace-nowrap rounded-lg bg-gray-800 mt-1 px-3 py-1.5",
-              "text-sm text-white shadow-md absolute -top-10 left-1/2",
-              "-translate-x-1/2 after:content-[''] after:absolute",
-              "after:top-full after:left-1/2 after:-translate-x-1/2",
-              "after:border-[6px] after:border-transparent after:border-t-gray-800",
-            ].join(" ")}
-          >
-            僕と相談しながら決めよう!
-          </span>
-          <img src="/panda.png" alt="Mentor Panda" className="h-20 object-contain drop-shadow-sm" />
-        </div>
-        <button type="submit" disabled={!canSubmit}>
-          {breakdownMutation.isPending ? "AIで生成中..." : "ブレイクダウンする"}
-        </button>
-        {breakdownMutation.isError && (
-          <p style={{ color: "#c0392b", margin: 0 }}>
-            ブレイクダウンに失敗しました。Geminiキーまたはバックエンドを確認してください。
-          </p>
+        {!activeGoalId ? (
+          <>
+            <h3 className="font-medium text-xl">長期目標を入力（新規作成）</h3>
+            <input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              onFocus={() => setIsGoalInputActive(true)}
+              onBlur={() => setIsGoalInputActive(false)}
+              placeholder="長期目標を入力"
+            />
+            <input
+              className="mb-4"
+              type="date"
+              value={deadline}
+              onChange={(e) => setDeadline(e.target.value)}
+              onFocus={() => setIsGoalInputActive(true)}
+              onBlur={() => setIsGoalInputActive(false)}
+            />
+            <div className="relative inline-flex flex-col items-center mt-6">
+              <span
+                className={[
+                  "whitespace-nowrap rounded-lg bg-gray-800 mt-1 px-3 py-1.5",
+                  "text-sm text-white shadow-md absolute -top-10 left-1/2",
+                  "-translate-x-1/2 after:content-[''] after:absolute",
+                  "after:top-full after:left-1/2 after:-translate-x-1/2",
+                  "after:border-[6px] after:border-transparent after:border-t-gray-800",
+                ].join(" ")}
+              >
+                {breakdownMutation.isPending
+                  ? "君を夢へ導くよ！"
+                  : hasAllInputs
+                  ? "それじゃあ夢を叶えよう！"
+                  : hasGoalAndDeadline
+                  ? "今の状況を教えて！"
+                  : isGoalInputActive
+                  ? "目標を教えて！"
+                  : "僕と相談しながら決めよう!"}
+              </span>
+              <img src="/panda.png" alt="Mentor Panda" className="h-20 object-contain drop-shadow-sm" />
+            </div>
+            {hasGoalAndDeadline && (
+              <textarea
+                value={currentSituation}
+                onChange={(e) => setCurrentSituation(e.target.value)}
+                placeholder="現状を入力"
+                rows={3}
+              />
+            )}
+            <button type="submit" disabled={!canSubmit}>
+              {breakdownMutation.isPending ? "AIで生成中..." : "ブレイクダウンする"}
+            </button>
+            {breakdownMutation.isError && (
+              <p style={{ color: "#c0392b", margin: 0 }}>
+                ブレイクダウンに失敗しました。Geminiキーまたはバックエンドを確認してください。
+              </p>
+            )}
+          </>
+        ) : (
+          <>
+            <h3 className="font-medium text-xl">目標の修正を相談する</h3>
+            <div className="relative inline-flex flex-col items-center mt-6">
+              <span
+                className={[
+                  "whitespace-nowrap rounded-lg bg-gray-800 mt-1 px-3 py-1.5",
+                  "text-sm text-white shadow-md absolute -top-10 left-1/2",
+                  "-translate-x-1/2 after:content-[''] after:absolute",
+                  "after:top-full after:left-1/2 after:-translate-x-1/2",
+                  "after:border-[6px] after:border-transparent after:border-t-gray-800",
+                ].join(" ")}
+              >
+                修正が必要だったら言ってね！
+              </span>
+              <img src="/panda.png" alt="Mentor Panda" className="h-20 object-contain drop-shadow-sm" />
+            </div>
+            <p className="mutedText">選択中の目標に対して、修正依頼と提案の採用をこの画面で行えます。</p>
+            <div className="chatBox">
+              {chatHistory.map((msg, idx) => (
+                <p key={idx}>
+                  <strong>{msg.role === "user" ? "You" : "Gemini"}:</strong> {msg.content}
+                </p>
+              ))}
+            </div>
+            <div className="chatInputRow">
+              <input
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                placeholder="例: 週次タスクをもっと具体化して"
+              />
+              <button type="button" onClick={handleSendRevisionChat} disabled={!chatInput.trim()}>
+                送信
+              </button>
+            </div>
+            {revisionMutation.isError && (
+              <p style={{ color: "#c0392b", margin: 0 }}>提案生成に失敗しました。再試行してください。</p>
+            )}
+
+            <div className="proposalCard" style={{ background: "#f8faf8" }}>
+              <h3 style={{ margin: 0 }}>修正提案（Accept / Reject）</h3>
+              {!proposals.length && <p>提案待ちです。AIに修正依頼を送信してください。</p>}
+              {proposals.map((proposal) => (
+                <div key={proposal.proposal_id} className="proposalCard">
+                  <p>
+                    <strong>{proposal.target_type}</strong> / task_id: {proposal.target_task_id}
+                  </p>
+                  <p>理由: {proposal.reason}</p>
+                  <p>Before: {proposal.before}</p>
+                  <p>After: {proposal.after}</p>
+                  <div className="rowActions">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setDecisionMap((prev) => ({ ...prev, [proposal.proposal_id]: "accepted" }))
+                      }
+                    >
+                      Accept
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setDecisionMap((prev) => ({ ...prev, [proposal.proposal_id]: "rejected" }))
+                      }
+                      style={{ background: "#475569", color: "#fff" }}
+                    >
+                      Reject
+                    </button>
+                  </div>
+                  <small>
+                    現在:{" "}
+                    {decisionMap[proposal.proposal_id] === "accepted"
+                      ? "Accepted"
+                      : decisionMap[proposal.proposal_id] === "rejected"
+                      ? "Rejected"
+                      : "未選択"}
+                  </small>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={() =>
+                  applyMutation.mutate({
+                    goalId: activeGoalId,
+                    acceptedProposals,
+                  })
+                }
+                disabled={!acceptedProposals.length}
+              >
+                Accept済み提案を反映
+              </button>
+            </div>
+          </>
         )}
       </form>
 
@@ -228,120 +392,97 @@ export function GoalsPage() {
       {activeGoalId && goalTasks.data && (
         <>
           <div className="card">
-            <h3>12ヶ月プラン</h3>
-            {monthlyTasks.length === 0 && <p className="mutedText">タスクがありません</p>}
-            {monthlyTasks.map((task, idx) => (
-              <div key={task.task_id || idx} className="taskRow">
-                <p>{task.title}</p>
-              </div>
-            ))}
-          </div>
+            <h3>プラン</h3>
 
-          <div className="card">
-            <h3>直近1ヶ月の週次プラン</h3>
-            {weeklyTasks.length === 0 && <p className="mutedText">タスクがありません</p>}
-            {weeklyTasks.map((task, idx) => (
-              <div key={task.task_id || idx} className="taskRow">
-                <p>{task.title}</p>
-              </div>
-            ))}
-          </div>
-
-          <div className="card">
-            <h3>直近1週間のデイリーTODO</h3>
-            {dailyTasks.length === 0 && <p className="mutedText">タスクがありません</p>}
-            {dailyTasks.map((task, idx) => (
-              <div key={task.task_id || idx} className="taskRow">
-                <div>
-                  <p>{task.title}</p>
-                  {task.subtasks && task.subtasks.length > 0 && (
-                    <ul className="detailTodoList">
-                      {task.subtasks.map((line, detailIdx) => (
-                        <li key={detailIdx}>{line}</li>
-                      ))}
-                    </ul>
-                  )}
+            {yearlyTasks.length > 0 && (
+              <section className="planUnit">
+                <h4>年次プラン</h4>
+                <div className="planScrollArea">
+                  {yearlyTasks.map((task, idx) => (
+                    <section key={task.task_id || idx}>
+                      <p style={{ margin: "6px 0 8px", fontSize: "13px", fontWeight: 700, color: "#334155" }}>
+                        {idx + 1}年目
+                      </p>
+                      <div className="taskRow">
+                        <p>{task.title}</p>
+                      </div>
+                    </section>
+                  ))}
                 </div>
-              </div>
-            ))}
-            <p className="mutedText">作成された当日のTODOはホーム画面に表示されます。</p>
-          </div>
-
-          <div className="card">
-            <h3>修正を依頼する</h3>
-            <div className="chatBox">
-              {chatHistory.map((msg, idx) => (
-                <p key={idx}>
-                  <strong>{msg.role === "user" ? "You" : "Gemini"}:</strong> {msg.content}
-                </p>
-              ))}
-            </div>
-            <div className="chatInputRow">
-              <input
-                value={chatInput}
-                onChange={(e) => setChatInput(e.target.value)}
-                placeholder="例: 週次タスクをもっと具体化して"
-              />
-              <button onClick={handleSendRevisionChat} disabled={!chatInput.trim()}>
-                送信
-              </button>
-            </div>
-            {revisionMutation.isError && (
-              <p style={{ color: "#c0392b", margin: 0 }}>提案生成に失敗しました。再試行してください。</p>
+              </section>
             )}
-          </div>
 
-          <div className="card">
-            <h3>修正提案（Accept / Reject）</h3>
-            {!proposals.length && <p>提案待ちです。AIに修正依頼を送信してください。</p>}
-            {proposals.map((proposal) => (
-              <div key={proposal.proposal_id} className="proposalCard">
-                <p>
-                  <strong>{proposal.target_type}</strong> / task_id: {proposal.target_task_id}
-                </p>
-                <p>理由: {proposal.reason}</p>
-                <p>Before: {proposal.before}</p>
-                <p>After: {proposal.after}</p>
-                <div className="rowActions">
-                  <button
-                    onClick={() =>
-                      setDecisionMap((prev) => ({ ...prev, [proposal.proposal_id]: "accepted" }))
-                    }
-                  >
-                    Accept
-                  </button>
-                  <button
-                    onClick={() =>
-                      setDecisionMap((prev) => ({ ...prev, [proposal.proposal_id]: "rejected" }))
-                    }
-                    style={{ background: "#475569", color: "#fff" }}
-                  >
-                    Reject
-                  </button>
+            <section className="planUnit">
+              <h4>{monthlyPlanTasks.length > 0 ? `${monthlyPlanTasks.length}ヶ月プラン` : "月次プラン"}</h4>
+              {monthlyPlanTasks.length === 0 && <p className="mutedText">タスクがありません</p>}
+              {monthlyPlanTasks.length > 0 && (
+                <div className="planScrollArea">
+                  {monthlyPlanTasks.map((task, idx) => (
+                    <div key={task.task_id || idx}>
+                      <p style={{ margin: "6px 0 8px", fontSize: "13px", fontWeight: 700, color: "#334155" }}>
+                        {idx + 1}ヶ月目
+                      </p>
+                      <div className="taskRow">
+                        <p>{stripMonthPrefix(task.title)}</p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                <small>
-                  現在:{" "}
-                  {decisionMap[proposal.proposal_id] === "accepted"
-                    ? "Accepted"
-                    : decisionMap[proposal.proposal_id] === "rejected"
-                    ? "Rejected"
-                    : "未選択"}
-                </small>
-              </div>
-            ))}
+              )}
+            </section>
 
-            <button
-              onClick={() =>
-                applyMutation.mutate({
-                  goalId: activeGoalId,
-                  acceptedProposals,
-                })
-              }
-              disabled={!acceptedProposals.length}
-            >
-              Accept済み提案を反映
-            </button>
+            <section className="planUnit">
+              <h4>{weeklyTasks.length === 4 ? "直近1ヶ月の週次プラン" : `${weeklyTasks.length}週間の週次プラン`}</h4>
+              {weeklyTasks.length === 0 && <p className="mutedText">タスクがありません</p>}
+              {weeklyTasks.length > 0 && (
+                <div className="planScrollArea">
+                  {weeklyTasks.map((task, idx) => (
+                    <section key={task.task_id || idx}>
+                      <p style={{ margin: "6px 0 8px", fontSize: "13px", fontWeight: 700, color: "#334155" }}>
+                        {idx + 1}週目
+                      </p>
+                      <div className="taskRow">
+                        <p>{stripWeekPrefix(task.title)}</p>
+                      </div>
+                    </section>
+                  ))}
+                </div>
+              )}
+            </section>
+
+            <section className="planUnit">
+              <h4>直近1週間のTODO</h4>
+              {dailyTasks.length === 0 && <p className="mutedText">タスクがありません</p>}
+              {dailyTasksByDate.length > 0 && (
+                <div className="planScrollArea">
+                  {dailyTasksByDate.map(([dateKey, tasks]) => (
+                    <section key={dateKey}>
+                      <p style={{ margin: "6px 0 8px", fontSize: "13px", fontWeight: 700, color: "#334155" }}>
+                        {formatDateLabel(dateKey)}
+                      </p>
+                      {tasks.map((task, idx) => (
+                        <div key={task.task_id || `${dateKey}-${idx}`} className="taskRow">
+                          <div>
+                            <p>{task.title}</p>
+                            {task.subtasks && task.subtasks.length > 0 && (
+                              <ul className="detailTodoList">
+                                {task.subtasks.map((line, detailIdx) => (
+                                  <li key={detailIdx}>{line}</li>
+                                ))}
+                              </ul>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </section>
+                  ))}
+                </div>
+              )}
+              <p className="mutedText">縦にスクロールして確認できます。</p>
+              <p className="mutedText">作成された当日のTODOはホーム画面に表示されます。</p>
+            </section>
           </div>
+
         </>
       )}
     </section>
