@@ -43,6 +43,27 @@ h1 {
   padding: 28px 0 18px;
 }
 
+.topHeader.authHeader {
+  justify-content: center;
+}
+
+.brandBlock {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.brandText {
+  display: flex;
+  flex-direction: column;
+}
+
+.brandIcon {
+  width: 80px;
+  height: auto;
+}
+
 .headerDate {
   margin: 0;
   font-size: 12px;
@@ -82,6 +103,18 @@ h1 {
   justify-content: center;
   font-weight: 700;
   color: #0fbf2c;
+}
+
+.logoutBtn {
+  width: auto;
+  height: auto;
+  border-radius: 999px;
+  padding: 8px 12px;
+  border: 1px solid rgba(19, 236, 55, 0.4);
+  background: rgba(19, 236, 55, 0.12);
+  color: #0fbf2c;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .page {
@@ -330,6 +363,34 @@ pre {
   background: rgba(19, 236, 55, 0.12);
   border-color: rgba(19, 236, 55, 0.35);
   color: #0fbf2c;
+}
+
+.authSection {
+  display: grid;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.authModeRow {
+  display: flex;
+  gap: 8px;
+}
+
+.authCard {
+  gap: 12px;
+}
+
+.authLabel {
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+  color: #475569;
+}
+
+.authError {
+  margin: 0;
+  color: #b91c1c;
+  font-size: 13px;
 }
 
 .bottomNav {

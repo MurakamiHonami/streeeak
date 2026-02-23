@@ -1,39 +1,56 @@
+import { useState } from "react";
 import { Route, Routes } from "react-router-dom";
 import { NavBar } from "./components/NavBar";
+import { clearAuthSession, getAuthSession } from "./lib/api";
+import { AuthPage } from "./pages/AuthPage";
 import { GoalsPage } from "./pages/GoalsPage";
 import { HomePage } from "./pages/HomePage";
 import { ResultsPage } from "./pages/ResultsPage";
 import { SharePage } from "./pages/SharePage";
 
 function App() {
-  const dateStr = new Date().toLocaleDateString("ja-JP", {
-    month: "long",
-    day: "numeric",
-    weekday: "short",
+  const [currentUserId, setCurrentUserId] = useState<number | null>(() => {
+    return getAuthSession()?.userId ?? null;
   });
 
   return (
     <div className="appShell">
       <div className="appContainer">
-        <header className="topHeader">
-          <div className="flex flex-row justify-center items-center">
-            <img src="/sasa.png" className="w-20 pr-2 pb-4 mr-0"/>
-            <div className="flex flex-col space-between">
-              <p className="headerDate">{dateStr}</p>
-              <h1 className="headerTitle">Str<span className="e">eee</span>ak</h1>
+        <header className={currentUserId ? "topHeader" : "topHeader authHeader"}>
+          <div className="brandBlock">
+            <img src="/sasa.png" className="brandIcon" alt="Streeeak mascot" />
+            <div className="brandText">
+              <h1 className="headerTitle">
+                Str<span className="e">eee</span>ak
+              </h1>
             </div>
           </div>
-          <div className="headerAvatar">test</div>
+          {currentUserId ? (
+            <button
+              type="button"
+              className="headerAvatar logoutBtn"
+              onClick={() => {
+                clearAuthSession();
+                setCurrentUserId(null);
+              }}
+            >
+              ログアウト
+            </button>
+          ) : null}
         </header>
 
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/goals" element={<GoalsPage />} />
-          <Route path="/results" element={<ResultsPage />} />
-          <Route path="/share" element={<SharePage />} />
-        </Routes>
+        {currentUserId ? (
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/goals" element={<GoalsPage />} />
+            <Route path="/results" element={<ResultsPage />} />
+            <Route path="/share" element={<SharePage />} />
+          </Routes>
+        ) : (
+          <AuthPage onAuthenticated={(userId) => setCurrentUserId(userId)} />
+        )}
       </div>
-      <NavBar />
+      {currentUserId ? <NavBar /> : null}
     </div>
   );
 }
