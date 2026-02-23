@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.models.friendship import Friendship
-from app.models.post import Post
+from app.models.task import Task, TaskType
 from app.models.user import User
 from app.schemas.ranking import RankingItem
 
@@ -14,18 +14,28 @@ router = APIRouter(prefix="/analytics", tags=["analytics"])
 @router.get("/ranking", response_model=list[RankingItem])
 def get_ranking(user_id: int, week: int, top_n: int = 3, db: Session = Depends(get_db)):
     friend_ids = list(db.scalars(select(Friendship.friend_id).where(Friendship.user_id == user_id)))
-    target_ids = [user_id, *friend_ids]
+    target_ids = list(dict.fromkeys([user_id, *friend_ids]))
+    users = list(db.scalars(select(User).where(User.id.in_(target_ids))))
 
-    stmt = (
-        select(Post.user_id, User.name, func.avg(Post.achieved).label("achieved_avg"))
-        .join(User, User.id == Post.user_id)
-        .where(Post.week_number == week, Post.user_id.in_(target_ids))
-        .group_by(Post.user_id, User.name)
-        .order_by(func.avg(Post.achieved).desc())
-        .limit(top_n)
-    )
-    rows = db.execute(stmt).all()
-    return [
-        RankingItem(user_id=row.user_id, user_name=row.name, achieved_avg=float(row.achieved_avg))
-        for row in rows
-    ]
+    ranking_items: list[RankingItem] = []
+    for user in users:
+        total_stmt = select(func.count()).select_from(Task).where(
+            Task.user_id == user.id,
+            Task.type == TaskType.daily,
+            Task.week_number == week,
+        )
+        done_stmt = select(func.count()).select_from(Task).where(
+            Task.user_id == user.id,
+            Task.type == TaskType.daily,
+            Task.week_number == week,
+            Task.is_done.is_(True),
+        )
+        total = db.scalar(total_stmt) or 0
+        done = db.scalar(done_stmt) or 0
+        achieved_rate = (done / total) if total > 0 else 0.0
+        ranking_items.append(
+            RankingItem(user_id=user.id, user_name=user.name, achieved_avg=float(achieved_rate))
+        )
+
+    ranking_items.sort(key=lambda item: item.achieved_avg, reverse=True)
+    return ranking_items[:top_n] if top_n > 0 else ranking_items

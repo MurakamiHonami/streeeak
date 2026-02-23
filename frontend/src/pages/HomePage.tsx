@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { carryOverTask, fetchDailyTasks, fetchRanking, toggleTaskDone, fetchGoals } from "../lib/api";
+import { appContext, carryOverTask, fetchDailyTasks, fetchRanking, toggleTaskDone, fetchGoals } from "../lib/api";
 import CheckIcon from '@mui/icons-material/Check';
 import MoveDownIcon from '@mui/icons-material/MoveDown';
 import UndoIcon from '@mui/icons-material/Undo';
@@ -13,7 +13,7 @@ import Select, { SelectChangeEvent } from '@mui/material/Select';
 export function HomePage() {
   const queryClient = useQueryClient();
   const dailyTasks = useQuery({ queryKey: ["dailyTasks"], queryFn: fetchDailyTasks });
-  const ranking = useQuery({ queryKey: ["ranking"], queryFn: fetchRanking });
+  const ranking = useQuery({ queryKey: ["ranking", "home"], queryFn: () => fetchRanking(50) });
   const goals = useQuery({ queryKey: ["goals"], queryFn: fetchGoals });
 
   const doneMutation = useMutation({
@@ -48,6 +48,11 @@ export function HomePage() {
   const doneRate = filteredTasks.length ? Math.round((doneCount / filteredTasks.length) * 100) : 0;
   
   const selectedGoal = goals.data?.find(g => g.id === currentGoalId);
+  const rankingList = ranking.data ?? [];
+  const top3Ranking = rankingList.slice(0, 3);
+  const myRankIndex = rankingList.findIndex((item) => item.user_id === appContext.userId);
+  const myRank = myRankIndex >= 0 ? myRankIndex + 1 : null;
+  const myRankItem = myRankIndex >= 0 ? rankingList[myRankIndex] : null;
 
   return (
     <section className="page">
@@ -151,8 +156,8 @@ export function HomePage() {
         <div className="sectionHead">
           <h3 className="font-medium text-xl">Friend Ranking (TOP3)</h3>
         </div>
-        {ranking.data?.length ? (
-          ranking.data.map((item, index) => (
+        {top3Ranking.length ? (
+          top3Ranking.map((item, index) => (
             <div key={item.user_id} className="rankRow flex justify-between items-center border-b border-gray-50 last:border-0 py-4">
               <div className="flex items-center gap-3">
                 <span className="font-bold text-gray-400">#{index + 1}</span>
@@ -163,6 +168,15 @@ export function HomePage() {
           ))
         ) : (
           <p className="text-gray-400 text-sm mt-2">ランキングデータがありません。</p>
+        )}
+        {myRank !== null && myRank > 3 && myRankItem && (
+          <div className="rankRow flex justify-between items-center border-t border-gray-200 pt-4 mt-2">
+            <div className="flex items-center gap-3">
+              <span className="font-bold text-gray-400">#{myRank}</span>
+              <span className="font-medium">You ({myRankItem.user_name})</span>
+            </div>
+            <strong className="text-xl font-black italic">{(myRankItem.achieved_avg * 100).toFixed(1)}%</strong>
+          </div>
         )}
       </section>
     </section>

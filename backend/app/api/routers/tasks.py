@@ -30,6 +30,37 @@ from app.services.task_service import (
 router = APIRouter(tags=["tasks"])
 
 
+def _merge_or_move_daily_task(db: Session, task: Task, target_date: date) -> Task:
+    """
+    Move a daily task to target_date.
+    If an equivalent task already exists on target_date, merge into the existing row
+    and delete the source row to avoid duplicate carry-over records.
+    """
+    duplicate = db.scalar(
+        select(Task).where(
+            Task.id != task.id,
+            Task.user_id == task.user_id,
+            Task.goal_id == task.goal_id,
+            Task.type == TaskType.daily,
+            Task.date == target_date,
+            Task.title == task.title,
+            Task.tags == task.tags,
+            Task.note == task.note,
+        )
+    )
+    if duplicate:
+        duplicate.carried_over = True
+        # 未完了タスクを持ち越した場合は、重複先も未完了に揃える
+        if not task.is_done:
+            duplicate.is_done = False
+        db.delete(task)
+        return duplicate
+
+    task.date = target_date
+    task.carried_over = True
+    return task
+
+
 def _add_months(base: date, months: int) -> date:
     year = base.year + (base.month - 1 + months) // 12
     month = ((base.month - 1 + months) % 12) + 1
@@ -209,13 +240,36 @@ def list_tasks(
     date_value: date | None = Query(default=None, alias="date"),
     db: Session = Depends(get_db),
 ):
+    # 日次一覧取得時に、未完了タスクを日付変更に追従させる（翌日へ持ち越し）
+    if type == TaskType.daily and date_value is not None:
+        overdue_tasks = list(
+            db.scalars(
+                select(Task).where(
+                    Task.user_id == user_id,
+                    Task.type == TaskType.daily,
+                    Task.is_done.is_(False),
+                    Task.date.is_not(None),
+                    Task.date < date_value,
+                )
+            )
+        )
+        for task in overdue_tasks:
+            # 1日ずつ持ち越す意図を保ちつつ、取得対象日より未来にはしない
+            next_date = task.date + timedelta(days=1)
+            _merge_or_move_daily_task(db, task, min(next_date, date_value))
+        if overdue_tasks:
+            db.commit()
+
     stmt = select(Task).where(Task.user_id == user_id, Task.type == type)
     if type == TaskType.monthly and month is not None:
         stmt = stmt.where(Task.month == month)
     if type == TaskType.weekly and week_number is not None:
         stmt = stmt.where(Task.week_number == week_number)
-    if type == TaskType.daily and date_value is not None:
-        stmt = stmt.where(Task.date == date_value)
+    if type == TaskType.daily:
+        if week_number is not None:
+            stmt = stmt.where(Task.week_number == week_number)
+        if date_value is not None:
+            stmt = stmt.where(Task.date == date_value)
     return list(db.scalars(stmt.order_by(Task.created_at.desc())))
 
 
@@ -249,23 +303,15 @@ def carry_over_task(task_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Task not found")
     if task.type != TaskType.daily or task.date is None:
         raise HTTPException(status_code=400, detail="Carry-over is only for daily tasks")
+    if task.is_done:
+        raise HTTPException(status_code=400, detail="Completed task cannot be carried over")
 
-    task.carried_over = True
-    new_task = Task(
-        goal_id=task.goal_id,
-        user_id=task.user_id,
-        type=TaskType.daily,
-        title=task.title,
-        date=task.date + timedelta(days=1),
-        is_done=False,
-        carried_over=False,
-        tags=task.tags,
-        note=task.note,
-    )
-    db.add(new_task)
+    # 同一タスクの日付を翌日に移動して持ち越す
+    task.is_done = False
+    moved_task = _merge_or_move_daily_task(db, task, task.date + timedelta(days=1))
     db.commit()
-    db.refresh(new_task)
-    return new_task
+    db.refresh(moved_task)
+    return moved_task
 
 
 @router.delete("/tasks/{task_id}", status_code=status.HTTP_204_NO_CONTENT)

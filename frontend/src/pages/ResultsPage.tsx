@@ -1,13 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
-import { fetchWeeklyTasks } from "../lib/api";
+import { fetchWeeklyDailyTasks } from "../lib/api";
 
 export function ResultsPage() {
-  const weeklyTasks = useQuery({ queryKey: ["weeklyTasks"], queryFn: fetchWeeklyTasks });
+  const weeklyDailyTasks = useQuery({ queryKey: ["weeklyDailyTasks"], queryFn: fetchWeeklyDailyTasks });
 
-  const total = weeklyTasks.data?.length ?? 0;
-  const done = weeklyTasks.data?.filter((t) => t.is_done).length ?? 0;
+  const total = weeklyDailyTasks.data?.length ?? 0;
+  const done = weeklyDailyTasks.data?.filter((t) => t.is_done).length ?? 0;
   const rate = total > 0 ? (done / total) * 100 : 0;
-  const categoryMap = weeklyTasks.data?.reduce<Record<string, { done: number; total: number }>>(
+  const categoryMap = weeklyDailyTasks.data?.reduce<Record<string, { done: number; total: number }>>(
     (acc, task) => {
       const key = task.tags ?? "未分類";
       if (!acc[key]) acc[key] = { done: 0, total: 0 };
@@ -33,7 +33,7 @@ export function ResultsPage() {
 
       <div className="card">
         <h3 className="font-medium text-xl">タスク振り返り</h3>
-        {weeklyTasks.data?.map((task) => (
+        {weeklyDailyTasks.data?.map((task) => (
           <div key={task.id} className="taskRow flex flex-col">
             <div>
               <p>{task.title}</p>

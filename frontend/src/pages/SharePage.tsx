@@ -23,7 +23,7 @@ export function SharePage() {
   }, [navigate]);
 
   const posts = useQuery({ queryKey: ["posts"], queryFn: fetchPosts });
-  const ranking = useQuery({ queryKey: ["ranking"], queryFn: fetchRanking });
+  const ranking = useQuery({ queryKey: ["ranking", "social"], queryFn: () => fetchRanking(50) });
 
   const createMutation = useMutation({
     mutationFn: createPost,
@@ -120,7 +120,7 @@ export function SharePage() {
           </>
         ) : (
           <div className="card">
-            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Ranking (TOP3)</h3>
+            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Ranking (FRIENDS)</h3>
             {ranking.data?.length ? (
               ranking.data.map((item, i) => (
                 <div key={item.user_id} className="rankRow flex justify-between items-center border-b border-gray-50 last:border-0 py-4">

@@ -207,6 +207,14 @@ export async function fetchWeeklyTasks() {
   return res.data;
 }
 
+export async function fetchWeeklyDailyTasks() {
+  const userId = getCurrentUserId();
+  const res = await apiClient.get<Task[]>("/tasks", {
+    params: { user_id: userId, type: "daily", week_number: isoWeek },
+  });
+  return res.data;
+}
+
 export async function updateTask(taskId: number, payload: Partial<Task>) {
   const res = await apiClient.put<Task>(`/tasks/${taskId}`, payload);
   return res.data;
@@ -232,10 +240,10 @@ export async function createPost(payload: { comment: string; achieved: number; g
   return res.data;
 }
 
-export async function fetchRanking() {
+export async function fetchRanking(topN = 3) {
   const userId = getCurrentUserId();
   const res = await apiClient.get<RankingItem[]>("/analytics/ranking", {
-    params: { user_id: userId, week: isoWeek, top_n: 3 },
+    params: { user_id: userId, week: isoWeek, top_n: topN },
   });
   return res.data;
 }
