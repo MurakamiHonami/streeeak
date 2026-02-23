@@ -1,62 +1,34 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import and_, or_, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
-
 from app.db.session import get_db
+from app.models.user import User
 from app.models.friendship import Friendship
-from app.schemas.friendship import FriendshipCreate, FriendshipRead
+from app.api.deps import get_current_user
+from pydantic import BaseModel
 
 router = APIRouter(prefix="/friendships", tags=["friendships"])
 
+class FriendRequest(BaseModel):
+    friend_id: int
 
-@router.post("", response_model=FriendshipRead, status_code=status.HTTP_201_CREATED)
-def create_friendship(payload: FriendshipCreate, db: Session = Depends(get_db)):
-    if payload.user_id == payload.friend_id:
-        raise HTTPException(status_code=400, detail="Cannot add yourself")
+@router.get("/search")
+def search_user(email: str, db: Session = Depends(get_db)):
+    user = db.scalar(select(User).where(User.email == email))
+    if not user:
+        raise HTTPException(status_code=404, detail="ユーザーが見つかりません")
+    
+    return {"id": user.id, "name": user.name, "email": user.email}
 
-    existing = db.scalar(
-        select(Friendship).where(
-            or_(
-                and_(
-                    Friendship.user_id == payload.user_id,
-                    Friendship.friend_id == payload.friend_id,
-                ),
-                and_(
-                    Friendship.user_id == payload.friend_id,
-                    Friendship.friend_id == payload.user_id,
-                ),
-            )
-        )
-    )
-    if existing:
-        raise HTTPException(status_code=400, detail="Friendship already exists")
-
-    friendship = Friendship(**payload.model_dump())
-    reciprocal = Friendship(user_id=payload.friend_id, friend_id=payload.user_id)
-    db.add_all([friendship, reciprocal])
+@router.post("")
+def add_friend(payload: FriendRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if payload.friend_id == current_user.id:
+        raise HTTPException(status_code=400, detail="自分自身を追加することはできません")
+    new_friend = Friendship(user_id=current_user.id, friend_id=payload.friend_id)
+    db.add(new_friend)
     db.commit()
-    db.refresh(friendship)
-    return friendship
-
-
-@router.get("", response_model=list[FriendshipRead])
-def list_friendships(user_id: int, db: Session = Depends(get_db)):
-    return list(db.scalars(select(Friendship).where(Friendship.user_id == user_id)))
-
-
-@router.delete("/{friendship_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_friendship(friendship_id: int, db: Session = Depends(get_db)):
-    friendship = db.get(Friendship, friendship_id)
-    if not friendship:
-        raise HTTPException(status_code=404, detail="Friendship not found")
-
-    reciprocal = db.scalar(
-        select(Friendship).where(
-            Friendship.user_id == friendship.friend_id,
-            Friendship.friend_id == friendship.user_id,
-        )
-    )
-    db.delete(friendship)
-    if reciprocal:
-        db.delete(reciprocal)
-    db.commit()
+    return {"status": "success", "message": "フレンドを追加しました"}
+@router.get("")
+def list_friends(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    friends = db.query(User).join(Friendship, User.id == Friendship.friend_id).filter(Friendship.user_id == current_user.id).all()
+    return friends

@@ -4,6 +4,8 @@ from typing import Optional
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
+    ENVIRONMENT: str = "local"
+    AWS_REGION: Optional[str] = None
     APP_NAME: str = "Streeeak API"
     ENV: str = "dev"
     DATABASE_URL: str

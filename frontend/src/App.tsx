@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Route, Routes } from "react-router-dom";
+import { Route, Routes,useNavigate } from "react-router-dom";
 import { NavBar } from "./components/NavBar";
 import { clearAuthSession, getAuthSession } from "./lib/api";
 import { AuthPage } from "./pages/AuthPage";
@@ -9,6 +9,7 @@ import { ResultsPage } from "./pages/ResultsPage";
 import { SharePage } from "./pages/SharePage";
 
 function App() {
+  const navigate = useNavigate();
   const [currentUserId, setCurrentUserId] = useState<number | null>(() => {
     return getAuthSession()?.userId ?? null;
   });
@@ -47,7 +48,7 @@ function App() {
             <Route path="/share" element={<SharePage />} />
           </Routes>
         ) : (
-          <AuthPage onAuthenticated={(userId) => setCurrentUserId(userId)} />
+          <AuthPage onAuthenticated={(userId) => {setCurrentUserId(userId); navigate("/");}} />
         )}
       </div>
       {currentUserId ? <NavBar /> : null}
