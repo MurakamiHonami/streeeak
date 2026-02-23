@@ -15,7 +15,7 @@ phases:
     commands:
       - echo "Building frontend..."
       - cd frontend
-      - npm run build
+      - npx vite build
       - cd ..
   post_build:
     commands:
