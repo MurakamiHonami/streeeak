@@ -9,8 +9,9 @@ import {
   revisionChat,
 } from "../lib/api";
 import type { DraftTask, RevisionChatMessage, TaskRevisionProposal } from "../types";
-import EditIcon from '@mui/icons-material/Edit';
 import BackspaceIcon from '@mui/icons-material/Backspace';
+
+type DisplayTask = DraftTask & { date?: string; month?: number; week_number?: number };
 
 export function GoalsPage() {
   const [title, setTitle] = useState("");
@@ -23,6 +24,8 @@ export function GoalsPage() {
   const queryClient = useQueryClient();
 
   const goals = useQuery({ queryKey: ["goals"], queryFn: fetchGoals });
+  
+  // activeGoalId に紐づくタスク（ブレイクダウン）をDBから取得
   const goalTasks = useQuery({
     queryKey: ["goalTasks", activeGoalId],
     queryFn: () => fetchGoalTasks(activeGoalId!),
@@ -49,6 +52,7 @@ export function GoalsPage() {
     mutationFn: deleteGoal,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["goals"] });
+      setActiveGoalId(null);
     },
   });
 
@@ -60,13 +64,17 @@ export function GoalsPage() {
       task_type: task.type,
       title: task.title,
       note: task.note,
+      date: task.date,
+      month: task.month,
+      week_number: task.week_number,
       subtasks: task.note
         ? task.note
             .split("\n")
-            .map((line) => line.replace(/^- /, "").trim())
+            .map((line: string) => line.replace(/^- /, "").trim())
             .filter(Boolean)
         : [],
     }));
+
 
   const appliedDraftTasks = useMemo(() => {
     const base = toDraftTasks(goalTasks.data);
@@ -85,6 +93,11 @@ export function GoalsPage() {
     }
     return base;
   }, [goalTasks.data, proposals, decisionMap]);
+
+
+  const monthlyTasks = appliedDraftTasks.filter((t) => t.task_type === "monthly");
+  const weeklyTasks = appliedDraftTasks.filter((t) => t.task_type === "weekly");
+  const dailyTasks = appliedDraftTasks.filter((t) => t.task_type === "daily");
 
   const revisionMutation = useMutation({
     mutationFn: revisionChat,
@@ -137,9 +150,6 @@ export function GoalsPage() {
 
   const acceptedProposals = proposals.filter((p) => decisionMap[p.proposal_id] === "accepted");
 
-  const latestGoal = goals.data && goals.data.length > 0 
-    ? goals.data[goals.data.length - 1] 
-    : null;
   return (
     <section className="page">
       <section className="visionCard">
@@ -149,37 +159,21 @@ export function GoalsPage() {
       </section>
 
       <form className="card" onSubmit={handleCreateGoal}>
-        <h3 className="font-medium text-xl">長期目標を入力</h3>
+        <h3 className="font-medium text-xl">長期目標を入力（新規作成）</h3>
         <input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="長期目標を入力"
         />
-        <input className="mb-4"type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} />
+        <input className="mb-4" type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} />
         <div className="relative inline-flex flex-col items-center mt-6">
           <span
             className={[
-              "whitespace-nowrap",
-              "rounded-lg",
-              "bg-gray-800",
-              "mt-1",
-              "px-3",
-              "py-1.5",
-              "text-sm",
-              "text-white",
-              "shadow-md",
-              "absolute",
-              "-top-10",
-              "left-1/2",
-              "-translate-x-1/2",
-              "after:content-['']",
-              "after:absolute",
-              "after:top-full",
-              "after:left-1/2",
-              "after:-translate-x-1/2",
-              "after:border-[6px]",
-              "after:border-transparent",
-              "after:border-t-gray-800",
+              "whitespace-nowrap rounded-lg bg-gray-800 mt-1 px-3 py-1.5",
+              "text-sm text-white shadow-md absolute -top-10 left-1/2",
+              "-translate-x-1/2 after:content-[''] after:absolute",
+              "after:top-full after:left-1/2 after:-translate-x-1/2",
+              "after:border-[6px] after:border-transparent after:border-t-gray-800",
             ].join(" ")}
           >
             僕と相談しながら決めよう!
@@ -196,47 +190,48 @@ export function GoalsPage() {
         )}
       </form>
 
-      <div className="card">
-        <h3 className="font-medium text-xl">保存済みの長期目標</h3>
-        {goals.data?.map((goal) => (
-          <div key={goal.id} className="taskRow">
-            <div>
-              <p>{goal.title}</p>
-              <small>{goal.deadline ?? "期限未設定"}</small>
-            </div>
-            <div className="rowActions">
-              <button onClick={() => setActiveGoalId(goal.id)}>{<EditIcon/>}</button>
-              <button
-                onClick={() => {
-                  if (!window.confirm("この長期目標を削除しますか？")) return;
-                  deleteMutation.mutate(goal.id);
-                }}
-                style={{ background: "#dc2626", color: "#fff" }}
-              >
-                {<BackspaceIcon/>}
-              </button>
-            </div>
-          </div>
-        ))}
+      <div className="card" style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end' }}>
+        <div style={{ flex: 1 }}>
+          <h3 className="font-medium text-xl mb-2">確認・編集する目標を選択</h3>
+          <select
+            value={activeGoalId ?? ""}
+            onChange={(e) => {
+              setActiveGoalId(e.target.value ? Number(e.target.value) : null);
+              setChatHistory([]);
+              setProposals([]);
+            }}
+            style={{ width: "100%", padding: "10px", borderRadius: "8px", border: "1px solid #ccc" }}
+          >
+            <option value="">長期目標を選択してください</option>
+            {goals.data?.map((goal: any) => (
+              <option key={goal.id} value={goal.id}>
+                {goal.title} {goal.deadline ? `(期限: ${goal.deadline})` : ""}
+              </option>
+            ))}
+          </select>
+        </div>
+        {activeGoalId && (
+          <button
+            onClick={() => {
+              if (!window.confirm("この長期目標を削除しますか？")) return;
+              deleteMutation.mutate(activeGoalId);
+            }}
+            style={{ background: "#dc2626", color: "#fff", padding: "10px", margin: 0, width: "auto" }}
+            title="この目標を削除"
+          >
+            <BackspaceIcon />
+          </button>
+        )}
       </div>
 
-      {breakdownMutation.data && (
+
+      {activeGoalId && goalTasks.data && (
         <>
           <div className="card">
-            <p>
-              生成元:{" "}
-              <strong>
-                {breakdownMutation.data.breakdown.source === "gemini"
-                  ? "Gemini"
-                  : "Fallback(テンプレート)"}
-              </strong>
-            </p>
-          </div>
-
-          <div className="card">
             <h3>12ヶ月プラン</h3>
-            {breakdownMutation.data.breakdown.monthly.map((task: { title: string }, idx: number) => (
-              <div key={idx} className="taskRow">
+            {monthlyTasks.length === 0 && <p className="mutedText">タスクがありません</p>}
+            {monthlyTasks.map((task, idx) => (
+              <div key={task.task_id || idx} className="taskRow">
                 <p>{task.title}</p>
               </div>
             ))}
@@ -244,8 +239,9 @@ export function GoalsPage() {
 
           <div className="card">
             <h3>直近1ヶ月の週次プラン</h3>
-            {breakdownMutation.data.breakdown.weekly.map((task: { title: string }, idx: number) => (
-              <div key={idx} className="taskRow">
+            {weeklyTasks.length === 0 && <p className="mutedText">タスクがありません</p>}
+            {weeklyTasks.map((task, idx) => (
+              <div key={task.task_id || idx} className="taskRow">
                 <p>{task.title}</p>
               </div>
             ))}
@@ -253,34 +249,24 @@ export function GoalsPage() {
 
           <div className="card">
             <h3>直近1週間のデイリーTODO</h3>
-            {breakdownMutation.data.breakdown.daily.map(
-              (task: { title: string; date?: string; note?: string }, idx: number) => (
-              <div key={idx} className="taskRow">
+            {dailyTasks.length === 0 && <p className="mutedText">タスクがありません</p>}
+            {dailyTasks.map((task, idx) => (
+              <div key={task.task_id || idx} className="taskRow">
                 <div>
                   <p>{task.title}</p>
-                  {task.note && (
+                  {task.subtasks && task.subtasks.length > 0 && (
                     <ul className="detailTodoList">
-                      {task.note
-                        .split("\n")
-                        .map((line) => line.replace(/^- /, "").trim())
-                        .filter(Boolean)
-                        .map((line, detailIdx) => (
-                          <li key={detailIdx}>{line}</li>
-                        ))}
+                      {task.subtasks.map((line, detailIdx) => (
+                        <li key={detailIdx}>{line}</li>
+                      ))}
                     </ul>
                   )}
                 </div>
-                <small>{task.date ?? ""}</small>
               </div>
-              )
-            )}
+            ))}
             <p className="mutedText">作成された当日のTODOはホーム画面に表示されます。</p>
           </div>
-        </>
-      )}
 
-      {activeGoalId && (
-        <>
           <div className="card">
             <h3>修正を依頼する</h3>
             <div className="chatBox">
@@ -338,8 +324,8 @@ export function GoalsPage() {
                   {decisionMap[proposal.proposal_id] === "accepted"
                     ? "Accepted"
                     : decisionMap[proposal.proposal_id] === "rejected"
-                      ? "Rejected"
-                      : "未選択"}
+                    ? "Rejected"
+                    : "未選択"}
                 </small>
               </div>
             ))}
