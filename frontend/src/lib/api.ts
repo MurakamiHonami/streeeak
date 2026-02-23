@@ -11,11 +11,56 @@ import type {
 } from "../types";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
-const USER_ID = Number(import.meta.env.VITE_DEFAULT_USER_ID ?? "1");
+const DEFAULT_USER_ID = Number(import.meta.env.VITE_DEFAULT_USER_ID ?? "1");
+const AUTH_STORAGE_KEY = "streeeak_auth_session";
+
+type AuthSession = {
+  accessToken: string;
+  userId: number;
+};
 
 export const apiClient = axios.create({
   baseURL: API_BASE,
 });
+
+function parseAuthSession(raw: string | null): AuthSession | null {
+  if (!raw) {
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(raw) as Partial<AuthSession>;
+    if (!parsed.accessToken || typeof parsed.userId !== "number") {
+      return null;
+    }
+    return { accessToken: parsed.accessToken, userId: parsed.userId };
+  } catch {
+    return null;
+  }
+}
+
+export function getAuthSession(): AuthSession | null {
+  return parseAuthSession(localStorage.getItem(AUTH_STORAGE_KEY));
+}
+
+export function setAuthSession(session: AuthSession) {
+  localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
+  apiClient.defaults.headers.common.Authorization = `Bearer ${session.accessToken}`;
+}
+
+export function clearAuthSession() {
+  localStorage.removeItem(AUTH_STORAGE_KEY);
+  delete apiClient.defaults.headers.common.Authorization;
+}
+
+function getCurrentUserId() {
+  const session = getAuthSession();
+  return session?.userId ?? DEFAULT_USER_ID;
+}
+
+const existingSession = getAuthSession();
+if (existingSession?.accessToken) {
+  apiClient.defaults.headers.common.Authorization = `Bearer ${existingSession.accessToken}`;
+}
 
 const today = new Date().toISOString().slice(0, 10);
 const isoWeek = (() => {
@@ -27,11 +72,38 @@ const isoWeek = (() => {
   return Math.floor(diff / 604800000) + 1;
 })();
 
-export const appContext = { userId: USER_ID, today, week: isoWeek };
+export const appContext = {
+  get userId() {
+    return getCurrentUserId();
+  },
+  today,
+  week: isoWeek,
+};
+
+export async function register(payload: { email: string; name: string; password: string }) {
+  const res = await apiClient.post<{ access_token: string; token_type: string; user_id: number }>(
+    "/auth/register",
+    payload
+  );
+  const session = { accessToken: res.data.access_token, userId: res.data.user_id };
+  setAuthSession(session);
+  return session;
+}
+
+export async function login(payload: { email: string; password: string }) {
+  const res = await apiClient.post<{ access_token: string; token_type: string; user_id: number }>(
+    "/auth/login",
+    payload
+  );
+  const session = { accessToken: res.data.access_token, userId: res.data.user_id };
+  setAuthSession(session);
+  return session;
+}
 
 export async function fetchDailyTasks() {
+  const userId = getCurrentUserId();
   const res = await apiClient.get<Task[]>("/tasks", {
-    params: { user_id: USER_ID, type: "daily", date: today },
+    params: { user_id: userId, type: "daily", date: today },
   });
   return res.data;
 }
@@ -47,13 +119,15 @@ export async function carryOverTask(taskId: number) {
 }
 
 export async function fetchGoals() {
-  const res = await apiClient.get<Goal[]>("/goals", { params: { user_id: USER_ID } });
+  const userId = getCurrentUserId();
+  const res = await apiClient.get<Goal[]>("/goals", { params: { user_id: userId } });
   return res.data;
 }
 
 export async function createGoal(payload: { title: string; deadline?: string }) {
+  const userId = getCurrentUserId();
   const res = await apiClient.post<Goal>("/goals", {
-    user_id: USER_ID,
+    user_id: userId,
     title: payload.title,
     deadline: payload.deadline || null,
   });
@@ -116,8 +190,9 @@ export async function applyAcceptedRevisions(payload: {
 }
 
 export async function fetchWeeklyTasks() {
+  const userId = getCurrentUserId();
   const res = await apiClient.get<Task[]>("/tasks", {
-    params: { user_id: USER_ID, type: "weekly", week_number: isoWeek },
+    params: { user_id: userId, type: "weekly", week_number: isoWeek },
   });
   return res.data;
 }
@@ -128,15 +203,17 @@ export async function updateTask(taskId: number, payload: Partial<Task>) {
 }
 
 export async function fetchPosts() {
+  const userId = getCurrentUserId();
   const res = await apiClient.get<Post[]>("/posts", {
-    params: { user_id: USER_ID, week: isoWeek },
+    params: { user_id: userId, week: isoWeek },
   });
   return res.data;
 }
 
 export async function createPost(payload: { comment: string; achieved: number; group_id?: number }) {
+  const userId = getCurrentUserId();
   const res = await apiClient.post<Post>("/posts", {
-    user_id: USER_ID,
+    user_id: userId,
     date: today,
     comment: payload.comment,
     achieved: payload.achieved,
@@ -146,8 +223,9 @@ export async function createPost(payload: { comment: string; achieved: number; g
 }
 
 export async function fetchRanking() {
+  const userId = getCurrentUserId();
   const res = await apiClient.get<RankingItem[]>("/analytics/ranking", {
-    params: { user_id: USER_ID, week: isoWeek, top_n: 3 },
+    params: { user_id: userId, week: isoWeek, top_n: 3 },
   });
   return res.data;
 }
