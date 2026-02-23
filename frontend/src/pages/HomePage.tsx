@@ -53,9 +53,9 @@ export function HomePage() {
       </div>
 
       <section className="card">
-        <div className="flex gap-0 items-start">
-          <h3 className="font-medium text-2xl">Today's Tasks</h3>
-          <img src="/panda.png" alt="Mentor Panda" className="h-20 object-contain drop-shadow-sm" />
+        <div className="flex gap-1 items-center">
+          <h3 className="font-medium text-3xl">Today's Tasks</h3>
+          <img src="/panda.png" alt="Mentor Panda" className="h-12 w-12 object-contain drop-shadow-sm" />
         </div>
         {tasks.length ? (
           tasks.map((task) => (
@@ -98,7 +98,7 @@ export function HomePage() {
 
       <section className="card">
         <div className="sectionHead">
-          <h3>Friend Ranking (TOP3)</h3>
+          <h3 className="font-medium text-xl">Friend Ranking (TOP3)</h3>
         </div>
         {ranking.data?.length ? (
           ranking.data.map((item, index) => (

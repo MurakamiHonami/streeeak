@@ -32,7 +32,7 @@ export function ResultsPage() {
       </section>
 
       <div className="card">
-        <h3>タスク振り返り</h3>
+        <h3 className="font-medium text-xl">タスク振り返り</h3>
         {weeklyTasks.data?.map((task) => (
           <div key={task.id} className="taskRow flex flex-col">
             <div>
@@ -45,7 +45,7 @@ export function ResultsPage() {
       </div>
 
       <div className="card">
-        <h3>カテゴリ別達成率</h3>
+        <h3 className="font-medium text-xl">カテゴリ別達成率</h3>
         {categoryMap &&
           Object.entries(categoryMap).map(([tag, stat]) => {
             const pct = stat.total ? Math.round((stat.done / stat.total) * 100) : 0;

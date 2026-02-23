@@ -149,7 +149,7 @@ export function GoalsPage() {
       </section>
 
       <form className="card" onSubmit={handleCreateGoal}>
-        <h3 className="font-medium text-2xl">長期目標を入力</h3>
+        <h3 className="font-medium text-xl">長期目標を入力</h3>
         <input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
@@ -197,7 +197,7 @@ export function GoalsPage() {
       </form>
 
       <div className="card">
-        <h3 className="font-medium text-2xl">保存済みの長期目標</h3>
+        <h3 className="font-medium text-xl">保存済みの長期目標</h3>
         {goals.data?.map((goal) => (
           <div key={goal.id} className="taskRow">
             <div>
