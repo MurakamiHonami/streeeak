@@ -17,6 +17,10 @@ phases:
       - cd frontend
       - npx vite build
       - cd ..
+      - echo "Creating backend .env file..."
+      - echo "GEMINI_API_KEY=$GEMINI_API_KEY" >> backend/.env
+      - echo "DATABASE_URL=$DATABASE_URL" >> backend/.env
+      - echo "ENV=production" >> backend/.env
   post_build:
     commands:
       - echo "Deploying frontend to S3..."
