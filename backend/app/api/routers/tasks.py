@@ -40,6 +40,23 @@ def create_breakdown(goal_id: int, payload: BreakdownRequest, db: Session = Depe
         # 同じ目標の再生成でタスク重複が増えないように既存を消してから再作成
         db.execute(delete(Task).where(Task.goal_id == goal.id))
         for item in breakdown.monthly + breakdown.weekly + breakdown.daily:
+            if item.type == TaskType.daily:
+                subtasks = parse_note_subtasks(item.note)
+                if subtasks:
+                    for subtask in subtasks:
+                        db.add(
+                            Task(
+                                goal_id=goal.id,
+                                user_id=goal.user_id,
+                                type=item.type,
+                                title=subtask,
+                                month=item.month,
+                                week_number=item.week_number,
+                                date=item.date,
+                                note=None,
+                            )
+                        )
+                    continue
             db.add(
                 Task(
                     goal_id=goal.id,
