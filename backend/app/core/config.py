@@ -5,7 +5,9 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
     ENVIRONMENT: str = "local"
-    AWS_REGION: Optional[str] = None
+    AWS_ACCESS_KEY_ID: Optional[str] = None
+    AWS_SECRET_ACCESS_KEY: Optional[str] = None
+    AWS_REGION: Optional[str] = "ap-northeast-1" 
     APP_NAME: str = "Streeeak API"
     ENV: str = "dev"
     DATABASE_URL: str
