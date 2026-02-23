@@ -13,7 +13,7 @@ phases:
     commands:
       - echo "Installing frontend dependencies..."
       - cd frontend
-      - npm ci
+      - npm install
       - cd ..
   build:
     commands:
