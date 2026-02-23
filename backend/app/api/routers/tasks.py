@@ -86,6 +86,7 @@ def create_breakdown(goal_id: int, payload: BreakdownRequest, db: Session = Depe
         weeks_per_month,
         days_per_week,
         yearly_milestones=yearly_milestones,
+        current_situation=payload.current_situation,
     )
     if payload.persist:
         # 同じ目標の再生成でタスク重複が増えないように既存を消してから再作成

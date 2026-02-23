@@ -118,7 +118,7 @@ def _request_gemini_daily_details(daily_titles: list[str]) -> list[list[str]]:
                 f"https://generativelanguage.googleapis.com/{version}/models/"
                 f"{model}:generateContent?key={settings.GEMINI_API_KEY}"
             )
-            response = httpx.post(url, json=payload, timeout=30.0)
+            response = httpx.post(url, json=payload, timeout=90.0)
             if response.status_code == 404:
                 continue
             response.raise_for_status()
@@ -153,16 +153,38 @@ def _request_gemini_daily_details(daily_titles: list[str]) -> list[list[str]]:
     return result
 
 
-def _request_gemini_breakdown(goal_title: str, months: int, weeks_per_month: int, days_per_week: int):
+def _request_gemini_breakdown(
+    goal_title: str,
+    months: int,
+    weeks_per_month: int,
+    days_per_week: int,
+    deadline: dt.date | None = None,
+    current_situation: str | None = None,
+):
+    deadline_text = deadline.isoformat() if deadline else "未設定"
+    current_text = current_situation.strip() if current_situation else "未入力"
     prompt = (
         "あなたは目標分解のプロです。以下をJSONのみで返してください。\n"
         "ルール:\n"
         f"- monthly: 直近{months}ヶ月の目標配列（文字列）\n"
         f"- weekly: 直近1ヶ月の週次目標配列（最大{weeks_per_month}件、文字列）\n"
         f"- daily: 直近1週間の日次TODO配列（最大{days_per_week}件、文字列）\n"
+        "- ユーザーの現状・期限・目標文脈を必ず反映\n"
+        "- まずmonthlyを作り、その直近1ヶ月を元にweekly、直近1週間を元にdailyを作成\n"
+        "- 目標が数値化できる場合（点数、秒、回数、距離、体重、件数など）は、monthly/weeklyに中間数値目標を必ず入れる\n"
+        "- 数値は現状から最終目標に向けて単調に進むようにする（増やす指標は増加、減らす指標は減少）\n"
+        "- 中間値は現実的で達成可能な幅にする。最後のmonthly/weeklyは最終目標値に一致させる\n"
+        "- ユーザーが数値を明示していなくても、目標文から推定できるなら測定可能な数値目標を提案する\n"
+        "- 各タイトルは具体的に、可能なら数値・単位（点、秒、回、km、kg、問など）を含める\n"
         "- JSON以外の文章は不要\n"
         '形式: {"monthly":["..."],"weekly":["..."],"daily":["..."]}\n'
-        f"長期目標: {goal_title}"
+        "例1: TOEICで現状600点、1ヶ月後700点 -> 1週目620点, 2週目640点, 3週目670点, 4週目700点\n"
+        "例2: 50m走で現状7.0秒、2ヶ月後6.5秒 -> 1ヶ月目6.7秒, 2ヶ月目6.5秒\n"
+        f"今は「{current_text}」の状態で、期限「{deadline_text}」までに、"
+        f"目標「{goal_title}」を達成したいです。"
+        "そのためにこれからやるべき目標をmonthly単位で作成したのち、"
+        "直近の1ヶ月のmonthly目標からその月のweekly分の目標を作成し、"
+        "直近の1週間の目標から、その週でやるべきことを1日ずつのdailyタスクとして作成してください。"
     )
 
     payload = {
@@ -191,7 +213,7 @@ def _request_gemini_breakdown(goal_title: str, months: int, weeks_per_month: int
                 f"https://generativelanguage.googleapis.com/{version}/models/"
                 f"{model}:generateContent?key={settings.GEMINI_API_KEY}"
             )
-            response = httpx.post(url, json=payload, timeout=30.0)
+            response = httpx.post(url, json=payload, timeout=90.0)
             if response.status_code == 404:
                 continue
             try:
@@ -251,7 +273,7 @@ def _call_gemini_json(prompt: str) -> dict:
                 f"https://generativelanguage.googleapis.com/{version}/models/"
                 f"{model}:generateContent?key={settings.GEMINI_API_KEY}"
             )
-            response = httpx.post(url, json=payload, timeout=45.0)
+            response = httpx.post(url, json=payload, timeout=90.0)
             if response.status_code == 404:
                 continue
             try:
@@ -403,6 +425,7 @@ def build_breakdown(
     weeks_per_month: int,
     days_per_week: int,
     yearly_milestones: int = 0,
+    current_situation: str | None = None,
 ) -> BreakdownResponse:
     today = dt.date.today()
     this_week_start = _week_start(today)
@@ -412,7 +435,14 @@ def build_breakdown(
     # Geminiキーがない場合はフォールバックで壊れず生成する
     if settings.GEMINI_API_KEY:
         try:
-            ai = _request_gemini_breakdown(goal.title, months, weeks_per_month, days_per_week)
+            ai = _request_gemini_breakdown(
+                goal.title,
+                months,
+                weeks_per_month,
+                days_per_week,
+                deadline=goal.deadline,
+                current_situation=current_situation,
+            )
         except Exception as e:
             logger.exception("Gemini breakdown failed: %s", e)
             return _fallback_breakdown(goal, months, weeks_per_month, days_per_week)
