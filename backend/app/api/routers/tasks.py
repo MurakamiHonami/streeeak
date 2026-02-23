@@ -1,3 +1,4 @@
+import math
 from datetime import date, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -29,13 +30,63 @@ from app.services.task_service import (
 router = APIRouter(tags=["tasks"])
 
 
+def _add_months(base: date, months: int) -> date:
+    year = base.year + (base.month - 1 + months) // 12
+    month = ((base.month - 1 + months) % 12) + 1
+    month_days = [31, 29 if (year % 400 == 0 or (year % 4 == 0 and year % 100 != 0)) else 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+    day = min(base.day, month_days[month - 1])
+    return date(year, month, day)
+
+
+def _ceil_months_between(start: date, end: date) -> int:
+    base_months = (end.year - start.year) * 12 + (end.month - start.month)
+    anchor = _add_months(start, base_months)
+    if anchor < end:
+        return base_months + 1
+    return max(0, base_months)
+
+
+def _derive_breakdown_scope(deadline: date) -> tuple[int, int, int, int]:
+    """
+    Returns (months, weeks, days, yearly_milestones) derived from deadline.
+    - < 1 month: monthly 0, weekly ceil(days/7), daily = days
+    - 1 month ~ 1 year: monthly ceil(days/30), weekly 4, daily 7
+    - > 1 year: monthly ceil(days/30), yearly milestones ceil(months/12), weekly 4, daily 7
+    """
+    today = date.today()
+    total_days = max(1, (deadline - today).days + 1)
+
+    if total_days < 30:
+        weeks = max(1, math.ceil(total_days / 7))
+        return (0, weeks, total_days, 0)
+
+    months = max(1, _ceil_months_between(today, deadline))
+    yearly_milestones = math.ceil(months / 12) if months > 12 else 0
+    return (months, 4, 7, yearly_milestones)
+
+
 @router.post("/goals/{goal_id}/tasks/breakdown", response_model=BreakdownResponse)
 def create_breakdown(goal_id: int, payload: BreakdownRequest, db: Session = Depends(get_db)):
     goal = db.get(Goal, goal_id)
     if not goal:
         raise HTTPException(status_code=404, detail="Goal not found")
 
-    breakdown = build_breakdown(goal, payload.months, payload.weeks_per_month, payload.days_per_week)
+    months = payload.months
+    weeks_per_month = payload.weeks_per_month
+    days_per_week = payload.days_per_week
+    yearly_milestones = 0
+
+    # 期限がある場合は、期間に合わせて分解粒度を自動調整する
+    if goal.deadline:
+        months, weeks_per_month, days_per_week, yearly_milestones = _derive_breakdown_scope(goal.deadline)
+
+    breakdown = build_breakdown(
+        goal,
+        months,
+        weeks_per_month,
+        days_per_week,
+        yearly_milestones=yearly_milestones,
+    )
     if payload.persist:
         # 同じ目標の再生成でタスク重複が増えないように既存を消してから再作成
         db.execute(delete(Task).where(Task.goal_id == goal.id))

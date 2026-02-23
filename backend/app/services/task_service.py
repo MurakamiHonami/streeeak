@@ -397,7 +397,13 @@ def generate_revision_suggestions(
     )
 
 
-def build_breakdown(goal: Goal, months: int, weeks_per_month: int, days_per_week: int) -> BreakdownResponse:
+def build_breakdown(
+    goal: Goal,
+    months: int,
+    weeks_per_month: int,
+    days_per_week: int,
+    yearly_milestones: int = 0,
+) -> BreakdownResponse:
     today = dt.date.today()
     this_week_start = _week_start(today)
     current_week = today.isocalendar().week
@@ -429,8 +435,23 @@ def build_breakdown(goal: Goal, months: int, weeks_per_month: int, days_per_week
     weekly: list[BreakdownTask] = []
     daily: list[BreakdownTask] = []
 
+    for year_idx in range(yearly_milestones):
+        year_no = year_idx + 1
+        months_in_this_year = max(0, min(12, months - (year_idx * 12)))
+        monthly.append(
+            BreakdownTask(
+                type=TaskType.monthly,
+                title=f"{year_no}年目の目標: {goal.title}（{months_in_this_year}ヶ月計画）",
+                month=None,
+            )
+        )
+
     for idx, title in enumerate(monthly_titles):
         month_value = ((current_month - 1 + idx) % 12) + 1
+        if yearly_milestones > 0:
+            year_no = (idx // 12) + 1
+            month_no = (idx % 12) + 1
+            title = f"{year_no}年目・{month_no}ヶ月目: {title}"
         monthly.append(
             BreakdownTask(type=TaskType.monthly, title=title, month=month_value)
         )

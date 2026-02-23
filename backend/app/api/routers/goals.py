@@ -1,9 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.models.goal import Goal
+from app.models.task import Task
 from app.schemas.goal import GoalCreate, GoalRead, GoalUpdate
 
 router = APIRouter(prefix="/goals", tags=["goals"])
@@ -48,5 +49,7 @@ def delete_goal(goal_id: int, db: Session = Depends(get_db)):
     goal = db.get(Goal, goal_id)
     if not goal:
         raise HTTPException(status_code=404, detail="Goal not found")
+    # Goal配下のタスクを残さないように、先に紐づくタスクを削除する
+    db.execute(delete(Task).where(Task.goal_id == goal_id))
     db.delete(goal)
     db.commit()

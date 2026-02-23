@@ -98,6 +98,8 @@ export function GoalsPage() {
   const monthlyTasks = appliedDraftTasks.filter((t) => t.task_type === "monthly");
   const weeklyTasks = appliedDraftTasks.filter((t) => t.task_type === "weekly");
   const dailyTasks = appliedDraftTasks.filter((t) => t.task_type === "daily");
+  const yearlyTasks = monthlyTasks.filter((t) => t.title.startsWith("1年目の目標:") || t.title.includes("年目の目標:"));
+  const monthlyPlanTasks = monthlyTasks.filter((t) => !t.title.includes("年目の目標:"));
 
   const revisionMutation = useMutation({
     mutationFn: revisionChat,
@@ -154,8 +156,8 @@ export function GoalsPage() {
     <section className="page">
       <section className="visionCard">
         <p className="chip">Goal Setup</p>
-        <h2>長期目標をAIで12ヶ月分に分解</h2>
-        <p className="mutedText">メンターAIと相談して、直近1ヶ月の週次、直近1週間の日次TODOを設定しましょう</p>
+        <h2>長期目標を期限ベースで分解</h2>
+        <p className="mutedText">期限までの期間に合わせて、年次・月次・週次・日次の計画を自動生成します</p>
       </section>
 
       <form className="card" onSubmit={handleCreateGoal}>
@@ -227,10 +229,21 @@ export function GoalsPage() {
 
       {activeGoalId && goalTasks.data && (
         <>
+          {yearlyTasks.length > 0 && (
+            <div className="card">
+              <h3>年次プラン</h3>
+              {yearlyTasks.map((task, idx) => (
+                <div key={task.task_id || idx} className="taskRow">
+                  <p>{task.title}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
           <div className="card">
-            <h3>12ヶ月プラン</h3>
-            {monthlyTasks.length === 0 && <p className="mutedText">タスクがありません</p>}
-            {monthlyTasks.map((task, idx) => (
+            <h3>{monthlyPlanTasks.length > 0 ? `${monthlyPlanTasks.length}ヶ月プラン` : "月次プラン"}</h3>
+            {monthlyPlanTasks.length === 0 && <p className="mutedText">タスクがありません</p>}
+            {monthlyPlanTasks.map((task, idx) => (
               <div key={task.task_id || idx} className="taskRow">
                 <p>{task.title}</p>
               </div>
@@ -238,7 +251,7 @@ export function GoalsPage() {
           </div>
 
           <div className="card">
-            <h3>直近1ヶ月の週次プラン</h3>
+            <h3>{weeklyTasks.length === 4 ? "直近1ヶ月の週次プラン" : `${weeklyTasks.length}週間の週次プラン`}</h3>
             {weeklyTasks.length === 0 && <p className="mutedText">タスクがありません</p>}
             {weeklyTasks.map((task, idx) => (
               <div key={task.task_id || idx} className="taskRow">
@@ -248,7 +261,7 @@ export function GoalsPage() {
           </div>
 
           <div className="card">
-            <h3>直近1週間のデイリーTODO</h3>
+            <h3>{dailyTasks.length === 7 ? "直近1週間のデイリーTODO" : `${dailyTasks.length}日分のデイリーTODO`}</h3>
             {dailyTasks.length === 0 && <p className="mutedText">タスクがありません</p>}
             {dailyTasks.map((task, idx) => (
               <div key={task.task_id || idx} className="taskRow">
