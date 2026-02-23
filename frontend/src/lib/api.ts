@@ -229,3 +229,17 @@ export async function fetchRanking() {
   });
   return res.data;
 }
+export async function searchUserByEmail(email: string) {
+  const res = await apiClient.get<{ id: number; name: string; email: string }>("/friendships/search", {
+    params: { email },
+  });
+  return res.data;
+}
+export async function addFriend(friendId: number) {
+  const res = await apiClient.post("/friendships", { friend_id: friendId });
+  return res.data;
+}
+export async function fetchFriends() {
+  const res = await apiClient.get<any[]>("/friendships"); // URLパラメーターを削除
+  return res.data;
+}
