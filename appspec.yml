@@ -2,9 +2,9 @@ version: 0.0
 os: linux
 files:
   - source: /backend
-    destination: /home/ubuntu/streeeak/backend
+    destination: /home/ec2-user/streeeak/backend
   - source: /scripts
-    destination: /home/ubuntu/streeeak/scripts
+    destination: /home/ec2-user/streeeak/scripts
 hooks:
   AfterInstall:
     - location: scripts/install_dependencies.sh

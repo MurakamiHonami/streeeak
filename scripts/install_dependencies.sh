@@ -1,5 +1,5 @@
 #!/bin/bash
-cd /home/ubuntu/streeeak/backend
+cd /home/ec2-user/streeeak/backend
 
 python3 -m venv .venv
 source .venv/bin/activate
