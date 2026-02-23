@@ -1,0 +1,35 @@
+version: 0.2
+
+env:
+  variables:
+    NODE_ENV: "production"
+
+phases:
+  install:
+    runtime-versions:
+      nodejs: 20
+      python: 3.11
+  pre_build:
+    commands:
+      - echo "Installing frontend dependencies..."
+      - cd frontend
+      - npm ci
+      - cd ..
+  build:
+    commands:
+      - echo "Building frontend..."
+      - cd frontend
+      - npm run build
+      - cd ..
+  post_build:
+    commands:
+      - echo "Deploying frontend to S3..."
+      - aws s3 sync frontend/dist s3://$S3_BUCKET_NAME/ --delete
+      - echo "Invalidating CloudFront cache..."
+      - aws cloudfront create-invalidation --distribution-id $CLOUDFRONT_ID --paths "/*"
+
+artifacts:
+  files:
+    - backend/**/*
+    - scripts/**/*
+    - appspec.yml
