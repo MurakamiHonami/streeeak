@@ -53,7 +53,7 @@ export function SharePage() {
 
       {tab === "feed" ? (
         <div className="card">
-          <h3>投稿フィード</h3>
+          <h3 className="font-medium text-xl">投稿フィード</h3>
           {posts.data?.map((post) => (
             <div key={post.id} className="taskRow">
               <p>{post.comment}</p>
@@ -63,7 +63,7 @@ export function SharePage() {
         </div>
       ) : (
         <div className="card">
-          <h3>ランキング</h3>
+          <h3 className="font-medium text-xl">ランキング</h3>
           {ranking.data?.map((item, i) => (
             <div key={item.user_id} className="rankRow">
               <span>#{i + 1}</span>

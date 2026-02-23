@@ -1,10 +1,13 @@
 import { Link, useLocation } from "react-router-dom";
-
+import HomeIcon from '@mui/icons-material/Home';
+import FlagIcon from '@mui/icons-material/Flag';
+import BarChartIcon from '@mui/icons-material/BarChart';
+import ForumIcon from '@mui/icons-material/Forum';
 const links = [
-  { to: "/", label: "Home", icon: "🏠" },
-  { to: "/goals", label: "Goals", icon: "◎" },
-  { to: "/results", label: "Stats", icon: "📊" },
-  { to: "/share", label: "Social", icon: "👥" },
+  { to: "/", label: "Home", icon: <HomeIcon/> },
+  { to: "/goals", label: "Goals", icon: <FlagIcon/> },
+  { to: "/results", label: "Stats", icon: <BarChartIcon/> },
+  { to: "/share", label: "Social", icon: <ForumIcon/> },
 ];
 
 export function NavBar() {

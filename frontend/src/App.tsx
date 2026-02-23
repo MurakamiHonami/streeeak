@@ -16,11 +16,14 @@ function App() {
     <div className="appShell">
       <div className="appContainer">
         <header className="topHeader">
-          <div>
-            <p className="headerDate">{dateStr}</p>
-            <h1 className="headerTitle">Streeeak</h1>
+          <div className="flex flex-row justify-center items-center">
+            <img src="/sasa.png" className="w-20 pr-2 pb-4 mr-0"/>
+            <div className="flex flex-col space-between">
+              <p className="headerDate">{dateStr}</p>
+              <h1 className="headerTitle">Str<span className="e">eee</span>ak</h1>
+            </div>
           </div>
-          <div className="headerAvatar">あ</div>
+          <div className="headerAvatar">test</div>
         </header>
 
         <Routes>
