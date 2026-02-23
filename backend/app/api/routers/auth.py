@@ -1,16 +1,16 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+import uuid
 
 from app.db.session import get_db
 from app.models.user import User, UserSetting
 from app.schemas.auth import AuthResponse, LoginRequest, RegisterRequest
 from app.services.auth_service import create_access_token, hash_password, verify_password
+from app.utils.mail import send_verification_email
+from app.core.config import settings
 
 router = APIRouter(prefix="/auth", tags=["auth"])
-
-import uuid
-from app.utils.mail import send_verification_email # 後述のユーティリティ
 
 @router.post("/register", response_model=AuthResponse)
 def register(payload: RegisterRequest, db: Session = Depends(get_db)):
@@ -35,8 +35,14 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)):
 
     send_verification_email(user.email, v_token)
 
+    if getattr(settings, "ENVIRONMENT", "local") == "local":
+        user.is_verified = True
+        db.commit()
+
     token = create_access_token(str(user.id))
     return AuthResponse(access_token=token, user_id=user.id)
+
+
 @router.get("/verify")
 def verify_email(token: str, db: Session = Depends(get_db)):
     user = db.scalar(select(User).where(User.verification_token == token))
@@ -48,17 +54,20 @@ def verify_email(token: str, db: Session = Depends(get_db)):
     db.commit()
     return {"message": "Email verified successfully"}
 
+
 @router.post("/login", response_model=AuthResponse)
 def login(payload: LoginRequest, db: Session = Depends(get_db)):
     user = db.scalar(select(User).where(User.email == payload.email))
     if not user or not verify_password(payload.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     
-    if not user.is_verified:
+    if not user.is_verified and getattr(settings, "ENVIRONMENT", "local") != "local":
         raise HTTPException(status_code=403, detail="Email not verified")
 
     token = create_access_token(str(user.id))
     return AuthResponse(access_token=token, user_id=user.id)
+
+
 @router.post("/logout")
 def logout():
     return {"message": "Logged out"}

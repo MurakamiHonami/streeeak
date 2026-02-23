@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { carryOverTask, fetchDailyTasks, fetchRanking, toggleTaskDone, fetchGoals } from "../lib/api";
 import CheckIcon from '@mui/icons-material/Check';
@@ -8,7 +9,6 @@ import InputLabel from '@mui/material/InputLabel';
 import MenuItem from '@mui/material/MenuItem';
 import FormControl from '@mui/material/FormControl';
 import Select, { SelectChangeEvent } from '@mui/material/Select';
-import { useState, useEffect } from "react";
 
 export function HomePage() {
   const queryClient = useQueryClient();
@@ -20,6 +20,7 @@ export function HomePage() {
     mutationFn: toggleTaskDone,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["dailyTasks"] }),
   });
+  
   const carryOverMutation = useMutation({
     mutationFn: carryOverTask,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["dailyTasks"] }),
@@ -38,7 +39,6 @@ export function HomePage() {
   };
 
   const tasks = dailyTasks.data ?? [];
-  console.log(tasks);
   const filteredTasks = currentGoalId !== "" 
     ? tasks.filter(task => task.goal_id === currentGoalId)
     : [];
@@ -153,14 +153,16 @@ export function HomePage() {
         </div>
         {ranking.data?.length ? (
           ranking.data.map((item, index) => (
-            <div key={item.user_id} className="rankRow">
-              <span>#{index + 1}</span>
-              <span>{item.user_name}</span>
-              <strong>{(item.achieved_avg * 100).toFixed(1)}%</strong>
+            <div key={item.user_id} className="rankRow flex justify-between items-center border-b border-gray-50 last:border-0 py-4">
+              <div className="flex items-center gap-3">
+                <span className="font-bold text-gray-400">#{index + 1}</span>
+                <span className="font-medium">{item.user_name}</span>
+              </div>
+              <strong className="text-xl font-black italic">{(item.achieved_avg * 100).toFixed(1)}%</strong>
             </div>
           ))
         ) : (
-          <p>ランキングデータがありません。</p>
+          <p className="text-gray-400 text-sm mt-2">ランキングデータがありません。</p>
         )}
       </section>
     </section>
