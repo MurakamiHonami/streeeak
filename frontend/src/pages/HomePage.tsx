@@ -3,7 +3,13 @@ import { carryOverTask, fetchDailyTasks, fetchRanking, toggleTaskDone, fetchGoal
 import CheckIcon from '@mui/icons-material/Check';
 import MoveDownIcon from '@mui/icons-material/MoveDown';
 import UndoIcon from '@mui/icons-material/Undo';
-import Button from '@mui/material/Button';
+import Box from '@mui/material/Box';
+import InputLabel from '@mui/material/InputLabel';
+import MenuItem from '@mui/material/MenuItem';
+import FormControl from '@mui/material/FormControl';
+import Select, { SelectChangeEvent } from '@mui/material/Select';
+import { useState } from "react";
+
 export function HomePage() {
   const queryClient = useQueryClient();
   const dailyTasks = useQuery({ queryKey: ["dailyTasks"], queryFn: fetchDailyTasks });
@@ -27,9 +33,29 @@ export function HomePage() {
   const latestGoal = goals.data && goals.data.length > 0 
     ? goals.data[goals.data.length - 1] 
     : null;
-  
+  const [currentGoal,setCurrentGoal] = useState(latestGoal?.title ?? "");
+
+  const handleChange = (event: SelectChangeEvent) => {
+    setCurrentGoal(event.target.value);
+  };
+
+  console.log(tasks);
   return (
     <section className="page">
+      <Box sx={{ minWidth: 120 }}>
+        <FormControl fullWidth>
+          <InputLabel id="demo-simple-select-label">目標を選択</InputLabel>
+          <Select
+            value={latestGoal?.title ?? "目標が未設定です"}
+            label="Goal"
+            onChange={handleChange}
+          >
+            {goals.data?.map((goal) => (
+              <MenuItem key={goal.id} value={goal.title}>{goal.title}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      </Box>
       <section className="visionCard">
         <p className="chip">Long-term Vision</p>
         <h2>{latestGoal ? latestGoal.title : "長期目標が未設定です"}</h2>
