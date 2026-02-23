@@ -33,11 +33,17 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(user)
 
-    send_verification_email(user.email, v_token)
-
+    from app.core.config import settings
+    
     if getattr(settings, "ENVIRONMENT", "local") == "local":
         user.is_verified = True
         db.commit()
+        print(f"DEBUG: Local mode - Verification skipped for {user.email}")
+    else:
+        try:
+            send_verification_email(user.email, v_token)
+        except Exception as e:
+            print(f"Email send error: {e}")
 
     token = create_access_token(str(user.id))
     return AuthResponse(access_token=token, user_id=user.id)
