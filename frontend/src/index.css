@@ -797,9 +797,9 @@ pre {
   bottom: 20px;
   width: calc((100% - 20px) / 4);
   border-radius: 14px;
-  background: rgba(15, 23, 42, 0.92);
-  border: 1px solid rgba(15, 23, 42, 0.95);
-  box-shadow: 0 10px 22px rgba(2, 6, 23, 0.35);
+  background: rgba(19, 236, 55, 0.3);
+  border: 1px solid rgba(19, 236, 55, 0.45);
+  box-shadow: 0 8px 18px rgba(19, 236, 55, 0.12);
   transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
   pointer-events: none;
 }
@@ -820,7 +820,7 @@ pre {
 }
 
 .bottomNavLink.active {
-  color: #13ec37;
+  color: #0f1f10;
 }
 
 .bottomNavIcon {
