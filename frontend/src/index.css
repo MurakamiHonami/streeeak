@@ -494,6 +494,169 @@ pre {
   color: #0fbf2c;
 }
 
+.goalSectionTabRow {
+  position: relative;
+  gap: 0;
+  background: rgba(15, 23, 42, 0.06);
+  border-radius: 12px;
+  padding: 4px;
+}
+
+.goalSectionActivePill {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  bottom: 4px;
+  width: calc((100% - 8px) / 2);
+  border-radius: 10px;
+  background: rgba(19, 236, 55, 0.16);
+  border: 1px solid rgba(19, 236, 55, 0.4);
+  box-shadow: 0 8px 16px rgba(19, 236, 55, 0.16);
+  transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: none;
+}
+
+.goalSectionTabRow .tabBtn {
+  position: relative;
+  z-index: 1;
+  border: none;
+  background: transparent;
+}
+
+.goalSectionTabRow .tabBtn.active {
+  background: transparent;
+  border-color: transparent;
+  color: #0f1f10;
+}
+
+.planTabRow {
+  position: relative;
+  gap: 0;
+  background: rgba(15, 23, 42, 0.06);
+  border-radius: 12px;
+  padding: 4px;
+}
+
+.planTabActivePill {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  bottom: 4px;
+  border-radius: 10px;
+  background: rgba(19, 236, 55, 0.16);
+  border: 1px solid rgba(19, 236, 55, 0.4);
+  box-shadow: 0 8px 16px rgba(19, 236, 55, 0.16);
+  transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: none;
+}
+
+.planTabRow .tabBtn {
+  position: relative;
+  z-index: 1;
+  border: none;
+  background: transparent;
+}
+
+.planTabRow .tabBtn.active {
+  background: transparent;
+  border-color: transparent;
+  color: #0f1f10;
+}
+
+.planContentTransition {
+  will-change: opacity, transform;
+}
+
+.planContentTransitionForward {
+  animation: planContentSlideInFromRight 220ms ease;
+}
+
+.planContentTransitionBackward {
+  animation: planContentSlideInFromLeft 220ms ease;
+}
+
+.planContentTransitionNeutral {
+  animation: planContentFadeIn 160ms ease;
+}
+
+@keyframes planContentSlideInFromRight {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes planContentSlideInFromLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes planContentFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.goalSectionTransition {
+  will-change: opacity, transform;
+}
+
+.goalSectionTransitionForward {
+  animation: goalSectionSlideInFromRight 240ms ease;
+}
+
+.goalSectionTransitionBackward {
+  animation: goalSectionSlideInFromLeft 240ms ease;
+}
+
+.goalSectionTransitionNeutral {
+  animation: goalSectionFadeIn 180ms ease;
+}
+
+@keyframes goalSectionSlideInFromRight {
+  from {
+    opacity: 0;
+    transform: translateX(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes goalSectionSlideInFromLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes goalSectionFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 .slideViewport {
   display: flex;
   gap: 12px;
@@ -634,9 +797,9 @@ pre {
   bottom: 20px;
   width: calc((100% - 20px) / 4);
   border-radius: 14px;
-  background: rgba(19, 236, 55, 0.16);
-  border: 1px solid rgba(19, 236, 55, 0.45);
-  box-shadow: 0 10px 24px rgba(19, 236, 55, 0.18);
+  background: rgba(15, 23, 42, 0.92);
+  border: 1px solid rgba(15, 23, 42, 0.95);
+  box-shadow: 0 10px 22px rgba(2, 6, 23, 0.35);
   transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
   pointer-events: none;
 }

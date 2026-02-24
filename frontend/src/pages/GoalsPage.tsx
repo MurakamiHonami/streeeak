@@ -30,6 +30,8 @@ export function GoalsPage() {
   const [decisionMap, setDecisionMap] = useState<Record<string, "accepted" | "rejected">>({});
   const [goalSectionTab, setGoalSectionTab] = useState<"create" | "review">("create");
   const [planTab, setPlanTab] = useState<PlanTab>("yearly");
+  const goalSectionPrevTabRef = useRef<"create" | "review">("create");
+  const planPrevTabRef = useRef<PlanTab>("yearly");
   const proposalRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const yearlyScrollRef = useRef<HTMLDivElement | null>(null);
   const monthlyScrollRef = useRef<HTMLDivElement | null>(null);
@@ -209,6 +211,14 @@ export function GoalsPage() {
     }
     return best;
   }, [dailyTasksByDate, todayKey]);
+  const goalSectionTabIndex = goalSectionTab === "create" ? 0 : 1;
+  const previousGoalSectionTabIndex = goalSectionPrevTabRef.current === "create" ? 0 : 1;
+  const goalSectionTransitionClass =
+    goalSectionTabIndex > previousGoalSectionTabIndex
+      ? "goalSectionTransitionForward"
+      : goalSectionTabIndex < previousGoalSectionTabIndex
+      ? "goalSectionTransitionBackward"
+      : "goalSectionTransitionNeutral";
 
   const availablePlanTabs = useMemo<PlanTab[]>(() => {
     const tabs: PlanTab[] = [];
@@ -219,6 +229,14 @@ export function GoalsPage() {
     if (tabs.length === 0) tabs.push("monthly");
     return tabs;
   }, [yearlyTasks.length, monthlyPlanTasks.length, weeklyTasks.length, dailyTasksByDate.length, dailyTasks.length]);
+  const planTabIndex = Math.max(0, availablePlanTabs.indexOf(planTab));
+  const previousPlanTabIndex = Math.max(0, availablePlanTabs.indexOf(planPrevTabRef.current));
+  const planTransitionClass =
+    planTabIndex > previousPlanTabIndex
+      ? "planContentTransitionForward"
+      : planTabIndex < previousPlanTabIndex
+      ? "planContentTransitionBackward"
+      : "planContentTransitionNeutral";
 
   const stripMonthPrefix = (title: string) =>
     title
@@ -488,6 +506,10 @@ export function GoalsPage() {
   }, [availablePlanTabs, planTab]);
 
   useEffect(() => {
+    planPrevTabRef.current = planTab;
+  }, [planTab]);
+
+  useEffect(() => {
     if (goalSectionTab !== "review") return;
     if (goalOptions.length === 0) {
       setActiveGoalId(null);
@@ -497,6 +519,10 @@ export function GoalsPage() {
       setActiveGoalId(goalOptions[0].id);
     }
   }, [goalSectionTab, goalOptions, activeGoalId]);
+
+  useEffect(() => {
+    goalSectionPrevTabRef.current = goalSectionTab;
+  }, [goalSectionTab]);
 
   useEffect(() => {
     if (!activeGoalId || !goalTasks.data) return;
@@ -552,7 +578,12 @@ export function GoalsPage() {
       </section>
 
       <div className="card">
-        <div className="tabRow">
+        <div className="tabRow goalSectionTabRow">
+          <div
+            className="goalSectionActivePill"
+            style={{ transform: `translateX(${goalSectionTabIndex * 100}%)` }}
+            aria-hidden="true"
+          />
           <button
             type="button"
             className={["tabBtn", goalSectionTab === "create" ? "active" : ""].join(" ").trim()}
@@ -571,6 +602,7 @@ export function GoalsPage() {
       </div>
 
       {goalSectionTab === "create" && (
+        <div className={`goalSectionTransition ${goalSectionTransitionClass}`}>
         <form className="card flex flex-col items-center gap-2 p-2" onSubmit={handleCreateGoal}>
           <>
             <h3 className="text-2xl text-center m-4 font-normal tracking-[0.1em] uppercase">長期目標を新規作成</h3>
@@ -629,12 +661,12 @@ export function GoalsPage() {
             )}
           </>
         </form>
+        </div>
       )}
 
       {goalSectionTab === "review" && (
-        <>
+        <div className={`goalSectionTransition ${goalSectionTransitionClass}`}>
           <form className="card flex flex-col items-center gap-2 p-2">
-          <>
             <h3 className="text-2xl text-center m-4 font-normal tracking-[0.1em] uppercase">目標の修正を相談する</h3>
             <div style={{ width: "100%" }} className="flex flex-col items-center gap-2">
               <p className="mutedText">目標を確認</p>
@@ -710,16 +742,23 @@ export function GoalsPage() {
             {revisionMutation.isError && (
               <p style={{ color: "#c0392b", margin: 0 }}>提案生成に失敗しました。再試行してください。</p>
             )}
-          </>
           </form>
-        </>
+        </div>
       )}
 
       {goalSectionTab === "review" && activeGoalId && goalTasks.data && (
         <>
           <div className="card">
             <h3 className="text-2xl text-center m-4 font-normal tracking-[0.1em] uppercase">プラン</h3>
-            <div className="tabRow">
+            <div className="tabRow planTabRow">
+              <div
+                className="planTabActivePill"
+                style={{
+                  width: `calc((100% - 8px) / ${Math.max(1, availablePlanTabs.length)})`,
+                  transform: `translateX(${planTabIndex * 100}%)`,
+                }}
+                aria-hidden="true"
+              />
               {availablePlanTabs.map((tab) => (
                 <button
                   key={tab}
@@ -733,6 +772,7 @@ export function GoalsPage() {
             </div>
 
             {planTab === "yearly" && (
+              <div className={`planContentTransition ${planTransitionClass}`}>
               <section className="planUnit">
                 <h4>年次プラン</h4>
                 {yearlyTasks.length === 0 && <p className="mutedText">タスクがありません</p>}
@@ -761,9 +801,11 @@ export function GoalsPage() {
                   ))}
                 </div>
               </section>
+              </div>
             )}
 
             {planTab === "monthly" && (
+            <div className={`planContentTransition ${planTransitionClass}`}>
             <section className="planUnit">
               {yearlyTasks.length > 0 && (
                 <div className="taskRow currentPeriodRow">
@@ -804,9 +846,11 @@ export function GoalsPage() {
                 </div>
               )}
             </section>
+            </div>
             )}
 
             {planTab === "weekly" && (
+            <div className={`planContentTransition ${planTransitionClass}`}>
             <section className="planUnit">
               <div className="taskRow currentPeriodRow">
                 <div style={{ width: "100%" }}>
@@ -845,9 +889,11 @@ export function GoalsPage() {
                 </div>
               )}
             </section>
+            </div>
             )}
 
             {planTab === "daily" && (
+            <div className={`planContentTransition ${planTransitionClass}`}>
             <section className="planUnit">
               <div className="taskRow currentPeriodRow">
                 <div style={{ width: "100%" }}>
@@ -1004,6 +1050,7 @@ export function GoalsPage() {
               <p className="mutedText">縦にスクロールして確認できます。</p>
               <p className="mutedText">作成された当日のTODOはホーム画面に表示されます。</p>
             </section>
+            </div>
             )}
           </div>
         </>
