@@ -1,5 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useLocation } from "react-router-dom";
+import Box from "@mui/material/Box";
+import FormControl from "@mui/material/FormControl";
+import InputLabel from "@mui/material/InputLabel";
+import MenuItem from "@mui/material/MenuItem";
+import Select, { type SelectChangeEvent } from "@mui/material/Select";
 import {
   applyAcceptedRevisions,
   createGoalAndBreakdown,
@@ -15,6 +21,7 @@ type DisplayTask = DraftTask & { date?: string; month?: number; week_number?: nu
 type PlanTab = "yearly" | "monthly" | "weekly" | "daily";
 
 export function GoalsPage() {
+  const location = useLocation();
   const [title, setTitle] = useState("");
   const [deadline, setDeadline] = useState("");
   const [currentSituation, setCurrentSituation] = useState("");
@@ -28,10 +35,12 @@ export function GoalsPage() {
   const [chatHistory, setChatHistory] = useState<RevisionChatMessage[]>([]);
   const [proposals, setProposals] = useState<TaskRevisionProposal[]>([]);
   const [decisionMap, setDecisionMap] = useState<Record<string, "accepted" | "rejected">>({});
-  const [goalSectionTab, setGoalSectionTab] = useState<"create" | "review">("create");
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [goalSectionTab, setGoalSectionTab] = useState<"create" | "review">("review");
   const [planTab, setPlanTab] = useState<PlanTab>("yearly");
-  const goalSectionPrevTabRef = useRef<"create" | "review">("create");
+  const goalSectionPrevTabRef = useRef<"create" | "review">("review");
   const planPrevTabRef = useRef<PlanTab>("yearly");
+  const lastInitializedGoalIdRef = useRef<number | null>(null);
   const proposalRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const yearlyScrollRef = useRef<HTMLDivElement | null>(null);
   const monthlyScrollRef = useRef<HTMLDivElement | null>(null);
@@ -211,8 +220,8 @@ export function GoalsPage() {
     }
     return best;
   }, [dailyTasksByDate, todayKey]);
-  const goalSectionTabIndex = goalSectionTab === "create" ? 0 : 1;
-  const previousGoalSectionTabIndex = goalSectionPrevTabRef.current === "create" ? 0 : 1;
+  const goalSectionTabIndex = goalSectionTab === "review" ? 0 : 1;
+  const previousGoalSectionTabIndex = goalSectionPrevTabRef.current === "review" ? 0 : 1;
   const goalSectionTransitionClass =
     goalSectionTabIndex > previousGoalSectionTabIndex
       ? "goalSectionTransitionForward"
@@ -229,6 +238,7 @@ export function GoalsPage() {
     if (tabs.length === 0) tabs.push("monthly");
     return tabs;
   }, [yearlyTasks.length, monthlyPlanTasks.length, weeklyTasks.length, dailyTasksByDate.length, dailyTasks.length]);
+  const primaryPlanTab = availablePlanTabs[0];
   const planTabIndex = Math.max(0, availablePlanTabs.indexOf(planTab));
   const previousPlanTabIndex = Math.max(0, availablePlanTabs.indexOf(planPrevTabRef.current));
   const planTransitionClass =
@@ -506,6 +516,18 @@ export function GoalsPage() {
   }, [availablePlanTabs, planTab]);
 
   useEffect(() => {
+    if (!activeGoalId) {
+      lastInitializedGoalIdRef.current = null;
+      return;
+    }
+    if (!goalTasks.data) return;
+    if (lastInitializedGoalIdRef.current !== activeGoalId) {
+      setPlanTab(availablePlanTabs[0]);
+      lastInitializedGoalIdRef.current = activeGoalId;
+    }
+  }, [activeGoalId, goalTasks.data, availablePlanTabs]);
+
+  useEffect(() => {
     planPrevTabRef.current = planTab;
   }, [planTab]);
 
@@ -519,6 +541,13 @@ export function GoalsPage() {
       setActiveGoalId(goalOptions[0].id);
     }
   }, [goalSectionTab, goalOptions, activeGoalId]);
+
+  useEffect(() => {
+    const requestedTab = (location.state as { goalSectionTab?: "create" | "review" } | null)?.goalSectionTab;
+    if (requestedTab === "create" || requestedTab === "review") {
+      setGoalSectionTab(requestedTab);
+    }
+  }, [location.state]);
 
   useEffect(() => {
     goalSectionPrevTabRef.current = goalSectionTab;
@@ -586,17 +615,17 @@ export function GoalsPage() {
           />
           <button
             type="button"
-            className={["tabBtn", goalSectionTab === "create" ? "active" : ""].join(" ").trim()}
-            onClick={() => setGoalSectionTab("create")}
-          >
-            目標作成
-          </button>
-          <button
-            type="button"
             className={["tabBtn", goalSectionTab === "review" ? "active" : ""].join(" ").trim()}
             onClick={() => setGoalSectionTab("review")}
           >
             目標確認
+          </button>
+          <button
+            type="button"
+            className={["tabBtn", goalSectionTab === "create" ? "active" : ""].join(" ").trim()}
+            onClick={() => setGoalSectionTab("create")}
+          >
+            目標作成
           </button>
         </div>
       </div>
@@ -607,6 +636,7 @@ export function GoalsPage() {
           <>
             <h3 className="text-2xl text-center m-4 font-normal tracking-[0.1em] uppercase">長期目標を新規作成</h3>
             <input
+              className="goalField"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               onFocus={() => setIsGoalInputActive(true)}
@@ -614,14 +644,14 @@ export function GoalsPage() {
               placeholder="長期目標を入力"
             />
             <input
-              className="mb-4"
+              className="mb-4 goalField"
               type="date"
               value={deadline}
               onChange={(e) => setDeadline(e.target.value)}
               onFocus={() => setIsGoalInputActive(true)}
               onBlur={() => setIsGoalInputActive(false)}
             />
-            <div className="relative inline-flex flex-col items-center mt-6">
+            <div className="relative inline-flex flex-col items-center mt-8">
               <span
                 className={[
                   "whitespace-nowrap rounded-lg bg-gray-800 mt-1 px-3 py-1.5",
@@ -652,7 +682,14 @@ export function GoalsPage() {
               />
             )}
             <button type="submit" disabled={!canSubmit}>
-              {breakdownMutation.isPending ? "AIで生成中..." : "ブレイクダウンする"}
+              {breakdownMutation.isPending ? (
+                <span className="loadingInline">
+                  <span className="loadingSpinner" aria-hidden="true" />
+                  プラン考え中
+                </span>
+              ) : (
+                "プランを立てる"
+              )}
             </button>
             {breakdownMutation.isError && (
               <p style={{ color: "#c0392b", margin: 0 }}>
@@ -667,32 +704,79 @@ export function GoalsPage() {
       {goalSectionTab === "review" && (
         <div className={`goalSectionTransition ${goalSectionTransitionClass}`}>
           <form className="card flex flex-col items-center gap-2 p-2">
-            <h3 className="text-2xl text-center m-4 font-normal tracking-[0.1em] uppercase">目標の修正を相談する</h3>
+            {goalOptions.length > 0 && (
+              <h3 className="text-2xl text-center m-4 font-normal tracking-[0.1em] uppercase">目標の修正を相談する</h3>
+            )}
             <div style={{ width: "100%" }} className="flex flex-col items-center gap-2">
-              <p className="mutedText">目標を確認</p>
               {goalOptions.length > 0 ? (
-                <select
-                  value={activeGoalId ?? goalOptions[0].id}
-                  onChange={(e) => {
-                    setActiveGoalId(Number(e.target.value));
-                    setPlanTab("yearly");
-                    setChatHistory([]);
-                    setProposals([]);
-                  }}
-                  style={{ width: "100%", padding: "10px", borderRadius: "8px", border: "1px solid #ccc" }}
-                >
-                  {goalOptions.map((goal: any) => (
-                    <option key={goal.id} value={goal.id}>
-                      {goal.title} {goal.deadline ? `(期限: ${goal.deadline})` : ""}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <p className="mutedText">目標作成をしてください。</p>
-              )}
+                <Box sx={{ width: "100%", maxWidth: "100%", minWidth: 0 }}>
+                  <FormControl
+                    fullWidth
+                    sx={{
+                      width: "100%",
+                      maxWidth: "100%",
+                      minWidth: 0,
+                      "& .MuiInputLabel-root": { color: "#666" },
+                      "& .MuiInputLabel-root.Mui-focused": { color: "#111" },
+                      "& .MuiOutlinedInput-root": {
+                        width: "100%",
+                        maxWidth: "100%",
+                        boxSizing: "border-box",
+                        "& fieldset": { borderColor: "#ccc" },
+                        "&:hover fieldset": { borderColor: "#888" },
+                        "&.Mui-focused fieldset": { borderColor: "#111" },
+                      },
+                      "& .MuiSelect-select": {
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                      },
+                    }}
+                  >
+                    <InputLabel id="goals-page-select-label">目標を選択</InputLabel>
+                    <Select
+                      labelId="goals-page-select-label"
+                      value={activeGoalId === null ? "" : String(activeGoalId)}
+                      label="目標を選択"
+                      onChange={(e: SelectChangeEvent<string>) => {
+                        const nextValue = e.target.value;
+                        setActiveGoalId(nextValue === "" ? null : Number(nextValue));
+                        setChatHistory([]);
+                        setProposals([]);
+                      }}
+                    >
+                      {goalOptions.map((goal: any) => (
+                        <MenuItem key={goal.id} value={String(goal.id)}>
+                          {goal.title}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Box>
+              ) : null}
             </div>
             {!activeGoalId && goalOptions.length > 0 && <p className="mutedText">目標を選択してください。</p>}
-            <div className="relative inline-flex flex-col items-center mt-6">
+            {goalOptions.length === 0 ? (
+              <button type="button" onClick={() => setGoalSectionTab("create")}>
+                目標を作成する
+              </button>
+            ) : (
+              <div className="chatInputRow goalChatInputRow">
+                <input
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  placeholder="例: 週次タスクをもっと具体化して"
+                  disabled={!activeGoalId}
+                />
+                <button type="button" onClick={handleSendRevisionChat} disabled={!activeGoalId || !chatInput.trim()}>
+                  <span aria-hidden="true">➤</span>
+                  <span style={{ position: "absolute", width: 1, height: 1, padding: 0, margin: -1, overflow: "hidden", clip: "rect(0, 0, 0, 0)", whiteSpace: "nowrap", border: 0 }}>
+                    送信
+                  </span>
+                </button>
+              </div>
+            )}
+            <div className="relative inline-flex flex-col items-center mt-10">
               <span
                 className={[
                   "whitespace-nowrap rounded-lg bg-gray-800 mt-1 px-3 py-1.5",
@@ -702,43 +786,10 @@ export function GoalsPage() {
                   "after:border-[6px] after:border-transparent after:border-t-gray-800",
                 ].join(" ")}
               >
-                修正が必要だったら言ってね！
+                {goalOptions.length === 0 ? "まず目標を作成してね！" : "修正が必要だったら言ってね！"}
               </span>
               <img src="/panda.png" alt="Mentor Panda" className="h-20 object-contain drop-shadow-sm" />
             </div>
-            <p className="mutedText">選択中の目標に対して、修正依頼と提案の採用をこの画面で行えます。</p>
-            <div className="chatInputRow">
-              <input
-                value={chatInput}
-                onChange={(e) => setChatInput(e.target.value)}
-                placeholder="例: 週次タスクをもっと具体化して"
-                disabled={!activeGoalId}
-              />
-              <button type="button" onClick={handleSendRevisionChat} disabled={!activeGoalId || !chatInput.trim()}>
-                送信
-              </button>
-            </div>
-            {activeGoalId && (
-              <button
-                type="button"
-                onClick={() => {
-                  if (!window.confirm("この長期目標を削除しますか？")) return;
-                  deleteMutation.mutate(activeGoalId);
-                }}
-                style={{
-                  background: "#dc2626",
-                  color: "#fff",
-                  padding: "6px 10px",
-                  margin: 0,
-                  width: "auto",
-                  fontSize: "12px",
-                  fontWeight: 600,
-                }}
-                title="この目標を削除"
-              >
-                この目標を削除する
-              </button>
-            )}
             {revisionMutation.isError && (
               <p style={{ color: "#c0392b", margin: 0 }}>提案生成に失敗しました。再試行してください。</p>
             )}
@@ -774,7 +825,21 @@ export function GoalsPage() {
             {planTab === "yearly" && (
               <div className={`planContentTransition ${planTransitionClass}`}>
               <section className="planUnit">
-                <h4>年次プラン</h4>
+                <h4>
+                  {yearlyTasks.length}年プラン{selectedGoal?.deadline ? `：${selectedGoal.deadline}まで` : ""}
+                </h4>
+                {primaryPlanTab === "yearly" && (
+                  <div style={{ display: "flex", justifyContent: "flex-start" }}>
+                    <button
+                      type="button"
+                      onClick={() => setIsDeleteConfirmOpen(true)}
+                      style={{ background: "#dc2626", color: "#fff", padding: "6px 10px", margin: 0, width: "auto", fontSize: "12px", fontWeight: 600 }}
+                      title="この目標を削除"
+                    >
+                      この目標を削除する
+                    </button>
+                  </div>
+                )}
                 {yearlyTasks.length === 0 && <p className="mutedText">タスクがありません</p>}
                 <div className="planScrollArea" ref={yearlyScrollRef}>
                   {yearlyTasks.map((task, idx) => (
@@ -817,7 +882,22 @@ export function GoalsPage() {
                   </div>
                 </div>
               )}
-              <h4>{monthlyPlanTasks.length > 0 ? `${monthlyPlanTasks.length}ヶ月プラン` : "月次プラン"}</h4>
+              <h4>
+                {monthlyPlanTasks.length > 0 ? `${monthlyPlanTasks.length}ヶ月プラン` : "月次プラン"}
+                {selectedGoal?.deadline ? `：${selectedGoal.deadline}まで` : ""}
+              </h4>
+              {primaryPlanTab === "monthly" && (
+                <div style={{ display: "flex", justifyContent: "flex-start" }}>
+                  <button
+                    type="button"
+                    onClick={() => setIsDeleteConfirmOpen(true)}
+                    style={{ background: "#dc2626", color: "#fff", padding: "6px 10px", margin: 0, width: "auto", fontSize: "12px", fontWeight: 600 }}
+                    title="この目標を削除"
+                  >
+                    この目標を削除する
+                  </button>
+                </div>
+              )}
               {monthlyPlanTasks.length === 0 && <p className="mutedText">タスクがありません</p>}
               {monthlyPlanTasks.length > 0 && (
                 <div className="planScrollArea" ref={monthlyScrollRef}>
@@ -860,7 +940,22 @@ export function GoalsPage() {
                   <p>{currentMonthTask ? stripMonthPrefix(currentMonthTask.title) : "月次タスクがありません"}</p>
                 </div>
               </div>
-              <h4>{weeklyTasks.length === 4 ? "直近1ヶ月の週次プラン" : `${weeklyTasks.length}週間の週次プラン`}</h4>
+              <h4>
+                {weeklyTasks.length === 4 ? "直近1ヶ月の週次プラン" : `${weeklyTasks.length}週間の週次プラン`}
+                {selectedGoal?.deadline ? `：${selectedGoal.deadline}まで` : ""}
+              </h4>
+              {primaryPlanTab === "weekly" && (
+                <div style={{ display: "flex", justifyContent: "flex-start" }}>
+                  <button
+                    type="button"
+                    onClick={() => setIsDeleteConfirmOpen(true)}
+                    style={{ background: "#dc2626", color: "#fff", padding: "6px 10px", margin: 0, width: "auto", fontSize: "12px", fontWeight: 600 }}
+                    title="この目標を削除"
+                  >
+                    この目標を削除する
+                  </button>
+                </div>
+              )}
               {weeklyTasks.length === 0 && <p className="mutedText">タスクがありません</p>}
               {weeklyTasks.length > 0 && (
                 <div className="planScrollArea" ref={weeklyScrollRef}>
@@ -904,9 +999,21 @@ export function GoalsPage() {
                 </div>
               </div>
               <h4>直近1週間のTODO</h4>
+              {primaryPlanTab === "daily" && (
+                <div style={{ display: "flex", justifyContent: "flex-start" }}>
+                  <button
+                    type="button"
+                    onClick={() => setIsDeleteConfirmOpen(true)}
+                    style={{ background: "#dc2626", color: "#fff", padding: "6px 10px", margin: 0, width: "auto", fontSize: "12px", fontWeight: 600 }}
+                    title="この目標を削除"
+                  >
+                    この目標を削除する
+                  </button>
+                </div>
+              )}
               {dailyTasks.length === 0 && <p className="mutedText">タスクがありません</p>}
               {dailyTasksByDate.length > 0 && (
-                <div className="planScrollArea" ref={dailyScrollRef}>
+                <div className="planScrollArea planScrollAreaDaily" ref={dailyScrollRef}>
                   {dailyTasksByDate.map(([dateKey, tasks]) => (
                     <section
                       key={dateKey}
@@ -1046,13 +1153,57 @@ export function GoalsPage() {
                   ))}
                 </div>
               )}
-              <p className="mutedText">過去日のタスクは上方向に表示されます（今日位置へ自動スクロール後に確認できます）。</p>
-              <p className="mutedText">縦にスクロールして確認できます。</p>
-              <p className="mutedText">作成された当日のTODOはホーム画面に表示されます。</p>
             </section>
             </div>
             )}
           </div>
+          {isDeleteConfirmOpen && (
+            <div
+              style={{
+                position: "fixed",
+                inset: 0,
+                background: "rgba(15, 23, 42, 0.45)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                zIndex: 1000,
+              }}
+            >
+              <div
+                style={{
+                  width: "min(320px, calc(100vw - 32px))",
+                  background: "#fff",
+                  borderRadius: "14px",
+                  border: "1px solid #e2e8f0",
+                  padding: "16px",
+                  display: "grid",
+                  gap: "12px",
+                }}
+              >
+                <p style={{ margin: 0, fontWeight: 700, color: "#0f172a" }}>本当に削除しますか？</p>
+                <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px" }}>
+                  <button
+                    type="button"
+                    onClick={() => setIsDeleteConfirmOpen(false)}
+                    style={{ background: "#e2e8f0", color: "#0f172a", width: "auto", margin: 0 }}
+                  >
+                    いいえ
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!activeGoalId) return;
+                      setIsDeleteConfirmOpen(false);
+                      deleteMutation.mutate(activeGoalId);
+                    }}
+                    style={{ background: "#dc2626", color: "#fff", width: "auto", margin: 0 }}
+                  >
+                    はい
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </>
       )}
     </section>

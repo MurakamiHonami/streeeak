@@ -413,6 +413,30 @@ button:disabled {
   cursor: not-allowed;
 }
 
+.loadingInline {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.loadingSpinner {
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  border: 2px solid rgba(15, 31, 16, 0.25);
+  border-top-color: #0f1f10;
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 pre {
   white-space: pre-wrap;
   background: #f8f9ff;
@@ -461,6 +485,16 @@ pre {
 .chatInputRow {
   display: flex;
   gap: 8px;
+}
+
+.goalChatInputRow input,
+.goalChatInputRow button {
+  height: 42px;
+}
+
+.goalField {
+  height: 42px;
+  min-height: 42px;
 }
 
 .proposalCard {
@@ -623,7 +657,7 @@ pre {
 }
 
 .goalSectionTransitionNeutral {
-  animation: goalSectionFadeIn 180ms ease;
+  animation: none;
 }
 
 @keyframes goalSectionSlideInFromRight {
@@ -716,6 +750,10 @@ pre {
   display: grid;
   gap: 10px;
   padding-right: 4px;
+}
+
+.planScrollAreaDaily {
+  max-height: 560px;
 }
 
 .planScrollArea::-webkit-scrollbar {
