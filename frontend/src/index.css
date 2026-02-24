@@ -618,21 +618,42 @@ pre {
 }
 
 .bottomNavInner {
+  position: relative;
   display: flex;
-  justify-content: space-around;
+  justify-content: space-between;
   background: rgba(246, 248, 246, 0.9);
   backdrop-filter: blur(12px);
   border-top: 1px solid #e8ede8;
-  padding: 12px 16px 24px;
+  padding: 10px 10px 20px;
+}
+
+.bottomNavActivePill {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  bottom: 20px;
+  width: calc((100% - 20px) / 4);
+  border-radius: 14px;
+  background: rgba(19, 236, 55, 0.16);
+  border: 1px solid rgba(19, 236, 55, 0.45);
+  box-shadow: 0 10px 24px rgba(19, 236, 55, 0.18);
+  transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: none;
 }
 
 .bottomNavLink {
+  position: relative;
+  z-index: 1;
+  flex: 1;
   color: #64748b;
   text-decoration: none;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 3px;
+  border-radius: 14px;
+  padding: 8px 4px;
+  transition: color 220ms ease;
 }
 
 .bottomNavLink.active {

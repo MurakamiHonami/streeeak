@@ -12,10 +12,19 @@ const links = [
 
 export function NavBar() {
   const { pathname } = useLocation();
+  const activeIndex = Math.max(
+    0,
+    links.findIndex((link) => link.to === pathname),
+  );
 
   return (
     <nav className="bottomNav">
       <div className="bottomNavInner">
+        <div
+          className="bottomNavActivePill"
+          style={{ transform: `translateX(${activeIndex * 100}%)` }}
+          aria-hidden="true"
+        />
         {links.map((link) => (
           <Link
             key={link.to}
