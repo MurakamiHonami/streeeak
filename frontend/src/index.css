@@ -11,6 +11,8 @@ body {
 
 #root {
   min-height: 100vh;
+  --primary-color: #13ec37;
+
 }
 
 .appShell {
@@ -88,8 +90,13 @@ h1 {
 
 .headerTitle {
   margin: 0;
-  font-size: 40px;
+  font-size: 3.5rem;
   letter-spacing: -0.015em;
+}
+.sasa {
+  width: 3.5rem;
+  height: 3.5rem;
+  padding-bottom: 0.5rem;
 }
 
 .headerAvatar {

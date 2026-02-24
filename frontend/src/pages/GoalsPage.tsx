@@ -200,10 +200,10 @@ export function GoalsPage() {
         <p className="mutedText">期限までの期間に合わせて、年次・月次・週次・日次の計画を自動生成します</p>
       </section>
 
-      <form className="card" onSubmit={handleCreateGoal}>
+      <form className="card flex flex-col items-center gap-2 p-2" onSubmit={handleCreateGoal}>
         {!activeGoalId ? (
           <>
-            <h3 className="font-medium text-xl">長期目標を入力（新規作成）</h3>
+            <h3 className="font-normal text-2xl text-center">長期目標を新規作成</h3>
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -354,9 +354,9 @@ export function GoalsPage() {
         )}
       </form>
 
-      <div className="card" style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end' }}>
-        <div style={{ flex: 1 }}>
-          <h3 className="font-medium text-xl mb-2">確認・編集する目標を選択</h3>
+      <div className="card flex flex-col items-center gap-2">
+        <div style={{ flex: 1 }} className="flex flex-col items-center gap-2">
+          <h3 className="font-normal text-2xl text-center m-2">目標を確認</h3>
           <select
             value={activeGoalId ?? ""}
             onChange={(e) => {

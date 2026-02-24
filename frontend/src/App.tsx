@@ -18,11 +18,11 @@ function App() {
     <div className="appShell">
       <div className="appContainer">
         <header className={currentUserId ? "topHeader" : "topHeader authHeader"}>
-          <div className="brandBlock">
-            <img src="/sasa.png" className="brandIcon" alt="Streeeak mascot" />
+          <div className="flex items-center gap-2">
+            <img src="/sasa.png" className="sasa" alt="Streeeak mascot" />
             <div className="brandText">
               <h1 className="headerTitle">
-                Str<span className="e">eee</span>ak
+                Str<span className="text-[#13ec37]">eee</span>ak
               </h1>
             </div>
           </div>

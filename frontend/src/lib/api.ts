@@ -261,3 +261,10 @@ export async function fetchFriends() {
   const res = await apiClient.get<any[]>("/friendships"); // URLパラメーターを削除
   return res.data;
 }
+export async function fetchAllDailyTasks() {
+  const userId = getCurrentUserId();
+  const res = await apiClient.get<Task[]>("/tasks", {
+    params: { user_id: userId, type: "daily" },
+  });
+  return res.data;
+}

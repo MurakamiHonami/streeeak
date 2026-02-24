@@ -54,7 +54,44 @@ export function HomePage() {
   const myRankIndex = rankingList.findIndex((item) => item.user_id === appContext.userId);
   const myRank = myRankIndex >= 0 ? myRankIndex + 1 : null;
   const myRankItem = myRankIndex >= 0 ? rankingList[myRankIndex] : null;
+  const renderRankItem = (rank: number, isYou: boolean, data?: any) => {
+    if (!data) return null;
+    const isTop = rank === 1;
+    const avatarSize = isTop ? "w-16 h-16 text-2xl" : "w-12 h-12 text-lg";
+    
+    const avatarBg = isYou 
+      ? "bg-[#13ec37]/10 text-[#0fbf2c] border-[3px] border-[#13ec37] shadow-[0_4px_20px_rgba(19,236,55,0.25)]" 
+      : "bg-white text-[#64748b] border-2 border-[#e8ede8]";
+      
+    const badgeBg = rank === 1 
+      ? "bg-[#13ec37] text-[#0f1f10]" 
+      : rank === 2 
+        ? "bg-[#e2e8f0] text-[#475569]" 
+        : "bg-[#f1f5f9] text-[#64748b]";
+        
+    const marginTop = rank === 1 ? "-mt-6" : "mt-0";
 
+    return (
+      <div key={data.user_id || rank} className={`flex flex-col items-center gap-2 ${marginTop}`}>
+        <div className="relative">
+          <div className={`${avatarSize} rounded-full flex items-center justify-center font-extrabold ${avatarBg}`}>
+            {data.user_name?.[0] || "U"}
+          </div>
+          <div className={`absolute -bottom-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold border-2 border-white ${badgeBg}`}>
+            {rank}
+          </div>
+        </div>
+        <div className="text-center">
+          <p className={`text-[12px] m-0 ${isYou ? "font-extrabold text-[#0fbf2c]" : "font-bold text-[#0f1f10]"}`}>
+            {data.user_name}
+          </p>
+          <p className="text-[10px] text-[#64748b] m-0 font-bold">
+            {((data.achieved_avg || 0) * 100).toFixed(0)}%
+          </p>
+        </div>
+      </div>
+    );
+  };
   return (
     <section className="page">
       <Box sx={{ minWidth: 120, mb: 2 }}>
@@ -102,14 +139,14 @@ export function HomePage() {
           </p>
         </div>
         <div className="statCard">
-          <p className="statLabel">Top Rank</p>
-          <p className="statValue">{ranking.data?.[0] ? "TOP" : "-"}</p>
+          <p className="statLabel">Your Rank</p>
+          <p className="statValue">{ranking.data?.[0] ? `#${myRank}` : "-"}</p>
         </div>
       </div>
 
       <section className="card">
-        <div className="flex gap-1 items-center mb-4">
-          <h3 className="font-medium text-3xl">Today's Tasks</h3>
+        <div className="flex gap-1 items-center justify-center m-1">
+          <h3 className="font-medium text-2xl">Today's Tasks</h3>
           <img src="/panda.png" alt="Mentor Panda" className="h-12 w-12 object-contain drop-shadow-sm" />
         </div>
         
@@ -153,32 +190,21 @@ export function HomePage() {
         )}
       </section>
 
-      <section className="card mt-4">
-        <div className="sectionHead">
-          <h3 className="font-medium text-xl">Friend Ranking (TOP3)</h3>
+      <section className="bg-white rounded-3xl border border-gray-100 p-3 shadow-sm mb-6">
+        <div className="flex justify-center items-center mb-8">
+          <div className="text-2xl font-medium tracking-widest uppercase pt-3 pl-3">Friend Ranking</div>
         </div>
-        {top3Ranking.length ? (
-          top3Ranking.map((item, index) => (
-            <div key={item.user_id} className="rankRow flex justify-between items-center border-b border-gray-50 last:border-0 py-4">
-              <div className="flex items-center gap-3">
-                <span className="font-bold text-gray-400">#{index + 1}</span>
-                <span className="font-medium">{item.user_name}</span>
-              </div>
-              <strong className="text-xl font-black italic">{(item.achieved_avg * 100).toFixed(1)}%</strong>
-            </div>
-          ))
-        ) : (
-          <p className="text-gray-400 text-sm mt-2">ランキングデータがありません。</p>
-        )}
-        {myRank !== null && myRank > 3 && myRankItem && (
-          <div className="rankRow flex justify-between items-center border-t border-gray-200 pt-4 mt-2">
-            <div className="flex items-center gap-3">
-              <span className="font-bold text-gray-400">#{myRank}</span>
-              <span className="font-medium">You ({myRankItem.user_name})</span>
-            </div>
-            <strong className="text-xl font-black italic">{(myRankItem.achieved_avg * 100).toFixed(1)}%</strong>
-          </div>
-        )}
+        <div className="flex justify-center items-end gap-6 pt-2 pb-2">
+          {top3Ranking.length > 0 ? (
+            <>
+              {top3Ranking.length > 1 && renderRankItem(2, top3Ranking[1].user_id === appContext.userId, top3Ranking[1])}
+              {top3Ranking.length > 0 && renderRankItem(1, top3Ranking[0].user_id === appContext.userId, top3Ranking[0])}
+              {top3Ranking.length > 2 && renderRankItem(3, top3Ranking[2].user_id === appContext.userId, top3Ranking[2])}
+            </>
+          ) : (
+            <p className="text-sm text-gray-400">データがありません</p>
+          )}
+        </div>
       </section>
     </section>
   );

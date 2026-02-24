@@ -1,11 +1,14 @@
 import { useState, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { createPost, fetchPosts, fetchRanking, getAuthSession } from "../lib/api";
+import { createPost, fetchPosts, fetchRanking, getAuthSession, appContext } from "../lib/api";
 import { Dialog, DialogContent, IconButton } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
-import { FriendsDialogContent } from "../components/FriendDialogContent";
+import { FriendsDialogContent } from "../components/FriendsDialogContent";
+import MilitaryTechIcon from '@mui/icons-material/MilitaryTech';
+import ViewTimelineIcon from '@mui/icons-material/ViewTimeline';
+import ArrowCircleLeftIcon from '@mui/icons-material/ArrowCircleLeft';
 
 export function SharePage() {
   const navigate = useNavigate();
@@ -34,12 +37,12 @@ export function SharePage() {
   });
 
   return (
-    <section className="page">
+    <section className="page font-['Plus_Jakarta_Sans',sans-serif]">
       <div className="flex justify-between items-center mb-8">
-        <h2 className="text-3xl font-black tracking-tighter">COMMUNITY</h2>
+        <h2 className="text-[24px] font-extrabold m-0 tracking-[-0.02em] text-[#0f1f10]">COMMUNITY</h2>
         <button 
           onClick={() => setIsDialogOpen(true)}
-          className="flex items-center gap-2 bg-black text-white px-5 py-2 rounded-full text-sm font-bold hover:bg-gray-800 transition-all active:scale-95"
+          className="flex items-center gap-2 bg-[#13ec37] text-[#0f1f10] px-4 py-2 rounded-full text-[13px] font-bold shadow-[0_4px_16px_rgba(19,236,55,0.25)] border-none transition-transform active:scale-95 cursor-pointer"
         >
           <PersonAddIcon fontSize="small" />
           Add Friends
@@ -51,10 +54,10 @@ export function SharePage() {
         onClose={() => setIsDialogOpen(false)}
         fullWidth
         maxWidth="xs"
-        PaperProps={{ sx: { borderRadius: '24px', border: '1px solid #eee' } }}
+        PaperProps={{ sx: { borderRadius: '24px', border: '1px solid #e8ede8', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' } }}
       >
-        <div className="flex justify-between items-center px-6 pt-6">
-          <h3 className="text-xl font-bold">Find Friends</h3>
+        <div className="flex justify-between items-center px-6 pt-6 pb-2">
+          <h3 className="text-xl font-extrabold m-0 text-[#0f1f10]">Find Friends</h3>
           <IconButton onClick={() => setIsDialogOpen(false)}><CloseIcon /></IconButton>
         </div>
         <DialogContent sx={{ px: 3, pb: 4 }}>
@@ -62,29 +65,43 @@ export function SharePage() {
         </DialogContent>
       </Dialog>
 
-      <div className="tabRow mb-6">
-        <button className={tab === "feed" ? "tabBtn active" : "tabBtn"} onClick={() => setTab("feed")}>
-          Feed
+      <div className="flex gap-2 mb-5">
+        <button 
+          className={`flex-1 py-3 rounded-xl font-bold text-[13px] border transition-colors cursor-pointer ${
+            tab === "feed" 
+              ? "bg-[#13ec37]/10 border-[#13ec37]/30 text-[#0fbf2c]" 
+              : "bg-white border-[#e8ede8] text-[#64748b]"
+          }`}
+          onClick={() => setTab("feed")}
+        >
+          <ViewTimelineIcon/> Feed
         </button>
-        <button className={tab === "rank" ? "tabBtn active" : "tabBtn"} onClick={() => setTab("rank")}>
-          Ranking
+        <button 
+          className={`flex-1 py-3 rounded-xl font-bold text-[13px] border transition-colors cursor-pointer ${
+            tab === "rank" 
+              ? "bg-[#13ec37]/10 border-[#13ec37]/30 text-[#0fbf2c]" 
+              : "bg-white border-[#e8ede8] text-[#64748b]"
+          }`}
+          onClick={() => setTab("rank")}
+        >
+          <MilitaryTechIcon/> Ranking
         </button>
       </div>
 
-      <div className="space-y-6">
+      <div className="grid gap-5">
         {tab === "feed" ? (
           <>
-            <div className="card flex flex-col gap-3">
+            <div className="bg-white rounded-[20px] border border-[#e8ede8] p-4 shadow-[0_1px_4px_rgba(0,0,0,0.05)] grid gap-3">
               <input
-                className="p-3 border border-gray-200 rounded-lg w-full outline-none focus:border-black transition-colors"
+                className="w-full bg-[#f6f8f6] border border-[#e8ede8] rounded-xl p-3 text-[#0f1f10] text-[14px] outline-none box-border resize-none font-['Plus_Jakarta_Sans',sans-serif]"
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
                 placeholder="今日やったこと"
               />
               <div className="flex gap-3 items-center">
-                <label className="text-sm font-bold text-gray-500">達成率:</label>
+                <label className="text-[12px] font-bold text-[#64748b] uppercase tracking-[0.08em]">ACHIEVED:</label>
                 <input
-                  className="p-2 border border-gray-200 rounded-lg w-20 outline-none focus:border-black transition-colors"
+                  className="bg-[#f6f8f6] border border-[#e8ede8] rounded-lg p-2 text-[#0f1f10] text-[14px] outline-none w-20 font-bold text-center"
                   type="number"
                   min="0"
                   max="1"
@@ -93,46 +110,111 @@ export function SharePage() {
                   onChange={(e) => setAchieved(e.target.value)}
                 />
                 <button
-                  className="ml-auto bg-black text-white px-6 py-2 rounded-full text-sm font-bold hover:bg-gray-800 disabled:opacity-30 transition-all"
+                  className="ml-auto bg-[#13ec37] text-[#0f1f10] px-5 py-2.5 rounded-full text-[13px] font-bold shadow-[0_4px_16px_rgba(19,236,55,0.25)] border-none transition-transform active:scale-95 cursor-pointer disabled:opacity-50"
                   onClick={() => createMutation.mutate({ comment, achieved: Number(achieved) })}
                   disabled={!comment || createMutation.isPending}
                 >
-                  {createMutation.isPending ? "投稿中..." : "投稿する"}
+                  {createMutation.isPending ? "Posting..." : "Share"}
                 </button>
               </div>
             </div>
 
-            <div className="card">
-              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Live Feed</h3>
+            <div className="grid gap-3">
+              <h3 className="text-[11px] font-bold text-[#64748b] uppercase tracking-[0.1em] m-0 mb-1 px-1">Live Feed</h3>
               {posts.data?.length ? (
-                posts.data.map((post) => (
-                  <div key={post.id} className="taskRow border-b border-gray-50 last:border-0 py-4">
-                    <div className="flex justify-between items-center w-full">
-                      <p className="font-medium text-gray-800">{post.comment}</p>
-                      <span className="text-xl font-black italic">{(post.achieved * 100).toFixed(0)}%</span>
+                posts.data.map((post) => {
+                  const isYou = post.user_id === appContext.userId;
+                  const pct = Math.round(post.achieved * 100);
+                  const isPerfect = pct === 100;
+                  
+                  return (
+                    <div key={post.id} className={`bg-white rounded-[20px] p-4 shadow-[0_1px_4px_rgba(0,0,0,0.05)] border ${
+                      isYou ? 'border-[#13ec37]/30 bg-[#13ec37]/5' : 'border-[#e8ede8]'
+                    }`}>
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className={`w-12 h-12 rounded-full flex items-center justify-center text-[16px] font-bold shrink-0 ${
+                          isYou ? 'border-[2px] border-[#13ec37] bg-[#13ec37]/10 text-[#0fbf2c]' : 'border-[2px] border-[#e8ede8] bg-[#f1f5f9] text-[#64748b]'
+                        }`}>
+                          {post.user_id || "U"}
+                        </div>
+                        <div className="flex-1">
+                          <div className={`text-[14px] font-bold ${isYou ? 'text-[#0fbf2c]' : 'text-[#0f1f10]'}`}>
+                            {post.user_id}{isYou && " 🌟"}
+                          </div>
+                          <div className="text-[11px] text-[#64748b] mt-0.5">{post.date}</div>
+                        </div>
+                        <span className={`text-[18px] font-extrabold ${isPerfect ? 'text-[#13ec37]' : 'text-[#f59e0b]'}`}>
+                          {pct}%
+                        </span>
+                      </div>
+                      <div className="h-[8px] bg-[#f1f5f9] rounded-full overflow-hidden mb-3">
+                        <div 
+                          className={`h-full rounded-full transition-all duration-500 ${isPerfect ? 'bg-[#13ec37] shadow-[0_0_8px_rgba(19,236,55,0.4)]' : 'bg-[#fbbf24]'}`}
+                          style={{ width: `${pct}%` }} 
+                        />
+                      </div>
+                      <p className="text-[13px] m-0 leading-relaxed text-[#0f1f10]">{post.comment}</p>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               ) : (
-                <p className="text-gray-400 text-sm">まだ投稿がありません。</p>
+                <p className="text-[#64748b] text-[13px] px-1">まだ投稿がありません。</p>
               )}
             </div>
           </>
         ) : (
-          <div className="card">
-            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Ranking (FRIENDS)</h3>
+          <div className="grid gap-3">
+            <h3 className="text-[11px] font-bold text-[#64748b] uppercase tracking-[0.1em] m-0 mb-1 px-1">Weekly Ranking</h3>
             {ranking.data?.length ? (
-              ranking.data.map((item, i) => (
-                <div key={item.user_id} className="rankRow flex justify-between items-center border-b border-gray-50 last:border-0 py-4">
-                  <div className="flex items-center gap-3">
-                    <span className="font-bold text-gray-400">#{i + 1}</span>
-                    <span className="font-medium">{item.user_name}</span>
+              ranking.data.map((r, i) => {
+                const rank = i + 1;
+                const isYou = r.user_id === appContext.userId;
+                const pct = Math.round((r.achieved_avg || 0) * 100);
+                
+                return (
+                  <div key={r.user_id} className={`bg-white rounded-[20px] flex items-center gap-3 p-[16px_20px] shadow-[0_1px_4px_rgba(0,0,0,0.05)] border ${
+                    isYou ? 'border-[1.5px] border-[#13ec37]/30 bg-[#13ec37]/5' : 'border border-[#e8ede8]'
+                  }`}>
+                    <span className={`w-[28px] text-center font-black ${
+                      rank <= 3 ? 'text-[20px]' : 'text-[14px]'
+                    } ${
+                      rank === 1 ? 'text-[#f59e0b]' : rank === 2 ? 'text-[#94a3b8]' : rank === 3 ? 'text-[#cd7f32]' : 'text-[#64748b]'
+                    }`}>
+                      #{rank}
+                    </span>
+                    
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center text-[16px] font-bold shrink-0 ${
+                      isYou ? 'border-[2px] border-[#13ec37] bg-[#13ec37]/10 text-[#0fbf2c]' : 'border-[2px] border-[#e8ede8] bg-[#f1f5f9] text-[#64748b]'
+                    }`}>
+                      {r.user_name?.[0] || "U"}
+                    </div>
+                    
+                    <div className="flex-1">
+                      <div className="flex justify-between items-end mb-1.5">
+                        <span className={`text-[14px] font-bold ${isYou ? 'text-[#0fbf2c]' : 'text-[#0f1f10]'}`}>
+                          {r.user_name}{isYou && <ArrowCircleLeftIcon/>}
+                        </span>
+                      </div>
+                      <div className="h-[8px] bg-[#f1f5f9] rounded-full overflow-hidden">
+                        <div 
+                          className="h-full rounded-full transition-all duration-500"
+                          style={{ 
+                            width: `${pct}%`,
+                            background: isYou ? '#13ec37' : '#94a3b8',
+                            boxShadow: isYou ? '0 0 8px rgba(19,236,55,0.4)' : 'none'
+                          }} 
+                        />
+                      </div>
+                    </div>
+                    
+                    <span className={`text-[15px] font-extrabold min-w-[36px] text-right ${isYou ? 'text-[#0fbf2c]' : 'text-[#0f1f10]'}`}>
+                      {pct}%
+                    </span>
                   </div>
-                  <strong className="text-xl font-black italic">{(item.achieved_avg * 100).toFixed(1)}%</strong>
-                </div>
-              ))
+                );
+              })
             ) : (
-              <p className="text-gray-400 text-sm">ランキングデータがありません。</p>
+              <p className="text-[#64748b] text-[13px] px-1">ランキングデータがありません。</p>
             )}
           </div>
         )}
