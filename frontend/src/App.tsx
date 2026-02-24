@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Route, Routes,useNavigate } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { Route, Routes,useLocation, useNavigate } from "react-router-dom";
 import { NavBar } from "./components/NavBar";
 import { clearAuthSession, getAuthSession } from "./lib/api";
 import { AuthPage } from "./pages/AuthPage";
@@ -10,9 +10,28 @@ import { SharePage } from "./pages/SharePage";
 
 function App() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const previousPathRef = useRef(location.pathname);
   const [currentUserId, setCurrentUserId] = useState<number | null>(() => {
     return getAuthSession()?.userId ?? null;
   });
+  const navOrder = ["/", "/goals", "/results", "/share"];
+  const getPathRank = (path: string) => {
+    const idx = navOrder.indexOf(path);
+    return idx >= 0 ? idx : 0;
+  };
+  const previousRank = getPathRank(previousPathRef.current);
+  const currentRank = getPathRank(location.pathname);
+  const routeDirectionClass =
+    currentRank > previousRank
+      ? "routeTransitionForward"
+      : currentRank < previousRank
+      ? "routeTransitionBackward"
+      : "routeTransitionNeutral";
+
+  useEffect(() => {
+    previousPathRef.current = location.pathname;
+  }, [location.pathname]);
 
   return (
     <div className="appShell">
@@ -40,16 +59,18 @@ function App() {
           ) : null}
         </header>
 
-        {currentUserId ? (
-          <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/goals" element={<GoalsPage />} />
-            <Route path="/results" element={<ResultsPage />} />
-            <Route path="/share" element={<SharePage />} />
-          </Routes>
-        ) : (
-          <AuthPage onAuthenticated={(userId) => {setCurrentUserId(userId); navigate("/");}} />
-        )}
+        <div className={`routeTransition ${routeDirectionClass}`} key={location.pathname}>
+          {currentUserId ? (
+            <Routes>
+              <Route path="/" element={<HomePage />} />
+              <Route path="/goals" element={<GoalsPage />} />
+              <Route path="/results" element={<ResultsPage />} />
+              <Route path="/share" element={<SharePage />} />
+            </Routes>
+          ) : (
+            <AuthPage onAuthenticated={(userId) => {setCurrentUserId(userId); navigate("/");}} />
+          )}
+        </div>
       </div>
       {currentUserId ? <NavBar /> : null}
     </div>

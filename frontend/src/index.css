@@ -649,3 +649,56 @@ pre {
   letter-spacing: 0.08em;
   font-weight: 700;
 }
+
+.routeTransition {
+  will-change: opacity, transform;
+}
+
+.routeTransitionForward {
+  animation: routeSlideInFromRight 220ms ease;
+}
+
+.routeTransitionBackward {
+  animation: routeSlideInFromLeft 220ms ease;
+}
+
+.routeTransitionNeutral {
+  animation: routeFadeIn 180ms ease;
+}
+
+@keyframes routeSlideInFromRight {
+  from {
+    opacity: 0;
+    transform: translateX(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes routeSlideInFromLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes routeFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .routeTransition {
+    animation: none;
+  }
+}
