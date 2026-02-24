@@ -27,7 +27,6 @@ export function GoalsPage() {
 
   const goals = useQuery({ queryKey: ["goals"], queryFn: fetchGoals });
   
-  // activeGoalId に紐づくタスク（ブレイクダウン）をDBから取得
   const goalTasks = useQuery({
     queryKey: ["goalTasks", activeGoalId],
     queryFn: () => fetchGoalTasks(activeGoalId!),
@@ -79,7 +78,6 @@ export function GoalsPage() {
         : [],
     }));
 
-
   const appliedDraftTasks = useMemo(() => {
     const base = toDraftTasks(goalTasks.data);
     const accepted = proposals.filter((p) => decisionMap[p.proposal_id] === "accepted");
@@ -97,7 +95,6 @@ export function GoalsPage() {
     }
     return base;
   }, [goalTasks.data, proposals, decisionMap]);
-
 
   const monthlyTasks = appliedDraftTasks.filter((t) => t.task_type === "monthly");
   const weeklyTasks = appliedDraftTasks.filter((t) => t.task_type === "weekly");
@@ -203,7 +200,7 @@ export function GoalsPage() {
       <form className="card flex flex-col items-center gap-2 p-2" onSubmit={handleCreateGoal}>
         {!activeGoalId ? (
           <>
-            <h3 className="font-normal text-2xl text-center">長期目標を新規作成</h3>
+            <h3 className="text-2xl text-center m-4 font-normal tracking-[0.1em] uppercase">長期目標を新規作成</h3>
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -260,7 +257,7 @@ export function GoalsPage() {
           </>
         ) : (
           <>
-            <h3 className="font-medium text-xl">目標の修正を相談する</h3>
+            <h3 className="text-2xl text-center m-4 font-normal tracking-[0.1em] uppercase">目標の修正を相談する</h3>
             <div className="relative inline-flex flex-col items-center mt-6">
               <span
                 className={[
@@ -356,7 +353,7 @@ export function GoalsPage() {
 
       <div className="card flex flex-col items-center gap-2">
         <div style={{ flex: 1 }} className="flex flex-col items-center gap-2">
-          <h3 className="font-normal text-2xl text-center m-2">目標を確認</h3>
+          <h3 className="text-2xl text-center m-4 font-normal tracking-[0.1em] uppercase">目標を確認</h3>
           <select
             value={activeGoalId ?? ""}
             onChange={(e) => {
@@ -388,11 +385,10 @@ export function GoalsPage() {
         )}
       </div>
 
-
       {activeGoalId && goalTasks.data && (
         <>
           <div className="card">
-            <h3>プラン</h3>
+            <h3 className="text-2xl text-center m-4 font-normal tracking-[0.1em] uppercase">プラン</h3>
 
             {yearlyTasks.length > 0 && (
               <section className="planUnit">
@@ -482,7 +478,6 @@ export function GoalsPage() {
               <p className="mutedText">作成された当日のTODOはホーム画面に表示されます。</p>
             </section>
           </div>
-
         </>
       )}
     </section>

@@ -13,6 +13,7 @@ import FolderCopyIcon from '@mui/icons-material/FolderCopy';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import TrendingDownIcon from '@mui/icons-material/TrendingDown';
 import BarChartIcon from '@mui/icons-material/BarChart';
+
 interface DailyTask {
   is_done: boolean;
   week_number?: number;
@@ -42,7 +43,6 @@ interface Achievement {
 interface BarChartProps {
   data: WeekData[];
 }
-
 
 function getIsoWeek(date: Date): number {
   const target = new Date(date.valueOf());
@@ -194,7 +194,7 @@ export function ResultsPage() {
   const trend = currentWeekPct - prevWeekPct;
 
   return (
-    <section className="grid gap-5 font-['Plus_Jakarta_Sans',sans-serif] pb-24">
+    <section className="grid gap-6 font-['Plus_Jakarta_Sans',sans-serif] pb-24">
       <section className="bg-[#0f172a] rounded-[20px] p-[24px] text-white relative overflow-hidden shadow-[0_4px_24px_rgba(0,0,0,0.18)]">
         <div className="relative z-10">
           <div className="inline-flex items-center px-3 py-1 bg-[#13ec37]/15 border border-[#13ec37]/30 rounded-full text-[10px] font-bold tracking-[0.08em] uppercase text-[#13ec37] mb-3">
@@ -217,29 +217,33 @@ export function ResultsPage() {
         <div className="absolute -bottom-2 -left-2 w-[80px] h-[80px] bg-[#13ec37]/5 rounded-full blur-[20px] z-0" />
       </section>
 
-
-      <section className="bg-white rounded-[20px] border border-[#e8ede8] p-5 shadow-[0_1px_4px_rgba(0,0,0,0.05)]">
-        <div className="flex justify-between items-center mb-4">
-          <div className="text-2xl text-center font-normal tracking-[0.1em] ml-12 m-2 tracking-[0.1em] uppercase"><BarChartIcon/> 週間達成率</div>
-          <div className="flex gap-1.5">
-            {[["4w", "4週"], ["7w", "7週"]].map(([key, label]) => (
-              <button 
-                key={key} 
-                onClick={() => setPeriod(key as "4w" | "7w")} 
-                className={`text-[11px] px-3 py-1 rounded-full font-bold transition-colors border ${
-                  period === key 
-                    ? "bg-[#13ec37]/10 border-[#13ec37]/30 text-[#13ec37]" 
-                    : "bg-transparent border-[#e8ede8] text-[#64748b]"
-                }`}
-              >
-                {label}
-              </button>
-            ))}
+      <section className="bg-white rounded-[20px] border border-[#e8ede8] p-6 shadow-[0_1px_4px_rgba(0,0,0,0.05)]">
+        <div className="flex flex-col gap-4 mb-6">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-2 text-[#0f1f10]">
+              <BarChartIcon />
+              <h3 className="text-lg font-bold tracking-wider uppercase m-0">週間達成率</h3>
+            </div>
+            <div className="flex gap-2">
+              {[["4w", "4週"], ["7w", "7週"]].map(([key, label]) => (
+                <button 
+                  key={key} 
+                  onClick={() => setPeriod(key as "4w" | "7w")} 
+                  className={`text-[12px] px-4 py-1.5 rounded-full font-bold transition-all border ${
+                    period === key 
+                      ? "bg-[#13ec37]/10 border-[#13ec37]/30 text-[#13ec37]" 
+                      : "bg-transparent border-[#e8ede8] text-[#64748b] hover:bg-gray-50"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
         <BarChart data={shownData} />
         
-        <div className="mt-3.5 p-3 flex items-center gap-2 bg-[#13ec37]/10 border border-[#13ec37]/30 rounded-xl text-[12px] text-[#0fbf2c] font-normal">
+        <div className="mt-5 p-3.5 flex items-center gap-2.5 bg-[#13ec37]/10 border border-[#13ec37]/30 rounded-xl text-[13px] text-[#0fbf2c] font-bold">
           {trend >= 0 ? (
             <>
               <ArrowCircleUpIcon fontSize="small" />
@@ -254,50 +258,79 @@ export function ResultsPage() {
         </div>
       </section>
 
-      <section className="bg-white rounded-[20px] border border-[#e8ede8] p-5 shadow-[0_1px_4px_rgba(0,0,0,0.05)]">
-        <div className="text-2xl text-center m-4 font-normal tracking-[0.1em] uppercase mb-4"><MilitaryTechIcon/> 累計達成</div>
-        <div className="grid grid-cols-2 gap-3">
+      <section className="bg-white rounded-[20px] border border-[#e8ede8] p-6 shadow-[0_1px_4px_rgba(0,0,0,0.05)]">
+        <div className="flex items-center gap-2 text-[#0f1f10] mb-6">
+          <MilitaryTechIcon />
+          <h3 className="text-lg font-bold tracking-wider uppercase m-0">累計達成</h3>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
           {achievements.map((a, i) => (
-            <div key={i} className="bg-[#f6f8f6] border border-[#e8ede8] rounded-2xl p-4">
-              <div className="text-[22px] mb-1.5">{a.icon}</div>
-              <div className="text-[18px] font-extrabold text-[#0f1f10] leading-none">{a.value}</div>
-              <div className="text-[11px] font-bold text-[#64748b] mt-1">{a.label}</div>
-              <div className="text-[10px] text-[#64748b] mt-0.5">{a.sub}</div>
+            <div key={i} className="bg-[#f8faf8] border border-[#e8ede8] rounded-2xl p-4 flex flex-col items-center text-center">
+              <div className="text-[24px] mb-2">{a.icon}</div>
+              <div className="text-[20px] font-black text-[#0f1f10] leading-tight mb-1">{a.value}</div>
+              <div className="text-[12px] font-bold text-[#64748b]">{a.label}</div>
+              <div className="text-[10px] text-[#94a3b8] mt-0.5">{a.sub}</div>
             </div>
           ))}
         </div>
       </section>
 
-      <section className="bg-white rounded-[20px] border border-[#e8ede8] p-5 shadow-[0_1px_4px_rgba(0,0,0,0.05)]">
-        <div className="text-2xl text-center m-4 font-normal tracking-[0.1em] uppercase mb-4"><FolderCopyIcon/> カテゴリ別達成率</div>
-        {categoryData.length > 0 ? categoryData.map((c, i) => (
-          <div key={i} className={`mb-${i < categoryData.length - 1 ? '4' : '0'}`}>
-            <div className="flex justify-between mb-1.5">
-              <span className="text-[13px] font-bold text-[#0f1f10]">{c.label}</span>
-              <span className="text-[13px] font-extrabold text-[#0fbf2c]">{c.pct}%</span>
+      <section className="bg-white rounded-[20px] border border-[#e8ede8] p-6 shadow-[0_1px_4px_rgba(0,0,0,0.05)]">
+        <div className="flex items-center gap-2 text-[#0f1f10] mb-6">
+          <FolderCopyIcon />
+          <h3 className="text-lg font-bold tracking-wider uppercase m-0">カテゴリ別達成率</h3>
+        </div>
+        <div className="flex flex-col gap-5">
+          {categoryData.length > 0 ? categoryData.map((c, i) => (
+            <div key={i} className="flex flex-col gap-2">
+              <div className="flex justify-between items-end">
+                <span className="text-[14px] font-bold text-[#0f1f10]">{c.label}</span>
+                <span className="text-[15px] font-black text-[#0fbf2c]">{c.pct}%</span>
+              </div>
+              <div className="h-[10px] bg-[#f1f5f9] rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-[#13ec37] rounded-full transition-all duration-500 ease-out" 
+                  style={{ width: `${c.pct}%`, boxShadow: c.pct > 0 ? "0 0 8px rgba(19,236,55,0.4)" : "none" }} 
+                />
+              </div>
             </div>
-            <div className="h-[8px] bg-[#f1f5f9] rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-[#13ec37] rounded-full shadow-[0_0_8px_rgba(19,236,55,0.4)] transition-all duration-500" 
-                style={{ width: `${c.pct}%` }} 
-              />
+          )) : (
+            <div className="py-6 text-center text-[13px] text-[#64748b] bg-gray-50 rounded-xl border border-gray-100">
+              まだカテゴリの記録がありません。
             </div>
-          </div>
-        )) : (
-          <p className="text-[13px] text-[#64748b]">まだカテゴリの記録がありません。</p>
-        )}
+          )}
+        </div>
       </section>
 
-      <div className="flex gap-3">
-        <div className="bg-[#13ec37]/10 border border-[#13ec37]/30 rounded-[20px] p-4 flex-1">
-          <div className="text-base font-normal tracking-[0.1em] uppercase text-[#0fbf2c] mb-2"><EmojiEventsIcon/> Best Week</div>
-          <div className="text-[24px] font-extrabold text-[#13ec37]">{bestWeek ? `${bestWeek.pct}%` : "-"}</div>
-          <div className="text-[12px] text-[#0fbf2c] mt-0.5 font-bold">{bestWeek ? bestWeek.weekStr : ""}</div>
+      <div className="flex gap-4">
+        <div className="bg-[#13ec37]/10 border border-[#13ec37]/30 rounded-[20px] p-5 flex-1 flex flex-col justify-between">
+          <div className="flex items-center gap-1.5 text-[#0fbf2c] mb-3">
+            <EmojiEventsIcon fontSize="small" />
+            <span className="text-[13px] font-bold tracking-wider uppercase">Best Week</span>
+          </div>
+          <div>
+            <div className="text-[28px] font-black text-[#13ec37] leading-none mb-1">
+              {bestWeek ? `${bestWeek.pct}%` : "-"}
+            </div>
+            <div className="text-[12px] text-[#0fbf2c] font-bold">
+              {bestWeek ? bestWeek.weekStr : "データなし"}
+            </div>
+          </div>
         </div>
-        <div className="bg-white border border-[#e8ede8] rounded-[20px] p-4 flex-1 shadow-[0_1px_4px_rgba(0,0,0,0.05)]">
-          <div className="text-base font-normal tracking-[0.1em] uppercase text-[#64748b] mb-2"><TrendingDownIcon/> Worst Week</div>
-          <div className="text-[24px] font-extrabold text-[#f59e0b]">{worstWeek ? `${worstWeek.pct}%` : "-"}</div>
-          <div className="text-[12px] text-[#64748b] mt-0.5 font-bold">{worstWeek ? worstWeek.weekStr : ""}</div>
+
+        <div className="bg-white border border-[#e8ede8] rounded-[20px] p-5 flex-1 shadow-[0_1px_4px_rgba(0,0,0,0.05)] flex flex-col justify-between">
+          <div className="flex items-center gap-1.5 text-[#64748b] mb-3">
+            <TrendingDownIcon fontSize="small" />
+            <span className="text-[13px] font-bold tracking-wider uppercase">Worst Week</span>
+          </div>
+          <div>
+            <div className="text-[28px] font-black text-[#f59e0b] leading-none mb-1">
+              {worstWeek ? `${worstWeek.pct}%` : "-"}
+            </div>
+            <div className="text-[12px] text-[#64748b] font-bold">
+              {worstWeek ? worstWeek.weekStr : "データなし"}
+            </div>
+          </div>
         </div>
       </div>
     </section>
