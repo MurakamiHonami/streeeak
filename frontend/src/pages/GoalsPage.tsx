@@ -7,7 +7,6 @@ import {
   fetchGoals,
   fetchGoalTasks,
   revisionChat,
-  updateTask,
 } from "../lib/api";
 import type { DraftTask, RevisionChatMessage, TaskRevisionProposal } from "../types";
 import BackspaceIcon from '@mui/icons-material/Backspace';
@@ -20,7 +19,6 @@ export function GoalsPage() {
   const [currentSituation, setCurrentSituation] = useState("");
   const [isGoalInputActive, setIsGoalInputActive] = useState(false);
   const [activeGoalId, setActiveGoalId] = useState<number | null>(null);
-  const [dragOverDate, setDragOverDate] = useState<string | null>(null);
   const [chatInput, setChatInput] = useState("");
   const [chatHistory, setChatHistory] = useState<RevisionChatMessage[]>([]);
   const [proposals, setProposals] = useState<TaskRevisionProposal[]>([]);
@@ -164,23 +162,6 @@ export function GoalsPage() {
       });
     },
   });
-
-  const moveDailyTaskMutation = useMutation({
-    mutationFn: ({ taskId, targetDate }: { taskId: number; targetDate: string }) =>
-      updateTask(taskId, { date: targetDate }),
-    onSuccess: () => {
-      if (!activeGoalId) return;
-      queryClient.invalidateQueries({ queryKey: ["goalTasks", activeGoalId] });
-      queryClient.invalidateQueries({ queryKey: ["dailyTasks"] });
-      queryClient.invalidateQueries({ queryKey: ["weeklyDailyTasks"] });
-    },
-  });
-
-  const handleDropDailyTask = (targetDate: string, rawTaskId: string) => {
-    const taskId = Number(rawTaskId);
-    if (!Number.isFinite(taskId) || targetDate === "no-date") return;
-    moveDailyTaskMutation.mutate({ taskId, targetDate });
-  };
 
   const handleCreateGoal = (e: React.FormEvent) => {
     e.preventDefault();
@@ -471,45 +452,13 @@ export function GoalsPage() {
               {dailyTasksByDate.length > 0 && (
                 <div className="planScrollArea">
                   {dailyTasksByDate.map(([dateKey, tasks]) => (
-                    <section
-                      key={dateKey}
-                      onDragOver={(e) => {
-                        if (dateKey === "no-date") return;
-                        e.preventDefault();
-                        setDragOverDate(dateKey);
-                      }}
-                      onDragLeave={() => {
-                        if (dragOverDate === dateKey) setDragOverDate(null);
-                      }}
-                      onDrop={(e) => {
-                        e.preventDefault();
-                        setDragOverDate(null);
-                        handleDropDailyTask(dateKey, e.dataTransfer.getData("text/plain"));
-                      }}
-                      style={
-                        dragOverDate === dateKey
-                          ? { border: "1px dashed #13ec37", borderRadius: "10px", padding: "8px" }
-                          : undefined
-                      }
-                    >
+                    <section key={dateKey}>
                       <p style={{ margin: "6px 0 8px", fontSize: "13px", fontWeight: 700, color: "#334155" }}>
                         {formatDateLabel(dateKey)}
                       </p>
                       {tasks.map((task, idx) => (
-                        <div
-                          key={task.task_id || `${dateKey}-${idx}`}
-                          className="taskRow"
-                          draggable={Boolean(task.task_id && dateKey !== "no-date")}
-                          onDragStart={(e) => {
-                            if (!task.task_id) return;
-                            e.dataTransfer.setData("text/plain", String(task.task_id));
-                            e.dataTransfer.effectAllowed = "move";
-                          }}
-                          style={
-                            task.task_id && dateKey !== "no-date" ? { cursor: "grab" } : undefined
-                          }
-                        >
-                          <div style={{ width: "100%" }}>
+                        <div key={task.task_id || `${dateKey}-${idx}`} className="taskRow">
+                          <div>
                             <p>{task.title}</p>
                             {task.subtasks && task.subtasks.length > 0 && (
                               <ul className="detailTodoList">
