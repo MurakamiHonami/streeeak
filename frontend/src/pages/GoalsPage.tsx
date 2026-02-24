@@ -109,7 +109,7 @@ export function GoalsPage() {
   const dailyTasksByDate = useMemo(() => {
     const groups = new Map<string, DisplayTask[]>();
     for (const task of dailyTasks) {
-      const key = task.date ?? "no-date";
+      const key = task.note ?? "no-date";
       if (!groups.has(key)) {
         groups.set(key, []);
       }

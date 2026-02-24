@@ -43,6 +43,7 @@ export function HomePage() {
     ? tasks.filter(task => task.goal_id === currentGoalId)
     : [];
 
+  console.log(tasks)
   const doneCount = filteredTasks.filter((task) => task.is_done).length;
   const firstPendingId = filteredTasks.find((task) => !task.is_done)?.id;
   const doneRate = filteredTasks.length ? Math.round((doneCount / filteredTasks.length) * 100) : 0;
