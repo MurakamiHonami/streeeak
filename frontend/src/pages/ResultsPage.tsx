@@ -37,7 +37,6 @@ export function ResultsPage() {
           <div key={task.id} className="taskRow flex flex-col">
             <div>
               <p>{task.title}</p>
-              {/* <small>タグ: {task.tags ?? "なし"} / メモ: {task.note ?? "なし"}</small> */}
             </div>
             <p className="comp">{task.is_done ? "完了" : "未完了"}</p>
           </div>
