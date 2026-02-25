@@ -1,8 +1,11 @@
 import { useState, useEffect, useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { createPost, fetchPosts, fetchRanking, getAuthSession, appContext, fetchDailyTasks } from "../lib/api";
-import { Dialog, DialogContent, IconButton, Fade } from "@mui/material";
+import { 
+  createPost, fetchPosts, fetchRanking, getAuthSession, 
+  appContext, fetchDailyTasks, fetchUser, updateAutoPostTime, togglePostLike, deletePost
+} from "../lib/api";
+import { Dialog, DialogContent, IconButton, Fade, CircularProgress } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import { FriendsDialogContent } from "../components/FriendsDialogContent";
@@ -10,6 +13,11 @@ import MilitaryTechIcon from '@mui/icons-material/MilitaryTech';
 import ViewTimelineIcon from '@mui/icons-material/ViewTimeline';
 import ArrowCircleLeftIcon from '@mui/icons-material/ArrowCircleLeft';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
+import FavoriteIcon from '@mui/icons-material/Favorite';
+import StarsIcon from '@mui/icons-material/Stars';
+import SendIcon from '@mui/icons-material/Send';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 
 export function SharePage() {
   const navigate = useNavigate();
@@ -47,6 +55,7 @@ export function SharePage() {
     }
   }, [navigate]);
 
+  const { data: userProfile } = useQuery({ queryKey: ["user"], queryFn: fetchUser });
   const posts = useQuery({ queryKey: ["posts"], queryFn: fetchPosts });
   const ranking = useQuery({ queryKey: ["ranking", "social"], queryFn: () => fetchRanking(50) });
   const dailyTasks = useQuery({ queryKey: ["dailyTasks", appContext.today], queryFn: fetchDailyTasks });
@@ -57,16 +66,85 @@ export function SharePage() {
   const doneRate = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0;
 
   useEffect(() => {
+    if (userProfile?.auto_post_time && !isLocked) {
+      const formatted = userProfile.auto_post_time.slice(0, 5);
+      setPostTime(formatted);
+      setTempTime(formatted);
+    }
+  }, [userProfile?.auto_post_time, isLocked]);
+
+  useEffect(() => {
     if (dailyTasks.data) {
       setAchieved(totalCount > 0 ? (doneCount / totalCount).toFixed(2) : "0");
     }
   }, [doneCount, totalCount, dailyTasks.data]);
+
+  const updateTimeMutation = useMutation({
+    mutationFn: updateAutoPostTime,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["user"] }),
+  });
 
   const createMutation = useMutation({
     mutationFn: createPost,
     onSuccess: () => {
       setComment("");
       localStorage.removeItem("streeeak_draft_comment");
+      queryClient.invalidateQueries({ queryKey: ["posts"] });
+    },
+  });
+
+  const toggleLikeMutation = useMutation({
+    mutationFn: togglePostLike,
+    onMutate: async (postId) => {
+      await queryClient.cancelQueries({ queryKey: ["posts"] });
+      const previousPosts = queryClient.getQueryData(["posts"]);
+      
+      queryClient.setQueryData(["posts"], (old: any) => {
+        if (!old) return old;
+        return old.map((p: any) => {
+          if (p.id === postId) {
+            const isLiked = !p.is_liked_by_you;
+            return {
+              ...p,
+              is_liked_by_you: isLiked,
+              likes_count: p.likes_count + (isLiked ? 1 : -1)
+            };
+          }
+          return p;
+        });
+      });
+      return { previousPosts };
+    },
+    onError: (err, variables, context) => {
+      if (context?.previousPosts) {
+        queryClient.setQueryData(["posts"], context.previousPosts);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["posts"] });
+    },
+  });
+
+  // 削除用のミューテーション（滑らかに消える）
+  const deleteMutation = useMutation({
+    mutationFn: deletePost,
+    onMutate: async (postId) => {
+      await queryClient.cancelQueries({ queryKey: ["posts"] });
+      const previousPosts = queryClient.getQueryData(["posts"]);
+      
+      // API完了を待たずにUIから即座に消す（オプティミスティック更新）
+      queryClient.setQueryData(["posts"], (old: any) => {
+        if (!old) return old;
+        return old.filter((p: any) => p.id !== postId);
+      });
+      return { previousPosts };
+    },
+    onError: (err, variables, context) => {
+      if (context?.previousPosts) {
+        queryClient.setQueryData(["posts"], context.previousPosts);
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["posts"] });
     },
   });
@@ -80,6 +158,8 @@ export function SharePage() {
     localStorage.setItem("streeeak_post_time", newTime);
     localStorage.setItem("streeeak_temp_post_time", newTime);
     localStorage.setItem("streeeak_post_deadline_lock", lockUntil.toString());
+    
+    updateTimeMutation.mutate(newTime);
   };
 
   useEffect(() => {
@@ -135,6 +215,12 @@ export function SharePage() {
         }
         .animate-fade-in-up {
           animation: fadeInUpSoft 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        .bounce-transition {
+          transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .post-card {
+          transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
         }
       `}</style>
 
@@ -252,11 +338,17 @@ export function SharePage() {
                 </div>
                 
                 <button
-                  className="w-full bg-[#13ec37] text-[#0f1f10] px-6 py-3 rounded-xl text-[14px] font-bold shadow-[0_4px_16px_rgba(19,236,55,0.25)] border-none transition-all duration-300 hover:scale-[1.02] active:scale-95 cursor-pointer disabled:opacity-50 mt-1"
+                  className="relative flex justify-center items-center h-[48px] w-full bg-[#13ec37] text-[#0f1f10] rounded-xl text-[14px] font-bold shadow-[0_4px_16px_rgba(19,236,55,0.25)] border-none transition-all duration-300 hover:shadow-[0_6px_20px_rgba(19,236,55,0.35)] hover:-translate-y-0.5 active:scale-95 active:translate-y-0 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:translate-y-0 mt-1 overflow-hidden group"
                   onClick={() => createMutation.mutate({ comment, achieved: Number(achieved) })}
                   disabled={!comment || createMutation.isPending}
                 >
-                  {createMutation.isPending ? "Posting..." : "Share Now"}
+                  <div className={`absolute inset-0 flex items-center justify-center transition-all duration-300 ease-in-out ${createMutation.isPending ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
+                    <CircularProgress size={24} sx={{ color: '#0f1f10' }} />
+                  </div>
+                  <div className={`flex items-center justify-center gap-2 transition-all duration-300 ease-in-out ${createMutation.isPending ? 'opacity-0 -translate-y-8' : 'opacity-100 translate-y-0'}`}>
+                    <SendIcon fontSize="small" className="transition-transform duration-700" />
+                    <span>Share Now</span>
+                  </div>
                 </button>
               </div>
             </div>
@@ -264,30 +356,54 @@ export function SharePage() {
             <div className="grid gap-3">
               <h3 className="text-[11px] font-bold text-[#64748b] uppercase tracking-[0.1em] m-0 mb-1 px-1">Live Feed</h3>
               {posts.data?.length ? (
-                posts.data.map((post) => {
+                posts.data.map((post: any) => {
                   const isYou = post.user_id === appContext.userId;
                   const pct = Math.round(post.achieved * 100);
                   const isPerfect = pct === 100;
+                  const initial = post.user_name ? post.user_name[0] : "U";
+                  const displayName = post.user_name || `User ${post.user_id}`;
+                  const isDeleting = deleteMutation.isPending && deleteMutation.variables === post.id;
                   
                   return (
-                    <div key={post.id} className={`bg-white rounded-[20px] p-4 shadow-[0_1px_4px_rgba(0,0,0,0.05)] border ${
-                      isYou ? 'border-[#13ec37]/30 bg-[#13ec37]/5' : 'border-[#e8ede8]'
-                    }`}>
+                    <div 
+                      key={post.id} 
+                      className={`post-card bg-white rounded-[20px] p-4 shadow-[0_1px_4px_rgba(0,0,0,0.05)] border ${
+                        isYou ? 'border-[#13ec37]/30 bg-[#13ec37]/5' : 'border-[#e8ede8]'
+                      } ${isDeleting ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}
+                    >
                       <div className="flex items-center gap-3 mb-3">
                         <div className={`w-12 h-12 rounded-full flex items-center justify-center text-[16px] font-bold shrink-0 ${
                           isYou ? 'border-[2px] border-[#13ec37] bg-[#13ec37]/10 text-[#0fbf2c]' : 'border-[2px] border-[#e8ede8] bg-[#f1f5f9] text-[#64748b]'
                         }`}>
-                          {post.user_id || "U"}
+                          {initial}
                         </div>
                         <div className="flex-1">
-                          <div className={`text-[14px] font-bold ${isYou ? 'text-[#0fbf2c]' : 'text-[#0f1f10]'}`}>
-                            {post.user_id}{isYou && " 🌟"}
+                          <div className={`flex items-center text-[14px] font-bold ${isYou ? 'text-[#0fbf2c]' : 'text-[#0f1f10]'}`}>
+                            {displayName}
+                            {isYou && <StarsIcon sx={{ fontSize: 16, ml: 0.5 }} />}
                           </div>
-                          <div className="text-[11px] text-[#64748b] mt-0.5">{post.date}</div>
+                          <div className="text-[11px] text-[#64748b] mt-0.5">{new Date(post.created_at).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
                         </div>
-                        <span className={`text-[18px] font-extrabold ${isPerfect ? 'text-[#13ec37]' : 'text-[#f59e0b]'}`}>
-                          {pct}%
-                        </span>
+                        <div className="flex flex-col gap-2 items-end">
+                          <div>
+                            {isYou && (
+                              <button
+                              onClick={() => {
+                                  if (window.confirm("この投稿を削除しますか？")) {
+                                    deleteMutation.mutate(post.id);
+                                  }
+                                }}
+                                disabled={isDeleting}
+                                className="flex items-center gap-1 px-1.5 py-1.5 rounded-full text-[12px] font-bold transition-all duration-300 cursor-pointer bg-white border border[#64748b]/30 text-[#64748b] hover:bg-[#13ec37]/10 active:scale-95 disabled:opacity-50"
+                              >
+                                <DeleteOutlineIcon fontSize="small" sx={{color:"#64748b"}}/>
+                              </button>
+                            )}
+                          </div>
+                          <span className={`text-[18px] font-extrabold ${isPerfect ? 'text-[#13ec37]' : 'text-[#f59e0b]'}`}>
+                            {pct}%
+                          </span>
+                        </div>
                       </div>
                       <div className="h-[8px] bg-[#f1f5f9] rounded-full overflow-hidden mb-3">
                         <div 
@@ -296,6 +412,31 @@ export function SharePage() {
                         />
                       </div>
                       <p className="text-[13px] m-0 leading-relaxed text-[#0f1f10]">{post.comment}</p>
+                      
+                      <div className="mt-3 pt-3 border-t border-[#e8ede8]/50 flex justify-end items-center">
+                        <button
+                          onClick={() => toggleLikeMutation.mutate(post.id)}
+                          disabled={toggleLikeMutation.isPending}
+                          className={`relative flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[13px] font-bold transition-all duration-300 cursor-pointer outline-none ${
+                            post.is_liked_by_you 
+                              ? 'bg-[#13ec37]/10 text-[#13ec37] shadow-[0_2px_8px_rgba(239,75,83,0.15)] border border-transparent' 
+                              : 'bg-white border border-[#e8ede8] text-[#64748b] hover:bg-gray-50'
+                          }`}
+                        >
+                          <div className="relative flex items-center justify-center w-5 h-5">
+                            <FavoriteIcon 
+                              fontSize="small" 
+                              className={`absolute bounce-transition ${post.is_liked_by_you ? 'opacity-100 scale-100' : 'opacity-0 scale-50'}`} 
+                            />
+                            <FavoriteBorderIcon 
+                              fontSize="small" 
+                              className={`absolute bounce-transition ${post.is_liked_by_you ? 'opacity-0 scale-50' : 'opacity-100 scale-100'}`} 
+                              sx={{color: "#13ec37"}}
+                            />
+                          </div>
+                          <span>{post.likes_count || 0}</span>
+                        </button>
+                      </div>
                     </div>
                   );
                 })
@@ -333,9 +474,10 @@ export function SharePage() {
                     
                     <div className="flex-1">
                       <div className="flex justify-between items-end mb-1.5">
-                        <span className={`text-[14px] font-bold ${isYou ? 'text-[#0fbf2c]' : 'text-[#0f1f10]'}`}>
-                          {r.user_name}{isYou && <ArrowCircleLeftIcon fontSize="small" className="ml-1 opacity-70"/>}
-                        </span>
+                        <div className={`flex items-center text-[14px] font-bold ${isYou ? 'text-[#0fbf2c]' : 'text-[#0f1f10]'}`}>
+                          {r.user_name}
+                          {isYou && <StarsIcon sx={{ fontSize: 16, ml: 0.5 }} />}
+                        </div>
                       </div>
                       <div className="h-[8px] bg-[#f1f5f9] rounded-full overflow-hidden">
                         <div 

@@ -4,11 +4,10 @@ from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.models.friendship import Friendship
-from app.models.post import Post
+from app.models.post import Post, PostLike
 from app.schemas.post import PostCreate, PostRead, PostUpdate
 
 router = APIRouter(prefix="/posts", tags=["posts"])
-
 
 @router.post("", response_model=PostRead, status_code=status.HTTP_201_CREATED)
 def create_post(payload: PostCreate, db: Session = Depends(get_db)):
@@ -18,7 +17,6 @@ def create_post(payload: PostCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(post)
     return post
-
 
 @router.get("", response_model=list[PostRead])
 def list_posts(
@@ -32,14 +30,43 @@ def list_posts(
         stmt = stmt.where(Post.group_id == group_id)
     if user_id is not None:
         friend_ids = list(
-            db.scalars(
-                select(Friendship.friend_id).where(Friendship.user_id == user_id)
-            )
+            db.scalars(select(Friendship.friend_id).where(Friendship.user_id == user_id))
         )
         visible_ids = [user_id, *friend_ids]
         stmt = stmt.where(Post.user_id.in_(visible_ids))
-    return list(db.scalars(stmt.order_by(Post.created_at.desc())))
+        
+    posts = list(db.scalars(stmt.order_by(Post.created_at.desc())))
+    
+    results = []
+    for p in posts:
+        pr = PostRead.model_validate(p)
+        pr.user_name = p.user.name if p.user else None
+        pr.likes_count = len(p.likes)
+        pr.is_liked_by_you = any(like.user_id == user_id for like in p.likes) if user_id else False
+        results.append(pr)
+        
+    return results
 
+@router.post("/{post_id}/like", response_model=PostRead)
+def toggle_like(post_id: int, user_id: int, db: Session = Depends(get_db)):
+    post = db.get(Post, post_id)
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+    
+    like = db.scalar(select(PostLike).where(PostLike.post_id == post_id, PostLike.user_id == user_id))
+    if like:
+        db.delete(like)
+    else:
+        db.add(PostLike(post_id=post_id, user_id=user_id))
+        
+    db.commit()
+    db.refresh(post)
+    
+    pr = PostRead.model_validate(post)
+    pr.user_name = post.user.name if post.user else None
+    pr.likes_count = len(post.likes)
+    pr.is_liked_by_you = not bool(like)
+    return pr
 
 @router.put("/{post_id}", response_model=PostRead)
 def update_post(post_id: int, payload: PostUpdate, db: Session = Depends(get_db)):
@@ -51,7 +78,6 @@ def update_post(post_id: int, payload: PostUpdate, db: Session = Depends(get_db)
     db.commit()
     db.refresh(post)
     return post
-
 
 @router.delete("/{post_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_post(post_id: int, db: Session = Depends(get_db)):

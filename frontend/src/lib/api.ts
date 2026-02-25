@@ -268,3 +268,26 @@ export async function fetchAllDailyTasks() {
   });
   return res.data;
 }
+export async function fetchUser() {
+  const userId = getCurrentUserId();
+  const res = await apiClient.get(`/users/${userId}`);
+  return res.data;
+}
+
+export async function updateAutoPostTime(timeStr: string) {
+  const userId = getCurrentUserId();
+  const res = await apiClient.put(`/users/${userId}`, { auto_post_time: timeStr });
+  return res.data;
+}
+
+export async function togglePostLike(postId: number) {
+  const userId = getCurrentUserId();
+  const res = await apiClient.post(`/posts/${postId}/like`, {}, {
+    params: { user_id: userId }
+  });
+  return res.data;
+}
+
+export async function deletePost(postId: number) {
+  await apiClient.delete(`/posts/${postId}`);
+}
