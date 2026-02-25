@@ -12,7 +12,7 @@ import { fetchUser, fetchFriends, appContext, apiClient } from '../lib/api';
 import { loadStripe } from '@stripe/stripe-js';
 import { EmbeddedCheckoutProvider, EmbeddedCheckout } from '@stripe/react-stripe-js';
 
-const stripePromise = loadStripe("pk_test_51T4d6tHoMKhPTbay7pZSDBC7NSEaax2xLfvmKXGHoMKbEXKpmQij1QPIiZbRapcZEs4SfBwkhAMJlqVDlpCyRbHB00Sa9heYfG");
+const stripePromise = loadStripe("pk_live_51T4d6fHu8x2kEWKOkL0KdL07M9woIYFgNDMLajHjhCCjLegmX0IpxHym0XE4nFskQxXXpm63Nm1qRMpijKlpUmIC00AxYOXrNt");
 
 interface SettingsProps {
   open: boolean;

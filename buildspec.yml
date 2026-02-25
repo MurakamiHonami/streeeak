@@ -21,6 +21,7 @@ phases:
       - echo "GEMINI_API_KEY=$GEMINI_API_KEY" >> backend/.env
       - echo "DATABASE_URL=$DATABASE_URL" >> backend/.env
       - echo "SECRET_KEY=$SECRET_KEY" >> backend/.env
+      - echo "STRIPE_API_KEY=$STRIPE_API_KEY" >> backend/.env
       - echo "ENV=local" >> backend/.env
       
       - echo "ENVIRONMENT=local" >> backend/.env
