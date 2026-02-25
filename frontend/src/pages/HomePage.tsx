@@ -109,16 +109,7 @@ export function HomePage() {
 
   return (
     <section className="page">
-      <section className="visionCard">
-        <p className="chip">Long-term Vision</p>
-        <h2>{selectedGoal ? selectedGoal.title : "長期目標が未設定です"}</h2>
-        <p className="mutedText">今日の達成率: {doneRate}%</p>
-        <div className="progressTrack">
-          <div className="progressFill" style={{ width: `${doneRate}%` }} />
-        </div>
-      </section>
-      
-      <Box sx={{ minWidth: 120, mt: 2 }}>
+            <Box sx={{ minWidth: 120, mt: 2 }}>
         <FormControl
           fullWidth
           sx={{
@@ -145,6 +136,14 @@ export function HomePage() {
           </Select>
         </FormControl>
       </Box>
+      <section className="visionCard">
+        <p className="chip">Long-term Vision</p>
+        <h2>{selectedGoal ? selectedGoal.title : "長期目標が未設定です"}</h2>
+        <p className="mutedText">今日の達成率: {doneRate}%</p>
+        <div className="progressTrack">
+          <div className="progressFill" style={{ width: `${doneRate}%` }} />
+        </div>
+      </section>
 
       <div className="statsGrid">
         <div className="statCard">

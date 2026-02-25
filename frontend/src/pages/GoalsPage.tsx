@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { SetStateAction, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "react-router-dom";
 import Box from "@mui/material/Box";
 import FormControl from "@mui/material/FormControl";
+import Dialog from "@mui/material/Dialog";
+import Fade from "@mui/material/Fade";
 import InputLabel from "@mui/material/InputLabel";
 import MenuItem from "@mui/material/MenuItem";
 import Select, { type SelectChangeEvent } from "@mui/material/Select";
@@ -659,7 +661,7 @@ export function GoalsPage() {
               <DatePicker
                 label="期限を選択"
                 value={deadline ? dayjs(deadline) : null}
-                onChange={(newValue) => {
+                onChange={(newValue: dayjs.Dayjs | null) => {
                   setDeadline(newValue && newValue.isValid() ? newValue.format("YYYY-MM-DD") : "");
                 }}
                 disablePast
@@ -673,6 +675,22 @@ export function GoalsPage() {
                 }}
               />
             </LocalizationProvider>
+            {breakdownMutation.isPending ? (
+              <div className="flex flex-col items-center justify-center mt-10 mb-4">
+                <div className="relative">
+                  <div className="absolute inset-0 rounded-full bg-[#13ec37] opacity-20 animate-ping"></div>
+                  <img 
+                    src="/loading_panda.png" 
+                    className="w-20 h-20 drop-shadow-lg relative z-10" 
+                    alt="Loading Panda"
+                    style={{ animation: 'spin 2s linear infinite' }}
+                  />
+                </div>
+                <p className="mt-4 text-sm font-extrabold text-[#0fbf2c] tracking-widest" style={{ animation: 'pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite' }}>
+                  考え中...
+                </p>
+              </div>
+            ): (
             <div className="relative inline-flex flex-col items-center mt-14">
               <span
                 className={[
@@ -694,7 +712,7 @@ export function GoalsPage() {
                   : "僕と相談しながら決めよう!"}
               </span>
               <img src="/panda.png" alt="Mentor Panda" className="h-20 object-contain drop-shadow-sm" />
-            </div>
+            </div>)}
             {hasGoalAndDeadline && (
               <textarea
                 value={currentSituation}
@@ -1197,53 +1215,52 @@ export function GoalsPage() {
             </div>
             )}
           </div>
-          {isDeleteConfirmOpen && (
-            <div
-              style={{
-                position: "fixed",
-                inset: 0,
-                background: "rgba(15, 23, 42, 0.45)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                zIndex: 1000,
-              }}
-            >
-              <div
-                style={{
-                  width: "min(320px, calc(100vw - 32px))",
-                  background: "#fff",
-                  borderRadius: "14px",
-                  border: "1px solid #e2e8f0",
-                  padding: "16px",
-                  display: "grid",
-                  gap: "12px",
-                }}
-              >
-                <p style={{ margin: 0, fontWeight: 700, color: "#0f172a" }}>本当に削除しますか？</p>
-                <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px" }}>
-                  <button
-                    type="button"
-                    onClick={() => setIsDeleteConfirmOpen(false)}
-                    style={{ background: "#e2e8f0", color: "#0f172a", width: "auto", margin: 0 }}
-                  >
-                    いいえ
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!activeGoalId) return;
-                      setIsDeleteConfirmOpen(false);
-                      deleteMutation.mutate(activeGoalId);
-                    }}
-                    style={{ background: "#dc2626", color: "#fff", width: "auto", margin: 0 }}
-                  >
-                    はい
-                  </button>
-                </div>
+          <Dialog
+            open={isDeleteConfirmOpen}
+            onClose={() => setIsDeleteConfirmOpen(false)}
+            TransitionComponent={Fade}
+            transitionDuration={{ enter: 400, exit: 300 }}
+            PaperProps={{
+              sx: {
+                width: "min(320px, calc(100vw - 32px))",
+                background: "#fff",
+                borderRadius: "14px",
+                border: "1px solid #e2e8f0",
+                padding: "16px",
+                margin: "16px",
+                boxShadow: "0 10px 40px rgba(0,0,0,0.1)",
+              }
+            }}
+            slotProps={{
+              backdrop: {
+                sx: { backgroundColor: "rgba(15, 23, 42, 0.45)" }
+              }
+            }}
+          >
+            <div style={{ display: "grid", gap: "12px" }}>
+              <p style={{ margin: 0, fontWeight: 700, color: "#0f172a" }}>本当に削除しますか？</p>
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px" }}>
+                <button
+                  type="button"
+                  onClick={() => setIsDeleteConfirmOpen(false)}
+                  style={{ background: "#e2e8f0", color: "#0f172a", width: "auto", margin: 0 }}
+                >
+                  いいえ
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!activeGoalId) return;
+                    setIsDeleteConfirmOpen(false);
+                    deleteMutation.mutate(activeGoalId);
+                  }}
+                  style={{ background: "#dc2626", color: "#fff", width: "auto", margin: 0 }}
+                >
+                  はい
+                </button>
               </div>
             </div>
-          )}
+          </Dialog>
         </>
       )}
     </section>
