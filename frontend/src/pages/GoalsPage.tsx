@@ -15,9 +15,18 @@ import {
   revisionChat,
   updateTask,
 } from "../lib/api";
-import type { DraftTask, RevisionChatMessage, TaskRevisionProposal } from "../types";
 
-type DisplayTask = DraftTask & { date?: string; month?: number; week_number?: number };
+import type { 
+  DraftTask, 
+  RevisionChatMessage, 
+  TaskRevisionProposal,
+  TaskType,
+  Task,
+  Goal,
+  Post,
+  RankingItem,
+  RevisionChatResponse 
+} from "../types";
 type PlanTab = "yearly" | "monthly" | "weekly" | "daily";
 
 export function GoalsPage() {
@@ -184,7 +193,7 @@ export function GoalsPage() {
       (currentWeekNumber === null || t.week_number === currentWeekNumber || t.week_number == null),
   );
   const dailyTasksByDate = useMemo(() => {
-    const groups = new Map<string, DisplayTask[]>();
+    const groups = new Map<string, DraftTask[]>();
     for (const task of dailyTasks) {
       const key = task.date ?? "no-date";
       if (!groups.has(key)) {
@@ -651,6 +660,23 @@ export function GoalsPage() {
               onFocus={() => setIsGoalInputActive(true)}
               onBlur={() => setIsGoalInputActive(false)}
             />
+            {breakdownMutation.isPending ? (
+              <div className="flex flex-col items-center justify-center mt-6 mb-4">
+                <div className="relative">
+                  <div className="absolute inset-0 rounded-full bg-[#13ec37] opacity-20 animate-ping"></div>
+                  <img 
+                    src="/loading_panda.png" 
+                    className="w-20 h-20 drop-shadow-lg relative z-10" 
+                    alt="Loading Panda"
+                    style={{ animation: 'spin 2s linear infinite' }}
+                  />
+                </div>
+                <p className="mt-4 text-sm font-extrabold text-[#0fbf2c] tracking-widest" style={{ animation: 'pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite' }}>
+                  考え中...
+                </p>
+              </div>
+            ) : (
+
             <div className="relative inline-flex flex-col items-center mt-8">
               <span
                 className={[
@@ -673,6 +699,7 @@ export function GoalsPage() {
               </span>
               <img src="/panda.png" alt="Mentor Panda" className="h-20 object-contain drop-shadow-sm" />
             </div>
+            )}
             {hasGoalAndDeadline && (
               <textarea
                 value={currentSituation}
@@ -690,7 +717,7 @@ export function GoalsPage() {
               ) : (
                 "プランを立てる"
               )}
-            </button>
+            </button>            
             {breakdownMutation.isError && (
               <p style={{ color: "#c0392b", margin: 0 }}>
                 ブレイクダウンに失敗しました。Geminiキーまたはバックエンドを確認してください。
@@ -776,25 +803,43 @@ export function GoalsPage() {
                 </button>
               </div>
             )}
-            <div className="relative inline-flex flex-col items-center mt-10">
-              <span
-                className={[
-                  "whitespace-nowrap rounded-lg bg-gray-800 mt-1 px-3 py-1.5",
-                  "text-sm text-white shadow-md absolute -top-10 left-1/2",
-                  "-translate-x-1/2 after:content-[''] after:absolute",
-                  "after:top-full after:left-1/2 after:-translate-x-1/2",
-                  "after:border-[6px] after:border-transparent after:border-t-gray-800",
-                ].join(" ")}
-              >
-                {goalOptions.length === 0 ? "まず目標を作成してね！" : "修正が必要だったら言ってね！"}
-              </span>
-              <img src="/panda.png" alt="Mentor Panda" className="h-20 object-contain drop-shadow-sm" />
-            </div>
+            {revisionMutation.isPending ? (
+              <div className="flex flex-col items-center justify-center mt-6 mb-4">
+                <div className="relative">
+                  <div className="absolute inset-0 rounded-full bg-[#13ec37] opacity-20 animate-ping"></div>
+                  <img 
+                    src="/loading_panda.png" 
+                    className="w-20 h-20 drop-shadow-lg relative z-10" 
+                    alt="Loading Panda"
+                    style={{ animation: 'spin 2s linear infinite' }}
+                  />
+                </div>
+                <p className="mt-4 text-sm font-extrabold text-[#0fbf2c] tracking-widest" style={{ animation: 'pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite' }}>
+                  考え中...
+                </p>
+              </div>
+            ): (
+              <div className="relative inline-flex flex-col items-center mt-10">
+                <span
+                  className={[
+                    "whitespace-nowrap rounded-lg bg-gray-800 mt-1 px-3 py-1.5",
+                    "text-sm text-white shadow-md absolute -top-10 left-1/2",
+                    "-translate-x-1/2 after:content-[''] after:absolute",
+                    "after:top-full after:left-1/2 after:-translate-x-1/2",
+                    "after:border-[6px] after:border-transparent after:border-t-gray-800",
+                  ].join(" ")}
+                >
+                  {goalOptions.length === 0 ? "まず目標を作成してね！" : "修正が必要だったら言ってね！"}
+                </span>
+                <img src="/panda.png" alt="Mentor Panda" className="h-20 object-contain drop-shadow-sm" />
+              </div>
+            )}
             {revisionMutation.isError && (
               <p style={{ color: "#c0392b", margin: 0 }}>提案生成に失敗しました。再試行してください。</p>
             )}
           </form>
         </div>
+        
       )}
 
       {goalSectionTab === "review" && activeGoalId && goalTasks.data && (

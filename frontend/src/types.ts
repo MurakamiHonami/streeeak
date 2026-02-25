@@ -44,6 +44,9 @@ export type RankingItem = {
 };
 
 export type DraftTask = {
+  date: string | null;
+  week_number: number | null;
+  month: number | null;
   task_id: number;
   task_type: TaskType;
   title: string;

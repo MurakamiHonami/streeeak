@@ -21,9 +21,9 @@ phases:
       - echo "GEMINI_API_KEY=$GEMINI_API_KEY" >> backend/.env
       - echo "DATABASE_URL=$DATABASE_URL" >> backend/.env
       - echo "SECRET_KEY=$SECRET_KEY" >> backend/.env
-      - echo "ENV=production" >> backend/.env
+      - echo "ENV=local" >> backend/.env
       
-      - echo "ENVIRONMENT=production" >> backend/.env
+      - echo "ENVIRONMENT=local" >> backend/.env
       - echo "AWS_REGION=$AWS_REGION" >> backend/.env
       - echo "AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID" >> backend/.env
       - echo "AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY" >> backend/.env
