@@ -19,6 +19,7 @@ class UserUpdate(BaseModel):
 
 class UserRead(UserBase):
     id: int
+    is_premium: bool
     created_at: datetime
     updated_at: datetime
     auto_post_time: time | None = None

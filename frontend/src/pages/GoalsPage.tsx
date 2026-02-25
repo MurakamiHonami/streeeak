@@ -732,9 +732,18 @@ export function GoalsPage() {
               )}
             </button>            
             {breakdownMutation.isError && (
-              <p style={{ color: "#c0392b", margin: 0 }}>
-                ブレイクダウンに失敗しました。Geminiキーまたはバックエンドを確認してください。
-              </p>
+              <div style={{ marginTop: "12px", padding: "12px", background: "#fef2f2", borderRadius: "12px", border: "1px solid #fecaca" }}>
+                {(breakdownMutation.error as any)?.response?.data?.detail === "FREE_LIMIT_REACHED" ? (
+                  <p style={{ color: "#b91c1c", margin: 0, fontSize: "13px", fontWeight: "bold" }}>
+                    無料プランでの1日のブレイクダウン上限（1回）に達しました。<br/>
+                    右上の設定ボタンからプレミアム（月額300円）にアップグレードすると無制限に利用できます！
+                  </p>
+                ) : (
+                  <p style={{ color: "#b91c1c", margin: 0, fontSize: "13px", fontWeight: "bold" }}>
+                    ブレイクダウンに失敗しました。Geminiキーまたはバックエンドを確認してください。
+                  </p>
+                )}
+              </div>
             )}
           </>
         </form>
