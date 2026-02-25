@@ -6,10 +6,14 @@ import uuid
 from collections.abc import Sequence
 
 import httpx
+from fastapi import HTTPException
+from sqlalchemy import func
+from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.models.goal import Goal
 from app.models.task import TaskType
+from app.models.user import User
 from app.schemas.task import (
     BreakdownResponse,
     BreakdownTask,
@@ -201,7 +205,6 @@ def _request_gemini_breakdown(
         "gemini-1.5-flash-latest",
         "gemini-1.5-flash",
     ]
-    # 順序維持で重複除去
     model_candidates = list(dict.fromkeys(model_candidates))
     base_versions = ["v1beta", "v1"]
 
@@ -420,6 +423,8 @@ def generate_revision_suggestions(
 
 
 def build_breakdown(
+    db: Session,
+    current_user: User,
     goal: Goal,
     months: int,
     weeks_per_month: int,
@@ -427,12 +432,19 @@ def build_breakdown(
     yearly_milestones: int = 0,
     current_situation: str | None = None,
 ) -> BreakdownResponse:
+    if not getattr(current_user, 'is_premium', False):
+        today_breakdowns = db.query(Goal).filter(
+            Goal.user_id == current_user.id,
+            func.date(Goal.created_at) == dt.date.today()
+        ).count()
+        if today_breakdowns > 1:
+            raise HTTPException(status_code=403, detail="FREE_LIMIT_REACHED")
+
     today = dt.date.today()
     this_week_start = _week_start(today)
     current_week = today.isocalendar().week
     current_month = today.month
 
-    # Geminiキーがない場合はフォールバックで壊れず生成する
     if settings.GEMINI_API_KEY:
         try:
             ai = _request_gemini_breakdown(
