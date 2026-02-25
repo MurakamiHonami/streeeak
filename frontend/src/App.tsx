@@ -7,6 +7,7 @@ import { GoalsPage } from "./pages/GoalsPage";
 import { HomePage } from "./pages/HomePage";
 import { ResultsPage } from "./pages/ResultsPage";
 import { SharePage } from "./pages/SharePage";
+import { Tokushoho } from "./pages/Tokushoho";
 
 import { Settings } from "./components/Settings";
 import SettingsIcon from '@mui/icons-material/Settings';
@@ -53,7 +54,7 @@ function App() {
           <div className="flex items-center gap-2">
             <img src="/sasa.png" className="sasa" alt="Streeeak mascot" />
             <div className="brandText">
-              <h1 className="headerTitle">
+              <h1 className="headerTitle" onClick={() => navigate("/")} style={{cursor: "pointer"}}>
                 Str<span className="text-[#13ec37]">eee</span>ak
               </h1>
             </div>
@@ -88,16 +89,23 @@ function App() {
         </header>
 
         <div className={`routeTransition ${routeDirectionClass}`} key={location.pathname}>
-          {currentUserId ? (
-            <Routes>
-              <Route path="/" element={<HomePage />} />
-              <Route path="/goals" element={<GoalsPage />} />
-              <Route path="/results" element={<ResultsPage />} />
-              <Route path="/share" element={<SharePage />} />
-            </Routes>
-          ) : (
-            <AuthPage onAuthenticated={(userId) => {setCurrentUserId(userId); navigate("/");}} />
-          )}
+          <Routes>
+            <Route path="/tokushoho" element={<Tokushoho />} />
+
+            {currentUserId ? (
+              <>
+                <Route path="/" element={<HomePage />} />
+                <Route path="/goals" element={<GoalsPage />} />
+                <Route path="/results" element={<ResultsPage />} />
+                <Route path="/share" element={<SharePage />} />
+                <Route path="*" element={<HomePage />} />
+              </>
+            ) : (
+              <>
+                <Route path="*" element={<AuthPage onAuthenticated={(userId) => {setCurrentUserId(userId); navigate("/");}} />} />
+              </>
+            )}
+          </Routes>
         </div>
       </div>
       {currentUserId ? <NavBar /> : null}
