@@ -291,3 +291,18 @@ export async function togglePostLike(postId: number) {
 export async function deletePost(postId: number) {
   await apiClient.delete(`/posts/${postId}`);
 }
+
+export async function blockUser(targetUserId: number) {
+  const res = await apiClient.post("/friendships/block", { target_user_id: targetUserId });
+  return res.data;
+}
+
+export async function unblockUser(targetUserId: number) {
+  const res = await apiClient.delete(`/friendships/block/${targetUserId}`);
+  return res.data;
+}
+
+export async function fetchBlockedUsers() {
+  const res = await apiClient.get<{ id: number; name: string; email: string }[]>("/friendships/blocks");
+  return res.data;
+}

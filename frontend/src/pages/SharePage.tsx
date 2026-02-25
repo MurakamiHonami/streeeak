@@ -5,7 +5,7 @@ import {
   createPost, fetchPosts, fetchRanking, getAuthSession, 
   appContext, fetchDailyTasks, fetchUser, updateAutoPostTime, togglePostLike, deletePost
 } from "../lib/api";
-import { Dialog, DialogContent, IconButton, Fade, CircularProgress } from "@mui/material";
+import { Dialog, DialogContent, IconButton, Fade, CircularProgress, Chip } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import { FriendsDialogContent } from "../components/FriendsDialogContent";
@@ -18,6 +18,9 @@ import FavoriteIcon from '@mui/icons-material/Favorite';
 import StarsIcon from '@mui/icons-material/Stars';
 import SendIcon from '@mui/icons-material/Send';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import FormatListBulletedIcon from '@mui/icons-material/FormatListBulleted';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import TaskAltIcon from '@mui/icons-material/TaskAlt';
 
 export function SharePage() {
   const navigate = useNavigate();
@@ -34,7 +37,8 @@ export function SharePage() {
   const [timeLockEnd, setTimeLockEnd] = useState(Number(localStorage.getItem("streeeak_post_deadline_lock")) || 0);
   const [countdownStr, setCountdownStr] = useState("");
   const [isLocked, setIsLocked] = useState(Date.now() < timeLockEnd);
-
+  const [inputMode, setInputMode] = useState<"text" | "task">("text");
+  
   const commentRef = useRef(comment);
   const achievedRef = useRef(achieved);
 
@@ -65,6 +69,36 @@ export function SharePage() {
   const totalCount = tasks.length;
   const doneRate = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0;
 
+  const [selectedTasks, setSelectedTasks] = useState<number[]>(
+      JSON.parse(localStorage.getItem("streeeak_draft_tasks") || "[]")
+  );
+
+  const tasksRef = useRef(tasks);
+  const selectedTasksRef = useRef(selectedTasks);
+
+  useEffect(() => { tasksRef.current = tasks; }, [tasks]);
+  useEffect(() => {
+    selectedTasksRef.current = selectedTasks;
+    localStorage.setItem("streeeak_draft_tasks", JSON.stringify(selectedTasks));
+  }, [selectedTasks]);
+
+  const handleTaskToggle = (taskId: number) => {
+    setSelectedTasks(prev => 
+      prev.includes(taskId) 
+        ? prev.filter(id => id !== taskId)
+        : [...prev, taskId]
+    );
+  };
+
+  const buildFinalComment = (baseComment: string, taskList: any[], selected: number[]) => {
+    if (selected.length === 0) return baseComment;
+    const taskText = taskList
+      .filter(t => selected.includes(t.id))
+      .map((t) => `✓ ${t.title}`)
+      .join('\n');
+    return baseComment ? `${taskText}\n\n${baseComment}` : taskText;
+  };
+
   useEffect(() => {
     if (userProfile?.auto_post_time && !isLocked) {
       const formatted = userProfile.auto_post_time.slice(0, 5);
@@ -88,7 +122,9 @@ export function SharePage() {
     mutationFn: createPost,
     onSuccess: () => {
       setComment("");
+      setSelectedTasks([]);
       localStorage.removeItem("streeeak_draft_comment");
+      localStorage.removeItem("streeeak_draft_tasks");
       queryClient.invalidateQueries({ queryKey: ["posts"] });
     },
   });
@@ -125,14 +161,12 @@ export function SharePage() {
     },
   });
 
-  // 削除用のミューテーション（滑らかに消える）
   const deleteMutation = useMutation({
     mutationFn: deletePost,
     onMutate: async (postId) => {
       await queryClient.cancelQueries({ queryKey: ["posts"] });
       const previousPosts = queryClient.getQueryData(["posts"]);
       
-      // API完了を待たずにUIから即座に消す（オプティミスティック更新）
       queryClient.setQueryData(["posts"], (old: any) => {
         if (!old) return old;
         return old.filter((p: any) => p.id !== postId);
@@ -187,8 +221,15 @@ export function SharePage() {
 
       if (now >= targetToday && lastPostDate !== todayStr && lastPostDate !== "pending") {
         localStorage.setItem("streeeak_last_auto_post_date", "pending");
+        
+        const finalCmt = buildFinalComment(
+          commentRef.current || "今日のタスクを完了しました！", 
+          tasksRef.current, 
+          selectedTasksRef.current
+        );
+
         createMutation.mutate(
-            { comment: commentRef.current || "今日のタスクを完了しました！", achieved: Number(achievedRef.current) },
+            { comment: finalCmt, achieved: Number(achievedRef.current) },
             {
                 onSuccess: () => {
                     localStorage.setItem("streeeak_last_auto_post_date", todayStr);
@@ -308,13 +349,57 @@ export function SharePage() {
                   自動投稿まであと: {countdownStr || "計算中..."}
                 </div>
               </div>
-
+              <div className="bg-[#f8faf8] border border-[#e8ede8] rounded-lex rounded-lg p-1 items-center gap-2 justify-center">
+                <button
+                  className={`text-[12px] font-bold transition-all rounded-lg duration-700 cursor-pointer m-2 ${
+                    inputMode === "task" ? "bg-[#13ec37]/10 text-[#0fbf2c] shadow-sm shadow-[0_4px_12px_rgba(19,236,55,0.1)]": "bg-white border-[#e8ede8] text-[#0f1f10] shadow-sm shadow-[0_4px_12px_rgba(19,236,55,0.1)]"
+                  }`}
+                  onClick={() => setInputMode(prev => prev === "task" ? "text" : "task")}
+                >
+                  <FormatListBulletedIcon fontSize="inherit" sx={{mr:0.5, mb:-0.5}}/>タスク選択
+                </button>
+                <div className={`grid transition-all duration-300 ease-in-out ${inputMode === "task" ? "grid-rows-[1fr] opacity-100 mt-1" : "grid-rows-[0fr] opacity-0 mt-0"}`}>
+                    <div className="overflow-hidden">
+                        <div className="max-h-[160px] overflow-y-auto pr-2  rounded-xl p-2 bg-[#f8faf8]">
+                            {tasks.filter(task => task.is_done).length > 0 ? (
+                                <div className="flex flex-wrap gap-2">
+                                    {tasks.filter(task => task.is_done).map(task => (
+                                        <Chip
+                                        key={task.id}
+                                        label={task.title}
+                                        onClick={() => handleTaskToggle(task.id)}
+                                        icon={selectedTasks.includes(task.id) ? <CheckCircleIcon /> : undefined}
+                                        sx={{
+                                          fontWeight: 'bold',
+                                          fontSize: '12px',
+                                          borderRadius: '8px',
+                                          backgroundColor: selectedTasks.includes(task.id) ? '#13ec37' : 'transparent',
+                                          color: selectedTasks.includes(task.id) ? '#0f1f10' : '#64748b',
+                                          border: '1px solid',
+                                          borderColor: selectedTasks.includes(task.id) ? '#13ec37' : '#e8ede8',
+                                          '&:hover': {
+                                            backgroundColor: selectedTasks.includes(task.id) ? '#0fbf2c' : '#f8faf8',
+                                          },
+                                          '& .MuiChip-icon': {
+                                            color: selectedTasks.includes(task.id) ? '#0f1f10' : 'inherit'
+                                          }
+                                        }}
+                                        />
+                                    ))}
+                                </div>
+                            ) : (
+                              <p className="text-xs text-[#64748b] text-center my-2 font-bold">今日のタスクがありません</p>
+                            )}
+                        </div>
+                    </div>
+                </div>
+              </div>
               <textarea
-                className="w-full bg-[#f6f8f6] border border-[#e8ede8] rounded-xl p-3 text-[#0f1f10] text-[14px] outline-none box-border resize-none font-['Plus_Jakarta_Sans',sans-serif] mt-1"
+                className="w-full bg-[#f6f8f6] border border-[#e8ede8] rounded-xl p-3 text-[#0f1f10] text-[14px] outline-none box-border resize-none font-['Plus_Jakarta_Sans',sans-serif] mt-1 transition-all focus:border-[#13ec37]/50"
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
-                placeholder="今日やったこと"
-                rows={2}
+                placeholder={inputMode === "task" ? "追加のコメントがあれば入力" : "今日やったこと"}
+                rows={inputMode === "task" ? 1 : 2}
               />
               
               <div className="flex flex-col gap-2 mt-2 border-t border-[#e8ede8] pt-3">
@@ -339,8 +424,11 @@ export function SharePage() {
                 
                 <button
                   className="relative flex justify-center items-center h-[48px] w-full bg-[#13ec37] text-[#0f1f10] rounded-xl text-[14px] font-bold shadow-[0_4px_16px_rgba(19,236,55,0.25)] border-none transition-all duration-300 hover:shadow-[0_6px_20px_rgba(19,236,55,0.35)] hover:-translate-y-0.5 active:scale-95 active:translate-y-0 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:translate-y-0 mt-1 overflow-hidden group"
-                  onClick={() => createMutation.mutate({ comment, achieved: Number(achieved) })}
-                  disabled={!comment || createMutation.isPending}
+                  onClick={() => {
+                    const finalComment = buildFinalComment(comment, tasks, selectedTasks);
+                    createMutation.mutate({ comment: finalComment, achieved: Number(achieved) });
+                  }}
+                  disabled={!(comment || selectedTasks.length > 0) || createMutation.isPending}
                 >
                   <div className={`absolute inset-0 flex items-center justify-center transition-all duration-300 ease-in-out ${createMutation.isPending ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
                     <CircularProgress size={24} sx={{ color: '#0f1f10' }} />
@@ -367,8 +455,8 @@ export function SharePage() {
                   return (
                     <div 
                       key={post.id} 
-                      className={`post-card bg-white rounded-[20px] p-4 shadow-[0_1px_4px_rgba(0,0,0,0.05)] border ${
-                        isYou ? 'border-[#13ec37]/30 bg-[#13ec37]/5' : 'border-[#e8ede8]'
+                      className={`bg-[#f8faf8] post-card rounded-[20px] p-4 shadow-[0_1px_4px_rgba(0,0,0,0.05)] border ${
+                        isYou ? 'border-[#13ec37]/30' : 'border-[#e8ede8]'
                       } ${isDeleting ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}
                     >
                       <div className="flex items-center gap-3 mb-3">
@@ -378,7 +466,7 @@ export function SharePage() {
                           {initial}
                         </div>
                         <div className="flex-1">
-                          <div className={`flex items-center text-[14px] font-bold ${isYou ? 'text-[#0fbf2c]' : 'text-[#0f1f10]'}`}>
+                          <div className={`flex items-center text-[14px] font-bold 'text-[#0f1f10]'}`}>
                             {displayName}
                             {isYou && <StarsIcon sx={{ fontSize: 16, ml: 0.5 }} />}
                           </div>
@@ -400,18 +488,37 @@ export function SharePage() {
                               </button>
                             )}
                           </div>
-                          <span className={`text-[18px] font-extrabold ${isPerfect ? 'text-[#13ec37]' : 'text-[#f59e0b]'}`}>
+                          <span className={`text-[18px] font-extrabold ${isPerfect ? 'text-[#13ec37]' : 'text-[#0fbf2c]'}`}>
                             {pct}%
                           </span>
                         </div>
                       </div>
                       <div className="h-[8px] bg-[#f1f5f9] rounded-full overflow-hidden mb-3">
                         <div 
-                          className={`h-full rounded-full transition-all duration-1000 ${isPerfect ? 'bg-[#13ec37] shadow-[0_0_8px_rgba(19,236,55,0.4)]' : 'bg-[#fbbf24]'}`}
+                          className={`h-full rounded-full transition-all duration-1000 ${isPerfect ? 'bg-[#13ec37] shadow-[0_0_8px_rgba(19,236,55,0.4)]' : 'bg-[#0fbf2c]'}`}
                           style={{ width: `${pct}%` }} 
                         />
                       </div>
-                      <p className="text-[13px] m-0 leading-relaxed text-[#0f1f10]">{post.comment}</p>
+                      
+                      <div className="text-[13px] m-0 leading-relaxed text-[#0f1f10]">
+                        {post.comment.split('\n').map((line: string, index: number, array: string[]) => {
+                          if (line.startsWith('✓ ') || line.startsWith('・')) {
+                            const text = line.startsWith('✓ ') ? line.substring(2) : line.substring(1);
+                            return (
+                              <div key={index} className="flex items-start gap-1 my-1">
+                                <TaskAltIcon sx={{ color: "#13ec37", fontSize: 16, mt: "2px" }} />
+                                <span className="font-bold">{text}</span>
+                              </div>
+                            );
+                          }
+                          return (
+                            <span key={index}>
+                              {line}
+                              {index < array.length - 1 && <br />}
+                            </span>
+                          );
+                        })}
+                      </div>
                       
                       <div className="mt-3 pt-3 border-t border-[#e8ede8]/50 flex justify-end items-center">
                         <button

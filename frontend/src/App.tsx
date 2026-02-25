@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Route, Routes,useLocation, useNavigate } from "react-router-dom";
+import { Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { NavBar } from "./components/NavBar";
 import { clearAuthSession, getAuthSession } from "./lib/api";
 import { AuthPage } from "./pages/AuthPage";
@@ -8,6 +8,10 @@ import { HomePage } from "./pages/HomePage";
 import { ResultsPage } from "./pages/ResultsPage";
 import { SharePage } from "./pages/SharePage";
 
+import { Settings } from "./components/Settings";
+import SettingsIcon from '@mui/icons-material/Settings';
+import IconButton from '@mui/material/IconButton';
+
 function App() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -15,6 +19,9 @@ function App() {
   const [currentUserId, setCurrentUserId] = useState<number | null>(() => {
     return getAuthSession()?.userId ?? null;
   });
+  
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
   const navOrder = ["/", "/goals", "/results", "/share"];
   const getPathRank = (path: string) => {
     const idx = navOrder.indexOf(path);
@@ -33,6 +40,12 @@ function App() {
     previousPathRef.current = location.pathname;
   }, [location.pathname]);
 
+  const handleLogout = () => {
+    clearAuthSession();
+    setCurrentUserId(null);
+    setIsSettingsOpen(false);
+  };
+
   return (
     <div className="appShell gamifiedApp">
       <div className="appContainer">
@@ -46,16 +59,31 @@ function App() {
             </div>
           </div>
           {currentUserId ? (
-            <button
-              type="button"
-              className="headerAvatar logoutBtn"
-              onClick={() => {
-                clearAuthSession();
-                setCurrentUserId(null);
-              }}
-            >
-              ログアウト
-            </button>
+            <>
+              <IconButton 
+                onClick={() => setIsSettingsOpen(true)}
+                sx={{
+                  width: 48,
+                  height: 48,
+                  bgcolor: '#eafbe9',
+                  border: '2px solid #bbf2c4',
+                  color: '#0f1f10',
+                  transition: 'all 0.3s ease',
+                  '&:hover': {
+                    bgcolor: '#d1f5d8',
+                    borderColor: '#13ec37',
+                    transform: 'scale(1.05)'
+                  }
+                }}
+              >
+                <SettingsIcon fontSize="medium" sx={{color: '#13ec37'}}/>
+              </IconButton>
+              <Settings 
+                open={isSettingsOpen} 
+                onClose={() => setIsSettingsOpen(false)} 
+                onLogout={handleLogout} 
+              />
+            </>
           ) : null}
         </header>
 
