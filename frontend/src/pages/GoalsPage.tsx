@@ -13,7 +13,9 @@ import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs from "dayjs";
 import {
   applyAcceptedRevisions,
+  createTask,
   createGoalAndBreakdown,
+  deleteTask,
   deleteGoal,
   fetchGoals,
   fetchGoalTasks,
@@ -45,6 +47,7 @@ export function GoalsPage() {
   const [draggingTaskId, setDraggingTaskId] = useState<number | null>(null);
   const [editingDailyTaskId, setEditingDailyTaskId] = useState<number | null>(null);
   const [editingDailyTitle, setEditingDailyTitle] = useState("");
+  const [recentlyAddedDailyTaskId, setRecentlyAddedDailyTaskId] = useState<number | null>(null);
   const [chatInput, setChatInput] = useState("");
   const [chatHistory, setChatHistory] = useState<RevisionChatMessage[]>([]);
   const [proposals, setProposals] = useState<TaskRevisionProposal[]>([]);
@@ -207,12 +210,36 @@ export function GoalsPage() {
       groups.get(key)!.push(task);
     }
 
+    if (recentlyAddedDailyTaskId) {
+      for (const [key, tasks] of groups.entries()) {
+        groups.set(
+          key,
+          [...tasks].sort((a, b) => {
+            if (a.task_id === recentlyAddedDailyTaskId) return -1;
+            if (b.task_id === recentlyAddedDailyTaskId) return 1;
+            return 0;
+          }),
+        );
+      }
+    }
+
     return Array.from(groups.entries()).sort(([a], [b]) => {
       if (a === "no-date") return 1;
       if (b === "no-date") return -1;
       return a.localeCompare(b);
     });
-  }, [dailyTasks]);
+  }, [dailyTasks, recentlyAddedDailyTaskId]);
+  const taskDisplayOrder = useMemo(() => {
+    const ids: number[] = [];
+    const pushId = (taskId?: number) => {
+      if (typeof taskId === "number") ids.push(taskId);
+    };
+    yearlyTasks.forEach((t) => pushId(t.task_id));
+    monthlyPlanTasks.forEach((t) => pushId(t.task_id));
+    weeklyTasks.forEach((t) => pushId(t.task_id));
+    dailyTasksByDate.forEach(([, tasks]) => tasks.forEach((t) => pushId(t.task_id)));
+    return ids;
+  }, [yearlyTasks, monthlyPlanTasks, weeklyTasks, dailyTasksByDate]);
 
   const currentDailyDateKey = useMemo(() => {
     const dated = dailyTasksByDate
@@ -331,6 +358,37 @@ export function GoalsPage() {
     },
   });
 
+  const addDailyTaskMutation = useMutation({
+    mutationFn: ({ dateKey }: { dateKey: string }) =>
+      createTask({
+        goalId: activeGoalId,
+        type: "daily",
+        title: "タスク内容を入力",
+        date: dateKey === "no-date" ? null : dateKey,
+        weekNumber: currentWeekNumber ?? null,
+      }),
+    onSuccess: (createdTask) => {
+      setRecentlyAddedDailyTaskId(createdTask.id);
+      setEditingDailyTaskId(createdTask.id);
+      setEditingDailyTitle(createdTask.title);
+      if (!activeGoalId) return;
+      queryClient.invalidateQueries({ queryKey: ["goalTasks", activeGoalId] });
+      queryClient.invalidateQueries({ queryKey: ["dailyTasks"] });
+      queryClient.invalidateQueries({ queryKey: ["weeklyDailyTasks"] });
+    },
+  });
+
+  const deleteTaskMutation = useMutation({
+    mutationFn: (taskId: number) => deleteTask(taskId),
+    onSuccess: () => {
+      if (!activeGoalId) return;
+      queryClient.invalidateQueries({ queryKey: ["goalTasks", activeGoalId] });
+      queryClient.invalidateQueries({ queryKey: ["dailyTasks"] });
+      queryClient.invalidateQueries({ queryKey: ["weeklyTasks"] });
+      queryClient.invalidateQueries({ queryKey: ["weeklyDailyTasks"] });
+    },
+  });
+
   const handleCreateGoal = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !deadline.trim() || !currentSituation.trim()) return;
@@ -365,21 +423,21 @@ export function GoalsPage() {
     currentProposalId: string,
     nextDecisionMap: Record<string, "accepted" | "rejected">,
   ) => {
-    const currentIndex = proposals.findIndex((p) => p.proposal_id === currentProposalId);
+    const currentIndex = orderedProposalIds.findIndex((id) => id === currentProposalId);
     if (currentIndex < 0) return;
 
-    for (let i = currentIndex + 1; i < proposals.length; i += 1) {
-      const next = proposals[i];
-      if (!nextDecisionMap[next.proposal_id]) {
-        requestAnimationFrame(() => scrollToProposal(next.proposal_id));
+    for (let i = currentIndex + 1; i < orderedProposalIds.length; i += 1) {
+      const nextId = orderedProposalIds[i];
+      if (!nextDecisionMap[nextId]) {
+        requestAnimationFrame(() => scrollToProposal(nextId));
         return;
       }
     }
 
     for (let i = 0; i < currentIndex; i += 1) {
-      const next = proposals[i];
-      if (!nextDecisionMap[next.proposal_id]) {
-        requestAnimationFrame(() => scrollToProposal(next.proposal_id));
+      const nextId = orderedProposalIds[i];
+      if (!nextDecisionMap[nextId]) {
+        requestAnimationFrame(() => scrollToProposal(nextId));
         return;
       }
     }
@@ -422,6 +480,21 @@ export function GoalsPage() {
     }
     return map;
   }, [proposals]);
+  const orderedProposalIds = useMemo(() => {
+    const ids: string[] = [];
+    for (const taskId of taskDisplayOrder) {
+      const proposal = proposalsByTaskId.get(taskId);
+      if (proposal && !ids.includes(proposal.proposal_id)) {
+        ids.push(proposal.proposal_id);
+      }
+    }
+    for (const proposal of proposals) {
+      if (!ids.includes(proposal.proposal_id)) {
+        ids.push(proposal.proposal_id);
+      }
+    }
+    return ids;
+  }, [taskDisplayOrder, proposalsByTaskId, proposals]);
 
   const getTaskDecision = (taskId?: number) => {
     if (!taskId) return undefined;
@@ -441,6 +514,24 @@ export function GoalsPage() {
       };
     }
     return undefined;
+  };
+
+  const renderDeleteTaskButton = (taskId?: number) => {
+    if (!taskId) return null;
+    return (
+      <div style={{ marginTop: "6px", display: "flex", justifyContent: "flex-end" }}>
+        <button
+          type="button"
+          onClick={() => {
+            if (!window.confirm("このタスクを削除しますか？")) return;
+            deleteTaskMutation.mutate(taskId);
+          }}
+          style={{ background: "#ef4444", color: "#fff", width: "auto", margin: 0, padding: "4px 8px", fontSize: "12px" }}
+        >
+          削除
+        </button>
+      </div>
+    );
   };
 
   const renderTaskProposalReview = (taskId?: number) => {
@@ -517,11 +608,11 @@ export function GoalsPage() {
   };
 
   useEffect(() => {
-    if (!proposals.length) return;
-    const firstUndecided = proposals.find((p) => !decisionMap[p.proposal_id]);
-    if (!firstUndecided) return;
-    requestAnimationFrame(() => scrollToProposal(firstUndecided.proposal_id));
-  }, [proposals]);
+    if (!orderedProposalIds.length) return;
+    const firstUndecidedId = orderedProposalIds.find((id) => !decisionMap[id]);
+    if (!firstUndecidedId) return;
+    requestAnimationFrame(() => scrollToProposal(firstUndecidedId));
+  }, [orderedProposalIds, decisionMap]);
 
   useEffect(() => {
     if (!availablePlanTabs.includes(planTab)) {
@@ -1109,13 +1200,23 @@ export function GoalsPage() {
                         handleDropDailyTask(dateKey, e.dataTransfer.getData("text/plain"));
                       }}
                     >
-                      <p
-                        className={dateKey === todayKey ? "todayLabel" : undefined}
-                        style={{ margin: "6px 0 8px", fontSize: "13px", fontWeight: 700, color: "#334155" }}
-                      >
-                        {formatDateLabel(dateKey)}
-                        {dateKey === todayKey ? "（今日）" : ""}
-                      </p>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "8px" }}>
+                        <p
+                          className={dateKey === todayKey ? "todayLabel" : undefined}
+                          style={{ margin: "6px 0 8px", fontSize: "13px", fontWeight: 700, color: "#334155" }}
+                        >
+                          {formatDateLabel(dateKey)}
+                          {dateKey === todayKey ? "（今日）" : ""}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => addDailyTaskMutation.mutate({ dateKey })}
+                          disabled={addDailyTaskMutation.isPending || !activeGoalId}
+                          style={{ width: "auto", margin: 0, padding: "6px 10px", fontSize: "12px" }}
+                        >
+                          タスク追加
+                        </button>
+                      </div>
                       {dragOverDate === dateKey && draggingTaskId && (
                         <p className="dropHint">ここにドロップしてこの日付へ移動</p>
                       )}
@@ -1209,6 +1310,7 @@ export function GoalsPage() {
                                   ))}
                                 </ul>
                               )}
+                              {renderDeleteTaskButton(task.task_id)}
                               {renderTaskProposalReview(task.task_id)}
                             </div>
                           </div>

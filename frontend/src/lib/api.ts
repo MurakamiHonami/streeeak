@@ -220,6 +220,31 @@ export async function updateTask(taskId: number, payload: Partial<Task>) {
   return res.data;
 }
 
+export async function deleteTask(taskId: number) {
+  await apiClient.delete(`/tasks/${taskId}`);
+}
+
+export async function createTask(payload: {
+  goalId?: number | null;
+  type: Task["type"];
+  title: string;
+  date?: string | null;
+  weekNumber?: number | null;
+  month?: number | null;
+}) {
+  const userId = getCurrentUserId();
+  const res = await apiClient.post<Task>("/tasks", {
+    user_id: userId,
+    goal_id: payload.goalId ?? null,
+    type: payload.type,
+    title: payload.title,
+    date: payload.date ?? null,
+    week_number: payload.weekNumber ?? null,
+    month: payload.month ?? null,
+  });
+  return res.data;
+}
+
 export async function fetchPosts() {
   const userId = getCurrentUserId();
   const res = await apiClient.get<Post[]>("/posts", {
