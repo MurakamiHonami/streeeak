@@ -695,7 +695,6 @@ export function GoalsPage() {
               </span>
               <img src="/panda.png" alt="Mentor Panda" className="h-20 object-contain drop-shadow-sm" />
             </div>
-            )}
             {hasGoalAndDeadline && (
               <textarea
                 value={currentSituation}
