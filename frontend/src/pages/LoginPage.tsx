@@ -46,8 +46,9 @@ export function LoginPage() {
             {loginMutation.isPending ? "ログイン中..." : "ログイン"}
           </button>
         </form>
-        <div className="mt-6 text-sm">
+        <div className="mt-6 flex flex-col gap-4 text-sm">
           <Link to="/register" className="text-gray-500 underline">新規登録はこちら</Link>
+          <Link to="/tokushoho" className="text-gray-400 text-xs hover:text-gray-600 transition-colors">特定商取引法に基づく表記</Link>
         </div>
       </div>
     </section>

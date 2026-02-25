@@ -1,4 +1,5 @@
 import { FormEvent, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { login, register } from "../lib/api";
 
 type AuthMode = "login" | "register";
@@ -54,8 +55,6 @@ export function AuthPage({ onAuthenticated }: Props) {
   return (
     <section className="page authPage">
       <div className="authContainer">
-        <h1 className="gameTitle">STREEEAK</h1>
-        <p className="gameSubtitle">START YOUR QUEST</p>
 
         <div className="tabRow authTabs">
           <button
@@ -92,7 +91,7 @@ export function AuthPage({ onAuthenticated }: Props) {
 
           {isRegister && (
             <div className="formGroup">
-              <label className="authLabel">PLAYER NAME</label>
+              <label className="authLabel">NAME</label>
               <input
                 type="text"
                 className="gameInput"
@@ -117,9 +116,18 @@ export function AuthPage({ onAuthenticated }: Props) {
           {error && <div className="gameErrorBox">{error}</div>}
 
           <button className="gameBtn primaryBtn submitBtn" type="submit" disabled={!canSubmit || loading}>
-            {loading ? "CONNECTING..." : isRegister ? "CREATE ACCOUNT" : "START GAME"}
+            {loading ? "CONNECTING..." : isRegister ? "CREATE ACCOUNT" : "LOGIN"}
           </button>
         </form>
+
+        <div className="mt-8 flex flex-col items-center gap-3 text-sm pb-2">
+          <Link 
+            to="/tokushoho" 
+            className="text-gray-400 text-xs hover:text-[#13ec37] transition-colors underline"
+          >
+            特定商取引法に基づく表記
+          </Link>
+        </div>
       </div>
     </section>
   );

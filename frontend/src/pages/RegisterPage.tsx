@@ -60,8 +60,9 @@ export function RegisterPage() {
             </button>
           </form>
         )}
-        <div className="mt-6 text-sm">
+        <div className="mt-6 flex flex-col gap-4 text-sm">
           <Link to="/login" className="text-gray-500 underline">すでにアカウントをお持ちの方はこちら</Link>
+          <Link to="/tokushoho" className="text-gray-400 text-xs hover:text-gray-600 transition-colors">特定商取引法に基づく表記</Link>
         </div>
       </div>
     </section>
