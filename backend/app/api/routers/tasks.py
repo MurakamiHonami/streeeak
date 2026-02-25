@@ -278,7 +278,18 @@ def update_task(task_id: int, payload: TaskUpdate, db: Session = Depends(get_db)
     task = db.get(Task, task_id)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
-    for field, value in payload.model_dump(exclude_none=True).items():
+    updates = payload.model_dump(exclude_none=True)
+
+    # 完了済みdailyタスクは日付変更(持ち越し)不可: 未完了のみ移動可能にする
+    if (
+        task.type == TaskType.daily
+        and task.is_done
+        and "date" in updates
+        and updates["date"] != task.date
+    ):
+        raise HTTPException(status_code=400, detail="Completed daily task cannot be carried over")
+
+    for field, value in updates.items():
         setattr(task, field, value)
     db.commit()
     db.refresh(task)

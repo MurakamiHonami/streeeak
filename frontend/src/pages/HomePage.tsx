@@ -9,8 +9,10 @@ import InputLabel from '@mui/material/InputLabel';
 import MenuItem from '@mui/material/MenuItem';
 import FormControl from '@mui/material/FormControl';
 import Select, { SelectChangeEvent } from '@mui/material/Select';
+import { useNavigate } from "react-router-dom";
 
 export function HomePage() {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const dailyTasks = useQuery({ queryKey: ["dailyTasks"], queryFn: fetchDailyTasks });
   const ranking = useQuery({ queryKey: ["ranking", "home"], queryFn: () => fetchRanking(50) });
@@ -234,6 +236,10 @@ export function HomePage() {
               </div>
             );
           })
+        ) : goals.data && goals.data.length === 0 ? (
+          <button type="button" onClick={() => navigate("/goals", { state: { goalSectionTab: "create" } })}>
+            目標を作成する
+          </button>
         ) : (
           <p>この目標に対する今日のタスクはありません。</p>
         )}
