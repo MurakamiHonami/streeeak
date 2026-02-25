@@ -5,7 +5,6 @@ from app.api.deps import get_current_user, get_db
 from app.models.user import User
 from app.core.config import settings
 
-
 stripe.api_key = settings.STRIPE_API_KEY
 
 router = APIRouter(prefix="/stripe", tags=["stripe"])
@@ -18,7 +17,7 @@ def create_checkout_session(request: Request, current_user: User = Depends(get_c
         session = stripe.checkout.Session.create(
             ui_mode='embedded',
             line_items=[{
-                'price': 'price_1T4eCuHoMKhPTbayVVtKggKH', 
+                'price': settings.STRIPE_PRICE_ID, 
                 'quantity': 1,
             }],
             mode='subscription',
@@ -27,6 +26,9 @@ def create_checkout_session(request: Request, current_user: User = Depends(get_c
         )
         return {"clientSecret": session.client_secret}
     except Exception as e:
+        print("======== STRIPE ERROR ========")
+        print(e)
+        print("==============================")
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.get("/session-status")

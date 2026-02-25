@@ -22,6 +22,9 @@ phases:
       - echo "DATABASE_URL=$DATABASE_URL" >> backend/.env
       - echo "SECRET_KEY=$SECRET_KEY" >> backend/.env
       - echo "STRIPE_API_KEY=$STRIPE_API_KEY" >> backend/.env
+      - echo "STRIPE_WEBHOOK_SECRET=$STRIPE_WEBHOOK_SECRET" >> backend/.env
+      - echo "STRIPE_PRICE_ID=$STRIPE_PRICE_ID" >> backend/.env
+      - echo "VITE_STRIPE_PUBLIC_KEY=$VITE_STRIPE_PUBLIC_KEY" >> frontend/.env
       - echo "ENV=local" >> backend/.env
       
       - echo "ENVIRONMENT=local" >> backend/.env
