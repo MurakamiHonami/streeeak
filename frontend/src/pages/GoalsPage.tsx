@@ -6,6 +6,9 @@ import FormControl from "@mui/material/FormControl";
 import InputLabel from "@mui/material/InputLabel";
 import MenuItem from "@mui/material/MenuItem";
 import Select, { type SelectChangeEvent } from "@mui/material/Select";
+import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers";
+import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
+import dayjs from "dayjs";
 import {
   applyAcceptedRevisions,
   createGoalAndBreakdown,
@@ -652,32 +655,25 @@ export function GoalsPage() {
               onBlur={() => setIsGoalInputActive(false)}
               placeholder="長期目標を入力"
             />
-            <input
-              className="mb-4 goalField"
-              type="date"
-              value={deadline}
-              onChange={(e) => setDeadline(e.target.value)}
-              onFocus={() => setIsGoalInputActive(true)}
-              onBlur={() => setIsGoalInputActive(false)}
-            />
-            {breakdownMutation.isPending ? (
-              <div className="flex flex-col items-center justify-center mt-6 mb-4">
-                <div className="relative">
-                  <div className="absolute inset-0 rounded-full bg-[#13ec37] opacity-20 animate-ping"></div>
-                  <img 
-                    src="/loading_panda.png" 
-                    className="w-20 h-20 drop-shadow-lg relative z-10" 
-                    alt="Loading Panda"
-                    style={{ animation: 'spin 2s linear infinite' }}
-                  />
-                </div>
-                <p className="mt-4 text-sm font-extrabold text-[#0fbf2c] tracking-widest" style={{ animation: 'pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite' }}>
-                  考え中...
-                </p>
-              </div>
-            ) : (
-
-            <div className="relative inline-flex flex-col items-center mt-8">
+            <LocalizationProvider dateAdapter={AdapterDayjs}>
+              <DatePicker
+                label="期限を選択"
+                value={deadline ? dayjs(deadline) : null}
+                onChange={(newValue) => {
+                  setDeadline(newValue && newValue.isValid() ? newValue.format("YYYY-MM-DD") : "");
+                }}
+                disablePast
+                slotProps={{
+                  textField: {
+                    className: "mb-4 goalField",
+                    onFocus: () => setIsGoalInputActive(true),
+                    onBlur: () => setIsGoalInputActive(false),
+                    fullWidth: true,
+                  },
+                }}
+              />
+            </LocalizationProvider>
+            <div className="relative inline-flex flex-col items-center mt-14">
               <span
                 className={[
                   "whitespace-nowrap rounded-lg bg-gray-800 mt-1 px-3 py-1.5",
