@@ -27,6 +27,7 @@ export function HomePage() {
   });
 
   const [currentGoalId, setCurrentGoalId] = useState<number | "">("");
+  const [sasaThrows, setSasaThrows] = useState<number[]>([]);
 
   useEffect(() => {
     if (goals.data && goals.data.length > 0 && currentGoalId === "") {
@@ -38,22 +39,33 @@ export function HomePage() {
     setCurrentGoalId(event.target.value as number | "");
   };
 
+  const handleDone = (task: any) => {
+    if (!task.is_done) {
+      const id = Date.now();
+      setSasaThrows((prev) => [...prev, id]);
+      setTimeout(() => {
+        setSasaThrows((prev) => prev.filter((t) => t !== id));
+      }, 1500);
+    }
+    doneMutation.mutate(task.id);
+  };
+
   const tasks = dailyTasks.data ?? [];
   const filteredTasks = currentGoalId !== "" 
     ? tasks.filter(task => task.goal_id === currentGoalId)
     : [];
 
-  console.log(tasks)
   const doneCount = filteredTasks.filter((task) => task.is_done).length;
   const firstPendingId = filteredTasks.find((task) => !task.is_done)?.id;
   const doneRate = filteredTasks.length ? Math.round((doneCount / filteredTasks.length) * 100) : 0;
+  const isAllDone = filteredTasks.length > 0 && doneCount === filteredTasks.length;
   
   const selectedGoal = goals.data?.find(g => g.id === currentGoalId);
   const rankingList = ranking.data ?? [];
   const top3Ranking = rankingList.slice(0, 3);
   const myRankIndex = rankingList.findIndex((item) => item.user_id === appContext.userId);
   const myRank = myRankIndex >= 0 ? myRankIndex + 1 : null;
-  const myRankItem = myRankIndex >= 0 ? rankingList[myRankIndex] : null;
+  
   const renderRankItem = (rank: number, isYou: boolean, data?: any) => {
     if (!data) return null;
     const isTop = rank === 1;
@@ -92,6 +104,7 @@ export function HomePage() {
       </div>
     );
   };
+
   return (
     <section className="page">
       <section className="visionCard">
@@ -102,6 +115,7 @@ export function HomePage() {
           <div className="progressFill" style={{ width: `${doneRate}%` }} />
         </div>
       </section>
+      
       <Box sx={{ minWidth: 120, mt: 2 }}>
         <FormControl
           fullWidth
@@ -146,13 +160,49 @@ export function HomePage() {
       <section className="card">
         <div className="flex gap-1 items-center justify-center m-1">
           <h3 className="font-medium text-2xl">Today's Tasks</h3>
-          <img src="/panda.png" alt="Mentor Panda" className="h-12 w-12 object-contain drop-shadow-sm" />
         </div>
+        
+        <div className="flex justify-center my-6 relative">
+          <div className={`relative ${isAllDone ? "u--bounceInUp" : sasaThrows.length > 0 ? "targetPulse" : ""}`}>
+            {isAllDone && (
+              <>
+                <div style={{ backgroundImage: "url('/heart.svg')", width: 20, height: 20, position: "absolute", top: 0, left: -12, animation: "heart 1.5s infinite ease-out", backgroundSize: "contain", backgroundRepeat: "no-repeat", zIndex: 30 }} />
+                <div style={{ backgroundImage: "url('/heart-reverse.svg')", width: 20, height: 20, position: "absolute", bottom: -6, right: -14, animation: "heart 1.5s 0.2s infinite ease-out", backgroundSize: "contain", backgroundRepeat: "no-repeat", zIndex: 30 }} />
+              </>
+            )}
+            
+            <img src="/panda.png" alt="Mentor Panda" className="w-28 h-28 object-contain drop-shadow-md relative z-10" />
+            
+            {sasaThrows.map((id) => (
+              <div 
+                key={id} 
+                className="absolute z-20 pointer-events-none" 
+                style={{ 
+                  left: "50%", 
+                  bottom: "-120px", 
+                  marginLeft: "-24px", 
+                  animation: "throwSasa 1.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards" 
+                }}
+              >
+                <img src="/sasa_1.png" className="w-12 h-12 rocketPulse" alt="sasa" />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <style>{`
+          @keyframes throwSasa {
+            0% { transform: translateY(0) scale(0.5) rotate(0deg); opacity: 0; }
+            10% { opacity: 1; }
+            70% { transform: translateY(-130px) scale(1) rotate(180deg); opacity: 1; }
+            100% { transform: translateY(-130px) scale(1) rotate(180deg); opacity: 0; }
+          }
+        `}</style>
         
         {filteredTasks.length ? (
           filteredTasks.map((task) => {
             const subTasks = task.note 
-              ? task.note.split("\n").map(line => line.replace(/^- /, "").trim()).filter(Boolean)
+              ? task.note.split("\n").map((line: string) => line.replace(/^- /, "").trim()).filter(Boolean)
               : [];
 
             if (subTasks.length === 0) {
@@ -162,7 +212,7 @@ export function HomePage() {
                   task={task} 
                   title={task.title} 
                   isNext={firstPendingId === task.id && !task.is_done}
-                  onDone={() => doneMutation.mutate(task.id)}
+                  onDone={() => handleDone(task)}
                   onCarryOver={() => carryOverMutation.mutate(task.id)}
                 />
               );
@@ -171,13 +221,13 @@ export function HomePage() {
             return (
               <div key={task.id} className="mb-4">
                 <p className="text-sm font-bold text-gray-500 mb-2">■ {task.title}</p>
-                {subTasks.map((subTaskText, idx) => (
+                {subTasks.map((subTaskText: string, idx: number) => (
                   <TaskRow 
                     key={`${task.id}-${idx}`} 
                     task={task} 
                     title={subTaskText} 
                     isNext={firstPendingId === task.id && !task.is_done && idx === 0}
-                    onDone={() => doneMutation.mutate(task.id)}
+                    onDone={() => handleDone(task)}
                     onCarryOver={() => carryOverMutation.mutate(task.id)}
                   />
                 ))}
@@ -213,18 +263,30 @@ function TaskRow({ task, title, isNext, onDone, onCarryOver }: any) {
   return (
     <div className={isNext ? "taskRow nextTask" : "taskRow"}>
       <div>
-        <p className={task.is_done ? "done" : ""}>{title}</p>
+        <p className={`transition-all duration-300 ease-in-out ${task.is_done ? "done opacity-60" : ""}`}>{title}</p>
         {task.tags && <small>{task.tags}</small>}
       </div>
-      <div className="rowActions flex flex-col">
-        <button onClick={onDone} className="text-sm hover:opacity-70">
-          {task.is_done ? <UndoIcon /> : <CheckIcon />}
+      <div className="rowActions flex flex-col items-center justify-center">
+        <button 
+          onClick={onDone} 
+          className="relative w-8 h-8 flex items-center justify-center text-sm transition-transform duration-200 ease-in-out hover:scale-110 active:scale-90"
+        >
+          <div className={`absolute flex items-center justify-center transition-all duration-300 ease-in-out ${task.is_done ? 'opacity-0 scale-50 rotate-90 pointer-events-none' : 'opacity-100 scale-100 rotate-0'}`}>
+            <CheckIcon />
+          </div>
+          <div className={`absolute flex items-center justify-center transition-all duration-300 ease-in-out ${task.is_done ? 'opacity-100 scale-100 rotate-0' : 'opacity-0 scale-50 -rotate-90 pointer-events-none'}`}>
+            <UndoIcon />
+          </div>
         </button>
-        {!task.is_done && (
-          <button onClick={onCarryOver} className="text-sm bg-gray-200 hover:opacity-70">
+        
+        <div className={`transition-all duration-300 ease-in-out origin-top flex items-center justify-center ${task.is_done ? 'opacity-0 max-h-0 scale-y-0 pointer-events-none mt-0' : 'opacity-100 max-h-10 scale-y-100 mt-2'}`}>
+          <button 
+            onClick={onCarryOver} 
+            className="w-8 h-8 flex items-center justify-center text-sm bg-gray-200 rounded-full transition-transform duration-200 ease-in-out hover:scale-110 active:scale-90"
+          >
             <MoveDownIcon />
           </button>
-        )}
+        </div>
       </div>
     </div>
   );

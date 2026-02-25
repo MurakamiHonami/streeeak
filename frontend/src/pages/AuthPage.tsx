@@ -16,6 +16,7 @@ export function AuthPage({ onAuthenticated }: Props) {
   const [loading, setLoading] = useState(false);
 
   const isRegister = mode === "register";
+
   const canSubmit = useMemo(() => {
     if (!email || !password) {
       return false;
@@ -26,7 +27,7 @@ export function AuthPage({ onAuthenticated }: Props) {
     return true;
   }, [email, password, name, isRegister]);
 
-  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError("");
     setLoading(true);
@@ -51,70 +52,75 @@ export function AuthPage({ onAuthenticated }: Props) {
   }
 
   return (
-    <section className="authSection">
-      <div className="authModeRow">
-        <button
-          type="button"
-          className={mode === "login" ? "tabBtn active" : "tabBtn"}
-          onClick={() => {
-            setMode("login");
-            setError("");
-          }}
-        >
-          ログイン
-        </button>
-        <button
-          type="button"
-          className={mode === "register" ? "tabBtn active" : "tabBtn"}
-          onClick={() => {
-            setMode("register");
-            setError("");
-          }}
-        >
-          新規登録
-        </button>
-      </div>
+    <section className="page authPage">
+      <div className="authContainer">
+        <h1 className="gameTitle">STREEEAK</h1>
+        <p className="gameSubtitle">START YOUR QUEST</p>
 
-      <form className="card authCard" onSubmit={handleSubmit}>
-        <h3>{isRegister ? "新規ユーザー登録" : "ログイン"}</h3>
-        <label className="authLabel">
-          メールアドレス
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="example@email.com"
-          />
-        </label>
+        <div className="tabRow authTabs">
+          <button
+            className={`tabBtn ${!isRegister ? "active" : ""}`}
+            onClick={() => {
+              setMode("login");
+              setError("");
+            }}
+          >
+            LOGIN
+          </button>
+          <button
+            className={`tabBtn ${isRegister ? "active" : ""}`}
+            onClick={() => {
+              setMode("register");
+              setError("");
+            }}
+          >
+            REGISTER
+          </button>
+        </div>
 
-        {isRegister && (
-          <label className="authLabel">
-            表示名
+        <form className="gameCard authCard" onSubmit={handleSubmit}>
+          <div className="formGroup">
+            <label className="authLabel">EMAIL</label>
             <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="あなたの名前"
+              type="email"
+              className="gameInput"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="player@email.com"
             />
-          </label>
-        )}
+          </div>
 
-        <label className="authLabel">
-          パスワード
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="8文字以上"
-          />
-        </label>
+          {isRegister && (
+            <div className="formGroup">
+              <label className="authLabel">PLAYER NAME</label>
+              <input
+                type="text"
+                className="gameInput"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Your Name"
+              />
+            </div>
+          )}
 
-        {error && <p className="authError">{error}</p>}
+          <div className="formGroup">
+            <label className="authLabel">PASSWORD</label>
+            <input
+              type="password"
+              className="gameInput"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+            />
+          </div>
 
-        <button type="submit" disabled={!canSubmit || loading}>
-          {loading ? "処理中..." : isRegister ? "登録して開始" : "ログイン"}
-        </button>
-      </form>
+          {error && <div className="gameErrorBox">{error}</div>}
+
+          <button className="gameBtn primaryBtn submitBtn" type="submit" disabled={!canSubmit || loading}>
+            {loading ? "CONNECTING..." : isRegister ? "CREATE ACCOUNT" : "START GAME"}
+          </button>
+        </form>
+      </div>
     </section>
   );
 }

@@ -246,9 +246,27 @@ export function GoalsPage() {
                 rows={3}
               />
             )}
-            <button type="submit" disabled={!canSubmit}>
+            <button type="submit" className="hover:opacity-70 transition-all duration-200 ease-in-out hover:scale-110 active:scale-90" disabled={!canSubmit}>
               {breakdownMutation.isPending ? "AIで生成中..." : "ブレイクダウンする"}
             </button>
+            
+            {breakdownMutation.isPending && (
+              <div className="flex flex-col items-center justify-center mt-6 mb-4">
+                <div className="relative">
+                  <div className="absolute inset-0 rounded-full bg-[#13ec37] opacity-20 animate-ping"></div>
+                  <img 
+                    src="/loading_panda.png" 
+                    className="w-20 h-20 drop-shadow-lg relative z-10" 
+                    alt="Loading Panda"
+                    style={{ animation: 'spin 2s linear infinite' }}
+                  />
+                </div>
+                <p className="mt-4 text-sm font-extrabold text-[#0fbf2c] tracking-widest" style={{ animation: 'pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite' }}>
+                  考え中...
+                </p>
+              </div>
+            )}
+            
             {breakdownMutation.isError && (
               <p style={{ color: "#c0392b", margin: 0 }}>
                 ブレイクダウンに失敗しました。Geminiキーまたはバックエンドを確認してください。
