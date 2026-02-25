@@ -34,7 +34,7 @@ function App() {
   }, [location.pathname]);
 
   return (
-    <div className="appShell">
+    <div className="appShell gamifiedApp">
       <div className="appContainer">
         <header className={currentUserId ? "topHeader" : "topHeader authHeader"}>
           <div className="flex items-center gap-2">
