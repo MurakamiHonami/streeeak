@@ -35,6 +35,17 @@ def create_user(payload: UserCreate, db: Session = Depends(get_db)):
     return response
 
 
+@router.get("/{user_id}/avatar")
+def get_user_avatar(user_id: int, db: Session = Depends(get_db)):
+    user = db.get(User, user_id)
+    if not user or not user.avatar_data:
+        raise HTTPException(status_code=404, detail="Avatar not found")
+    return Response(
+        content=user.avatar_data,
+        media_type=user.avatar_content_type or "image/png",
+    )
+
+
 @router.get("/{user_id}", response_model=UserRead)
 def get_user(user_id: int, db: Session = Depends(get_db)):
     user = db.get(User, user_id)
