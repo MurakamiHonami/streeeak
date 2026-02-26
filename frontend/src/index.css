@@ -1369,3 +1369,346 @@ pre {
     opacity: 0;
   }
 }
+
+/* =============================================
+   Landing Page Styles (Apple-inspired)
+   ============================================= */
+
+.lp-root {
+  min-height: 100vh;
+  background: #ffffff;
+  color: #1d1d1f;
+  font-family: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.lp-green {
+  color: #13ec37;
+}
+
+/* ---- Nav ---- */
+.lp-nav {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.lp-nav-inner {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 0 24px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.lp-nav-logo {
+  font-family: "din", sans-serif;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #1d1d1f;
+  letter-spacing: -0.02em;
+}
+
+.lp-nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* ---- Buttons ---- */
+.lp-btn-ghost {
+  background: none;
+  border: none;
+  color: #1d1d1f;
+  font-size: 0.9rem;
+  font-weight: 500;
+  padding: 8px 16px;
+  border-radius: 980px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.lp-btn-ghost:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.lp-btn-green {
+  background: #13ec37;
+  color: #0f1f10;
+  border: none;
+  font-size: 0.9rem;
+  font-weight: 700;
+  padding: 10px 22px;
+  border-radius: 980px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.lp-btn-green:hover {
+  background: #0fd42f;
+  transform: scale(1.02);
+}
+
+.lp-btn-outline {
+  background: none;
+  color: #1d1d1f;
+  border: 1.5px solid #1d1d1f;
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 10px 22px;
+  border-radius: 980px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.lp-btn-outline:hover {
+  background: #1d1d1f;
+  color: #fff;
+}
+
+.lp-btn-lg {
+  font-size: 1.05rem;
+  padding: 14px 32px;
+}
+
+.lp-btn-xl {
+  font-size: 1.15rem;
+  padding: 18px 48px;
+}
+
+/* ---- Hero ---- */
+.lp-hero {
+  min-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 80px 24px 60px;
+  position: relative;
+  overflow: hidden;
+}
+
+.lp-hero::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(ellipse at 50% 40%, rgba(19, 236, 55, 0.08) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+.lp-hero-inner {
+  max-width: 800px;
+  position: relative;
+  z-index: 1;
+}
+
+.lp-eyebrow {
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #13ec37;
+  margin: 0 0 20px;
+}
+
+.lp-hero-title {
+  font-size: clamp(2.4rem, 6vw, 4.8rem);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  color: #1d1d1f;
+  margin: 0 0 24px;
+  font-family: "Plus Jakarta Sans", sans-serif;
+}
+
+.lp-hero-sub {
+  font-size: clamp(1rem, 2vw, 1.25rem);
+  color: #6e6e73;
+  line-height: 1.7;
+  margin: 0 0 40px;
+}
+
+.lp-hero-cta {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.lp-hero-badge {
+  margin-top: 60px;
+  display: inline-block;
+  background: rgba(19, 236, 55, 0.1);
+  border: 1px solid rgba(19, 236, 55, 0.35);
+  color: #077a1a;
+  border-radius: 40px;
+  padding: 8px 20px;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+/* ---- Features ---- */
+.lp-features {
+  background: #f5f5f7;
+  padding: 100px 24px;
+}
+
+.lp-section-inner {
+  max-width: 1080px;
+  margin: 0 auto;
+}
+
+.lp-section-title {
+  text-align: center;
+  font-size: clamp(1.8rem, 4vw, 2.8rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: #1d1d1f;
+  margin: 0 0 60px;
+}
+
+.lp-feature-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 24px;
+}
+
+.lp-feature-card {
+  background: #ffffff;
+  border-radius: 20px;
+  padding: 40px 32px;
+  box-shadow: 0 2px 20px rgba(0, 0, 0, 0.06);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.lp-feature-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.1);
+}
+
+.lp-feature-icon {
+  font-size: 2.5rem;
+  margin-bottom: 20px;
+}
+
+.lp-feature-card h3 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #1d1d1f;
+  margin: 0 0 12px;
+}
+
+.lp-feature-card p {
+  font-size: 0.95rem;
+  color: #6e6e73;
+  line-height: 1.7;
+  margin: 0;
+}
+
+/* ---- Stats ---- */
+.lp-stats {
+  padding: 100px 24px;
+  background: #ffffff;
+}
+
+.lp-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 40px;
+  text-align: center;
+}
+
+.lp-stat-num {
+  font-size: clamp(3rem, 6vw, 5rem);
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  color: #1d1d1f;
+  line-height: 1;
+  margin-bottom: 12px;
+}
+
+.lp-stat-label {
+  font-size: 1rem;
+  color: #6e6e73;
+  font-weight: 500;
+}
+
+/* ---- Bottom CTA ---- */
+.lp-cta-section {
+  background: #1d1d1f;
+  padding: 120px 24px;
+  text-align: center;
+}
+
+.lp-cta-title {
+  font-size: clamp(2rem, 5vw, 3.8rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: #ffffff;
+  margin: 0 0 16px;
+}
+
+.lp-cta-sub {
+  font-size: 1.1rem;
+  color: rgba(255, 255, 255, 0.55);
+  margin: 0 0 40px;
+}
+
+/* ---- Footer ---- */
+.lp-footer {
+  background: #1d1d1f;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 40px 24px;
+}
+
+.lp-footer-inner {
+  max-width: 1080px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.lp-footer-logo {
+  color: #ffffff !important;
+}
+
+.lp-footer p {
+  color: rgba(255, 255, 255, 0.35);
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+/* ---- LP Mobile ---- */
+@media (max-width: 600px) {
+  .lp-nav-actions .lp-btn-ghost {
+    display: none;
+  }
+
+  .lp-hero {
+    min-height: 85vh;
+    padding: 60px 20px 40px;
+  }
+
+  .lp-features,
+  .lp-stats,
+  .lp-cta-section {
+    padding: 70px 20px;
+  }
+
+  .lp-footer-inner {
+    flex-direction: column;
+    text-align: center;
+  }
+}

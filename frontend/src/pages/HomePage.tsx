@@ -32,10 +32,25 @@ export function HomePage() {
   const [sasaThrows, setSasaThrows] = useState<number[]>([]);
 
   useEffect(() => {
-    if (goals.data && goals.data.length > 0 && currentGoalId === "") {
-      setCurrentGoalId(goals.data[goals.data.length - 1].id);
+    const goalList = goals.data ?? [];
+    if (goalList.length === 0) {
+      if (currentGoalId !== "") {
+        setCurrentGoalId("");
+      }
+      return;
     }
-  }, [goals.data, currentGoalId]);
+
+    // Keep user's current selection if it still exists.
+    if (currentGoalId !== "" && goalList.some((goal) => goal.id === currentGoalId)) {
+      return;
+    }
+
+    const todayTasks = dailyTasks.data ?? [];
+    const goalWithTodayTask = goalList.find((goal) =>
+      todayTasks.some((task) => task.goal_id === goal.id)
+    );
+    setCurrentGoalId(goalWithTodayTask?.id ?? goalList[0].id);
+  }, [goals.data, dailyTasks.data, currentGoalId]);
 
   const handleChange = (event: SelectChangeEvent<number | "">) => {
     setCurrentGoalId(event.target.value as number | "");

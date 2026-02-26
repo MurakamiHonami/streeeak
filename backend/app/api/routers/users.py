@@ -1,7 +1,12 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+import shutil
+from pathlib import Path
+from uuid import uuid4
+
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.api.deps import get_current_user
 from app.db.session import get_db
 from app.models.user import User, UserSetting
 from app.schemas.user import UserCreate, UserRead, UserUpdate
@@ -14,7 +19,12 @@ router = APIRouter(prefix="/users", tags=["users"])
 def create_user(payload: UserCreate, db: Session = Depends(get_db)):
     if db.scalar(select(User).where(User.email == payload.email)):
         raise HTTPException(status_code=400, detail="Email already exists")
-    user = User(email=payload.email, name=payload.name, password_hash=hash_password(payload.password))
+    user = User(
+        email=payload.email,
+        name=payload.name,
+        avatar_url=payload.avatar_url,
+        password_hash=hash_password(payload.password),
+    )
     db.add(user)
     db.flush()
     settings = UserSetting(user_id=user.id)
@@ -45,6 +55,8 @@ def update_user(user_id: int, payload: UserUpdate, db: Session = Depends(get_db)
 
     if payload.name is not None:
         user.name = payload.name
+    if payload.avatar_url is not None:
+        user.avatar_url = payload.avatar_url
 
     settings = db.get(UserSetting, user_id)
     if not settings:
@@ -57,6 +69,45 @@ def update_user(user_id: int, payload: UserUpdate, db: Session = Depends(get_db)
     db.refresh(user)
     response = UserRead.model_validate(user)
     response.auto_post_time = settings.auto_post_time
+    return response
+
+
+@router.post("/{user_id}/avatar", response_model=UserRead)
+def upload_user_avatar(
+    user_id: int,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.id != user_id:
+        raise HTTPException(status_code=403, detail="You can only update your own avatar")
+
+    user = db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if not file.content_type or not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="Only image files are allowed")
+
+    ext = Path(file.filename or "").suffix.lower() or ".png"
+    allowed_exts = {".png", ".jpg", ".jpeg", ".gif", ".webp"}
+    if ext not in allowed_exts:
+        raise HTTPException(status_code=400, detail="Unsupported image format")
+
+    upload_dir = Path("/app/uploads/avatars")
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    filename = f"user_{user_id}_{uuid4().hex}{ext}"
+    save_path = upload_dir / filename
+    with save_path.open("wb") as out:
+        shutil.copyfileobj(file.file, out)
+
+    user.avatar_url = f"/uploads/avatars/{filename}"
+    db.commit()
+    db.refresh(user)
+
+    settings = db.get(UserSetting, user_id)
+    response = UserRead.model_validate(user)
+    response.auto_post_time = settings.auto_post_time if settings else None
     return response
 
 

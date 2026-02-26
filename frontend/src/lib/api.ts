@@ -8,6 +8,7 @@ import type {
   RevisionChatResponse,
   Task,
   TaskRevisionProposal,
+  UserProfile,
 } from "../types";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
@@ -52,6 +53,23 @@ export function clearAuthSession() {
   delete apiClient.defaults.headers.common.Authorization;
 }
 
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const status = error?.response?.status;
+    const requestUrl = String(error?.config?.url ?? "");
+    const isAuthEndpoint = requestUrl.includes("/auth/login") || requestUrl.includes("/auth/register");
+
+    if (status === 401 && !isAuthEndpoint) {
+      clearAuthSession();
+      if (typeof window !== "undefined" && !window.location.pathname.startsWith("/auth/")) {
+        window.location.href = "/auth/login";
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 function getCurrentUserId() {
   const session = getAuthSession();
   return session?.userId ?? DEFAULT_USER_ID;
@@ -80,7 +98,11 @@ export const appContext = {
   week: isoWeek,
 };
 
-export async function register(payload: { email: string; name: string; password: string }) {
+export async function register(payload: {
+  email: string;
+  name: string;
+  password: string;
+}) {
   const res = await apiClient.post<{ access_token: string; token_type: string; user_id: number }>(
     "/auth/register",
     payload
@@ -295,7 +317,27 @@ export async function fetchAllDailyTasks() {
 }
 export async function fetchUser() {
   const userId = getCurrentUserId();
-  const res = await apiClient.get(`/users/${userId}`);
+  const res = await apiClient.get<UserProfile>(`/users/${userId}`);
+  return res.data;
+}
+
+export function resolveApiAssetUrl(path: string | null | undefined) {
+  if (!path) {
+    return null;
+  }
+  if (path.startsWith("http://") || path.startsWith("https://")) {
+    return path;
+  }
+  return `${API_BASE}${path.startsWith("/") ? path : `/${path}`}`;
+}
+
+export async function uploadUserAvatar(file: File, userId?: number) {
+  const targetUserId = userId ?? getCurrentUserId();
+  const form = new FormData();
+  form.append("file", file);
+  const res = await apiClient.post<UserProfile>(`/users/${targetUserId}/avatar`, form, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
   return res.data;
 }
 

@@ -1,18 +1,20 @@
 import { FormEvent, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { login, register } from "../lib/api";
+import { login, register, uploadUserAvatar } from "../lib/api";
 
 type AuthMode = "login" | "register";
 
 type Props = {
   onAuthenticated: (userId: number) => void;
+  initialMode?: AuthMode;
 };
 
-export function AuthPage({ onAuthenticated }: Props) {
-  const [mode, setMode] = useState<AuthMode>("login");
+export function AuthPage({ onAuthenticated, initialMode = "login" }: Props) {
+  const [mode, setMode] = useState<AuthMode>(initialMode);
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -36,6 +38,9 @@ export function AuthPage({ onAuthenticated }: Props) {
       const session = isRegister
         ? await register({ email, name: name.trim(), password })
         : await login({ email, password });
+      if (isRegister && avatarFile) {
+        await uploadUserAvatar(avatarFile, session.userId);
+      }
       onAuthenticated(session.userId);
     } catch (err: unknown) {
       const message =
@@ -98,6 +103,18 @@ export function AuthPage({ onAuthenticated }: Props) {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Your Name"
+              />
+            </div>
+          )}
+
+          {isRegister && (
+            <div className="formGroup">
+              <label className="authLabel">AVATAR (OPTIONAL)</label>
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/gif"
+                className="gameInput"
+                onChange={(e) => setAvatarFile(e.target.files?.[0] ?? null)}
               />
             </div>
           )}
