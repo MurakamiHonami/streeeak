@@ -6,10 +6,11 @@ type AuthMode = "login" | "register";
 
 type Props = {
   onAuthenticated: (userId: number) => void;
+  initialMode?: AuthMode;
 };
 
-export function AuthPage({ onAuthenticated }: Props) {
-  const [mode, setMode] = useState<AuthMode>("login");
+export function AuthPage({ onAuthenticated, initialMode = "login" }: Props) {
+  const [mode, setMode] = useState<AuthMode>(initialMode);
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");

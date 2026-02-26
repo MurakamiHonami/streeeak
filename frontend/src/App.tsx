@@ -5,6 +5,7 @@ import { clearAuthSession, getAuthSession } from "./lib/api";
 import { AuthPage } from "./pages/AuthPage";
 import { GoalsPage } from "./pages/GoalsPage";
 import { HomePage } from "./pages/HomePage";
+import { LandingPage } from "./pages/LandingPage";
 import { ResultsPage } from "./pages/ResultsPage";
 import { SharePage } from "./pages/SharePage";
 import { Tokushoho } from "./pages/Tokushoho";
@@ -40,6 +41,15 @@ function App() {
   useEffect(() => {
     previousPathRef.current = location.pathname;
   }, [location.pathname]);
+
+  // Landing page renders without app chrome (no header/navbar)
+  if (location.pathname === "/lp") {
+    return (
+      <Routes>
+        <Route path="/lp" element={<LandingPage />} />
+      </Routes>
+    );
+  }
 
   const handleLogout = () => {
     clearAuthSession();
@@ -95,6 +105,7 @@ function App() {
             {currentUserId ? (
               <>
                 <Route path="/" element={<HomePage />} />
+                <Route path="/home" element={<HomePage />} />
                 <Route path="/goals" element={<GoalsPage />} />
                 <Route path="/results" element={<ResultsPage />} />
                 <Route path="/share" element={<SharePage />} />
@@ -102,7 +113,9 @@ function App() {
               </>
             ) : (
               <>
-                <Route path="*" element={<AuthPage onAuthenticated={(userId) => {setCurrentUserId(userId); navigate("/");}} />} />
+                <Route path="/auth/login" element={<AuthPage initialMode="login" onAuthenticated={(userId) => { setCurrentUserId(userId); navigate("/"); }} />} />
+                <Route path="/auth/register" element={<AuthPage initialMode="register" onAuthenticated={(userId) => { setCurrentUserId(userId); navigate("/"); }} />} />
+                <Route path="*" element={<AuthPage onAuthenticated={(userId) => { setCurrentUserId(userId); navigate("/"); }} />} />
               </>
             )}
           </Routes>

@@ -52,6 +52,23 @@ export function clearAuthSession() {
   delete apiClient.defaults.headers.common.Authorization;
 }
 
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const status = error?.response?.status;
+    const requestUrl = String(error?.config?.url ?? "");
+    const isAuthEndpoint = requestUrl.includes("/auth/login") || requestUrl.includes("/auth/register");
+
+    if (status === 401 && !isAuthEndpoint) {
+      clearAuthSession();
+      if (typeof window !== "undefined" && !window.location.pathname.startsWith("/auth/")) {
+        window.location.href = "/auth/login";
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 function getCurrentUserId() {
   const session = getAuthSession();
   return session?.userId ?? DEFAULT_USER_ID;
