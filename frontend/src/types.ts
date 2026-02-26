@@ -35,12 +35,17 @@ export type Post = {
   comment: string;
   achieved: number;
   created_at: string;
+  user_name?: string | null;
+  user_avatar_url?: string | null;
+  likes_count?: number;
+  is_liked_by_you?: boolean;
 };
 
 export type RankingItem = {
   user_id: number;
   user_name: string;
   achieved_avg: number;
+  avatar_url?: string | null;
 };
 
 export type UserProfile = {

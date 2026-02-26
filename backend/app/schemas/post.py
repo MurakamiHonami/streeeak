@@ -22,6 +22,7 @@ class PostRead(PostBase):
     created_at: dt.datetime
 
     user_name: str | None = None
+    user_avatar_url: str | None = None
     likes_count: int = 0
     is_liked_by_you: bool = False
 

@@ -34,7 +34,12 @@ def get_ranking(user_id: int, week: int, top_n: int = 3, db: Session = Depends(g
         done = db.scalar(done_stmt) or 0
         achieved_rate = (done / total) if total > 0 else 0.0
         ranking_items.append(
-            RankingItem(user_id=user.id, user_name=user.name, achieved_avg=float(achieved_rate))
+            RankingItem(
+                user_id=user.id,
+                user_name=user.name,
+                achieved_avg=float(achieved_rate),
+                avatar_url=user.avatar_url,
+            )
         )
 
     ranking_items.sort(key=lambda item: item.achieved_avg, reverse=True)

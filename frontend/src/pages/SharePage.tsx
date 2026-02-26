@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { 
   createPost, fetchPosts, fetchRanking, getAuthSession, 
-  appContext, fetchDailyTasks, fetchUser, updateAutoPostTime, togglePostLike, deletePost
+  appContext, fetchDailyTasks, fetchUser, updateAutoPostTime, togglePostLike, deletePost, resolveApiAssetUrl
 } from "../lib/api";
 import { Dialog, DialogContent, IconButton, Fade, CircularProgress, Chip } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
@@ -460,11 +460,21 @@ export function SharePage() {
                       } ${isDeleting ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}
                     >
                       <div className="flex items-center gap-3 mb-3">
-                        <div className={`w-12 h-12 rounded-full flex items-center justify-center text-[16px] font-bold shrink-0 ${
-                          isYou ? 'border-[2px] border-[#13ec37] bg-[#13ec37]/10 text-[#0fbf2c]' : 'border-[2px] border-[#e8ede8] bg-[#f1f5f9] text-[#64748b]'
-                        }`}>
-                          {initial}
-                        </div>
+                        {post.user_avatar_url ? (
+                          <img
+                            src={resolveApiAssetUrl(post.user_avatar_url) ?? ""}
+                            alt={displayName}
+                            className={`w-12 h-12 rounded-full object-cover shrink-0 ${
+                              isYou ? 'border-[2px] border-[#13ec37]' : 'border-[2px] border-[#e8ede8]'
+                            }`}
+                          />
+                        ) : (
+                          <div className={`w-12 h-12 rounded-full flex items-center justify-center text-[16px] font-bold shrink-0 ${
+                            isYou ? 'border-[2px] border-[#13ec37] bg-[#13ec37]/10 text-[#0fbf2c]' : 'border-[2px] border-[#e8ede8] bg-[#f1f5f9] text-[#64748b]'
+                          }`}>
+                            {initial}
+                          </div>
+                        )}
                         <div className="flex-1">
                           <div className={`flex items-center text-[14px] font-bold 'text-[#0f1f10]'}`}>
                             {displayName}
@@ -573,11 +583,21 @@ export function SharePage() {
                       #{rank}
                     </span>
                     
-                    <div className={`w-12 h-12 rounded-full flex items-center justify-center text-[16px] font-bold shrink-0 ${
-                      isYou ? 'border-[2px] border-[#13ec37] bg-[#13ec37]/10 text-[#0fbf2c]' : 'border-[2px] border-[#e8ede8] bg-[#f1f5f9] text-[#64748b]'
-                    }`}>
-                      {r.user_name?.[0] || "U"}
-                    </div>
+                    {r.avatar_url ? (
+                      <img
+                        src={resolveApiAssetUrl(r.avatar_url) ?? ""}
+                        alt={r.user_name || "User"}
+                        className={`w-12 h-12 rounded-full object-cover shrink-0 ${
+                          isYou ? 'border-[2px] border-[#13ec37]' : 'border-[2px] border-[#e8ede8]'
+                        }`}
+                      />
+                    ) : (
+                      <div className={`w-12 h-12 rounded-full flex items-center justify-center text-[16px] font-bold shrink-0 ${
+                        isYou ? 'border-[2px] border-[#13ec37] bg-[#13ec37]/10 text-[#0fbf2c]' : 'border-[2px] border-[#e8ede8] bg-[#f1f5f9] text-[#64748b]'
+                      }`}>
+                        {r.user_name?.[0] || "U"}
+                      </div>
+                    )}
                     
                     <div className="flex-1">
                       <div className="flex justify-between items-end mb-1.5">

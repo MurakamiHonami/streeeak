@@ -1,8 +1,7 @@
-import shutil
 from pathlib import Path
-from uuid import uuid4
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi.responses import Response
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -94,14 +93,13 @@ def upload_user_avatar(
     if ext not in allowed_exts:
         raise HTTPException(status_code=400, detail="Unsupported image format")
 
-    upload_dir = Path("/app/uploads/avatars")
-    upload_dir.mkdir(parents=True, exist_ok=True)
-    filename = f"user_{user_id}_{uuid4().hex}{ext}"
-    save_path = upload_dir / filename
-    with save_path.open("wb") as out:
-        shutil.copyfileobj(file.file, out)
+    data = file.file.read()
+    if len(data) > 2 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Image must be 2MB or smaller")
 
-    user.avatar_url = f"/uploads/avatars/{filename}"
+    user.avatar_data = data
+    user.avatar_content_type = file.content_type
+    user.avatar_url = f"/users/{user_id}/avatar"
     db.commit()
     db.refresh(user)
 

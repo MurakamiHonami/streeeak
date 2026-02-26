@@ -41,6 +41,7 @@ def list_posts(
     for p in posts:
         pr = PostRead.model_validate(p)
         pr.user_name = p.user.name if p.user else None
+        pr.user_avatar_url = p.user.avatar_url if p.user else None
         pr.likes_count = len(p.likes)
         pr.is_liked_by_you = any(like.user_id == user_id for like in p.likes) if user_id else False
         results.append(pr)
@@ -64,6 +65,7 @@ def toggle_like(post_id: int, user_id: int, db: Session = Depends(get_db)):
     
     pr = PostRead.model_validate(post)
     pr.user_name = post.user.name if post.user else None
+    pr.user_avatar_url = post.user.avatar_url if post.user else None
     pr.likes_count = len(post.likes)
     pr.is_liked_by_you = not bool(like)
     return pr

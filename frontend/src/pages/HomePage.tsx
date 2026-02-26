@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { appContext, carryOverTask, fetchDailyTasks, fetchRanking, toggleTaskDone, fetchGoals } from "../lib/api";
+import { appContext, carryOverTask, fetchDailyTasks, fetchRanking, toggleTaskDone, fetchGoals, resolveApiAssetUrl } from "../lib/api";
 import CheckIcon from '@mui/icons-material/Check';
 import MoveDownIcon from '@mui/icons-material/MoveDown';
 import UndoIcon from '@mui/icons-material/Undo';
@@ -103,9 +103,17 @@ export function HomePage() {
     return (
       <div key={data.user_id || rank} className={`flex flex-col items-center gap-2 ${marginTop}`}>
         <div className="relative">
-          <div className={`${avatarSize} rounded-full flex items-center justify-center font-extrabold ${avatarBg}`}>
-            {data.user_name?.[0] || "U"}
-          </div>
+          {data.avatar_url ? (
+            <img
+              src={resolveApiAssetUrl(data.avatar_url) ?? ""}
+              alt={data.user_name || "User"}
+              className={`${avatarSize} rounded-full object-cover ${isYou ? "border-[3px] border-[#13ec37] shadow-[0_4px_20px_rgba(19,236,55,0.25)]" : "border-2 border-[#e8ede8]"}`}
+            />
+          ) : (
+            <div className={`${avatarSize} rounded-full flex items-center justify-center font-extrabold ${avatarBg}`}>
+              {data.user_name?.[0] || "U"}
+            </div>
+          )}
           <div className={`absolute -bottom-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold border-2 border-white ${badgeBg}`}>
             {rank}
           </div>

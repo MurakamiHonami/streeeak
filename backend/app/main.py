@@ -33,6 +33,10 @@ def on_startup():
         columns = {col["name"] for col in inspect(conn).get_columns("users")}
         if "avatar_url" not in columns:
             conn.execute(text("ALTER TABLE users ADD COLUMN avatar_url VARCHAR(255) NULL"))
+        if "avatar_data" not in columns:
+            conn.execute(text("ALTER TABLE users ADD COLUMN avatar_data BYTEA NULL"))
+        if "avatar_content_type" not in columns:
+            conn.execute(text("ALTER TABLE users ADD COLUMN avatar_content_type VARCHAR(64) NULL"))
 
 
 @app.get("/health")
