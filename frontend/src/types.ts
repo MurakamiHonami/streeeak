@@ -43,6 +43,17 @@ export type RankingItem = {
   achieved_avg: number;
 };
 
+export type UserProfile = {
+  id: number;
+  email: string;
+  name: string;
+  avatar_url: string | null;
+  is_premium: boolean;
+  created_at: string;
+  updated_at: string;
+  auto_post_time: string | null;
+};
+
 export type DraftTask = {
   date: string | null;
   week_number: number | null;

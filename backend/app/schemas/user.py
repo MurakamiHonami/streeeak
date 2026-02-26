@@ -6,6 +6,7 @@ from pydantic import BaseModel, EmailStr
 class UserBase(BaseModel):
     email: EmailStr
     name: str
+    avatar_url: str | None = None
 
 
 class UserCreate(UserBase):
@@ -14,6 +15,7 @@ class UserCreate(UserBase):
 
 class UserUpdate(BaseModel):
     name: str | None = None
+    avatar_url: str | None = None
     auto_post_time: time | None = None
 
 
