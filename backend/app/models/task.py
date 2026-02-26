@@ -6,12 +6,20 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
 
-
 class TaskType(str, enum.Enum):
     monthly = "monthly"
     weekly = "weekly"
     daily = "daily"
 
+class TaskPriority(str, enum.Enum):
+    high = "high"
+    mid = "mid"
+    low = "low"
+
+class TaskStatus(str, enum.Enum):
+    todo = "todo"
+    in_progress = "in_progress"
+    done = "done"
 
 class Task(Base):
     __tablename__ = "tasks"
@@ -26,7 +34,11 @@ class Task(Base):
     month: Mapped[int | None] = mapped_column(Integer, nullable=True)
     week_number: Mapped[int | None] = mapped_column(Integer, nullable=True)
     date: Mapped[date | None] = mapped_column(Date, nullable=True, index=True)
-    is_done: Mapped[bool] = mapped_column(Boolean, default=False)
+    
+    priority: Mapped[TaskPriority] = mapped_column(Enum(TaskPriority), default=TaskPriority.mid)
+    status: Mapped[TaskStatus] = mapped_column(Enum(TaskStatus), default=TaskStatus.todo)
+    
+    is_done: Mapped[bool] = mapped_column(Boolean, default=False) # 互換性のため残す
     carried_over: Mapped[bool] = mapped_column(Boolean, default=False)
     tags: Mapped[str | None] = mapped_column(String(255), nullable=True)
     note: Mapped[str | None] = mapped_column(String(500), nullable=True)
