@@ -98,55 +98,71 @@ function useWeeklyStats(tasks: any[], weeksCount: number = 7) {
 
 function BarChart({ data }: { data: any[] }) {
   const maxPct = 100;
-  const chartH = 120;
-  const barW = 28;
-  const gap = 10;
+  const chartH = 200;
+  const barW = 42;
+  const gap = 16;
   const totalW = data.length * (barW + gap) - gap;
+  
+  const rightMargin = 45; 
+  const leftMargin = 10;
+  const topMargin = 25;
 
   return (
-    <div className="overflow-x-auto pb-1 no-scrollbar">
-      <svg width={Math.max(totalW + 24, 300)} height={chartH + 40} className="block">
-        {[0, 25, 50, 75, 100].map(v => {
-          const y = chartH - (v / maxPct) * chartH;
-          return (
-            <g key={v}>
-              <line x1={0} y1={y} x2={totalW + 24} y2={y} stroke="#e8ede8" strokeWidth={1} />
-              {v > 0 && (
-                <text x={totalW + 26} y={y + 4} fontSize={9} fill="#64748b" textAnchor="start">{v}%</text>
-              )}
-            </g>
-          );
-        })}
-        {data.map((d, i) => {
-          const x = i * (barW + gap);
-          const barH = (d.pct / maxPct) * chartH;
-          const y = chartH - barH;
-          const isLast = i === data.length - 1;
-          const fill = isLast ? "#13ec37" : "#e2f5e6";
-          const textColor = isLast ? "#0fbf2c" : "#64748b";
-          return (
-            <g key={i}>
-              <rect x={x} y={0} width={barW} height={chartH} rx={6} fill="#f8faf8" />
-              <rect 
-                x={x} y={y} width={barW} height={barH} rx={6} fill={fill}
-                style={{ filter: isLast ? "drop-shadow(0 0 6px rgba(19,236,55,0.4))" : "none" }} 
-              />
-              <text x={x + barW / 2} y={y - 5} textAnchor="middle" fontSize={9} fontWeight={700} fill={textColor}>
-                {d.pct}%
-              </text>
-              <text x={x + barW / 2} y={chartH + 14} textAnchor="middle" fontSize={9} fontWeight={600} fill={isLast ? "#13ec37" : "#64748b"}>
-                {d.weekStr}
-              </text>
-            </g>
-          );
-        })}
-        {(() => {
-          const i = data.length - 1;
-          const x = i * (barW + gap) + barW / 2;
-          return (
-            <text x={x} y={chartH + 26} textAnchor="middle" fontSize={8} fontWeight={700} fill="#13ec37">今週</text>
-          );
-        })()}
+    <div className="overflow-x-auto pb-2 no-scrollbar">
+      <svg 
+        width={totalW + rightMargin + leftMargin} 
+        height={chartH + 60 + topMargin} 
+        className="block mx-auto"
+      >
+        <g transform={`translate(${leftMargin}, ${topMargin})`}>
+          {[0, 25, 50, 75, 100].map(v => {
+            const y = chartH - (v / maxPct) * chartH;
+            return (
+              <g key={v}>
+                <line x1={0} y1={y} x2={totalW} y2={y} stroke="#e8ede8" strokeWidth={1} />
+                <text x={totalW + 8} y={y + 4} fontSize={10} fill="#64748b" textAnchor="start">
+                  {v}%
+                </text>
+              </g>
+            );
+          })}
+          
+          {data.map((d, i) => {
+            const x = i * (barW + gap);
+            const barH = (d.pct / maxPct) * chartH;
+            const y = chartH - barH;
+            const isLast = i === data.length - 1;
+            const fill = isLast ? "#13ec37" : "#e2f5e6";
+            const textColor = isLast ? "#0fbf2c" : "#64748b";
+            
+            return (
+              <g key={i}>
+                <rect x={x} y={0} width={barW} height={chartH} rx={8} fill="#f8faf8" />
+                <rect 
+                  x={x} y={y} width={barW} height={barH} rx={8} fill={fill}
+                  style={{ 
+                    filter: isLast ? "drop-shadow(0 4px 8px rgba(19,236,55,0.4))" : "none",
+                    transition: "all 0.6s ease-out"
+                  }} 
+                />
+                <text x={x + barW / 2} y={y - 8} textAnchor="middle" fontSize={11} fontWeight={800} fill={textColor}>
+                  {d.pct}%
+                </text>
+                <text x={x + barW / 2} y={chartH + 20} textAnchor="middle" fontSize={11} fontWeight={600} fill={isLast ? "#13ec37" : "#64748b"}>
+                  {d.weekStr}
+                </text>
+              </g>
+            );
+          })}
+          
+          {(() => {
+            const i = data.length - 1;
+            const x = i * (barW + gap) + barW / 2;
+            return (
+              <text x={x} y={chartH + 36} textAnchor="middle" fontSize={10} fontWeight={800} fill="#13ec37" style={{ letterSpacing: '0.05em' }}>今週</text>
+            );
+          })()}
+        </g>
       </svg>
     </div>
   );
@@ -217,31 +233,29 @@ export function ResultsPage() {
         <div className="absolute -bottom-2 -left-2 w-[80px] h-[80px] bg-[#13ec37]/5 rounded-full blur-[20px] z-0" />
       </section>
 
-      <section className="bg-white rounded-[20px] border border-[#e8ede8] p-6 shadow-[0_1px_4px_rgba(0,0,0,0.05)]">
-        <div className="flex flex-col gap-4 mb-6">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-2 text-[#0f1f10]">
-              <BarChartIcon />
-              <h3 className="text-lg font-bold tracking-wider uppercase m-0">週間達成率</h3>
-            </div>
-            <div className="flex gap-2">
-              {[["4w", "4週"], ["7w", "7週"]].map(([key, label]) => (
-                <button 
-                  key={key} 
-                  onClick={() => setPeriod(key as "4w" | "7w")} 
-                  className={`text-[12px] px-4 py-1.5 rounded-full font-bold transition-all border ${
-                    period === key 
-                      ? "bg-[#13ec37]/10 border-[#13ec37]/30 text-[#13ec37]" 
-                      : "bg-transparent border-[#e8ede8] text-[#64748b] hover:bg-gray-50"
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
+      <section className="flex flex-col overflow-visible gap-4 bg-white rounded-[20px] border border-[#e8ede8] p-6 shadow-[0_1px_4px_rgba(0,0,0,0.05)]">
+        <div className="flex justify-between items-center">
+          <div className="flex items-center gap-2 text-[#0f1f10]">
+            <BarChartIcon />
+            <h3 className="text-lg font-bold tracking-wider uppercase m-0">週間達成率</h3>
+          </div>
+          <div className="flex gap-2">
+            {[["4w", "4週"], ["7w", "7週"]].map(([key, label]) => (
+              <button 
+                key={key} 
+                onClick={() => setPeriod(key as "4w" | "7w")} 
+                className={`text-[12px] px-4 py-1.5 rounded-full font-bold transition-all border ${
+                  period === key 
+                    ? "bg-[#13ec37]/10 border-[#13ec37]/30 text-[#13ec37]" 
+                    : "bg-transparent border-[#e8ede8] text-[#64748b] hover:bg-gray-50"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
           </div>
         </div>
-        <BarChart data={shownData} />
+        <BarChart data={shownData}/>
         
         <div className="mt-5 p-3.5 flex items-center gap-2.5 bg-[#13ec37]/10 border border-[#13ec37]/30 rounded-xl text-[13px] text-[#0fbf2c] font-bold">
           {trend >= 0 ? (

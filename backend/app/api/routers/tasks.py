@@ -332,3 +332,16 @@ def delete_task(task_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Task not found")
     db.delete(task)
     db.commit()
+
+@router.patch("/tasks/{task_id}/done", response_model=TaskRead)
+def toggle_done(task_id: int, db: Session = Depends(get_db)):
+    task = db.get(Task, task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    task.is_done = not task.is_done
+    from app.models.task import TaskStatus
+    task.status = TaskStatus.done if task.is_done else TaskStatus.todo
+    
+    db.commit()
+    db.refresh(task)
+    return task
