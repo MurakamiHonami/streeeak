@@ -7,12 +7,12 @@ body {
   font-family: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   background: #f6f8f6;
   color: #0f1f10;
+  font-size: 16px;
 }
 
 #root {
   min-height: 100vh;
   --primary-color: #13ec37;
-
 }
 
 .appShell {
@@ -46,6 +46,8 @@ h1 {
   align-items: center;
   justify-content: space-between;
   padding: 28px 0 18px;
+  flex-wrap: wrap;
+  gap: 12px;
 }
 
 .topHeader.authHeader {
@@ -65,7 +67,7 @@ h1 {
 }
 
 .brandIcon {
-  width: 80px;
+  width: clamp(60px, 12vw, 80px);
   height: auto;
 }
 
@@ -93,12 +95,13 @@ h1 {
 
 .headerTitle {
   margin: 0;
-  font-size: 3.5rem;
+  font-size: clamp(2.2rem, 8vw, 3.5rem);
   letter-spacing: -0.015em;
 }
+
 .sasa {
-  width: 3.5rem;
-  height: 3.5rem;
+  width: clamp(2.2rem, 8vw, 3.5rem);
+  height: clamp(2.2rem, 8vw, 3.5rem);
   padding-bottom: 0.5rem;
 }
 
@@ -184,12 +187,12 @@ h1 {
 }
 
 .statsGrid {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
   gap: 12px;
 }
 
 .statCard {
-  flex: 1;
   background: #fff;
   border: 1px solid #e8ede8;
   border-radius: 16px;
@@ -349,6 +352,7 @@ h1 {
 
 .taskContent {
   flex: 1;
+  min-width: 0;
 }
 
 .doneBadge {
@@ -373,7 +377,7 @@ h1 {
   margin: 8px 0 0;
   padding-left: 18px;
   color: #4b5563;
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .detailTodoList li {
@@ -432,12 +436,8 @@ button:disabled {
 }
 
 @keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 pre {
@@ -445,6 +445,7 @@ pre {
   background: #f8f9ff;
   border-radius: 8px;
   padding: 10px;
+  overflow-x: auto;
 }
 
 .done {
@@ -469,6 +470,7 @@ pre {
   display: flex;
   gap: 8px;
   align-items: center;
+  flex-wrap: wrap;
 }
 
 .chatBox {
@@ -482,7 +484,7 @@ pre {
 
 .chatBox p {
   margin: 0 0 8px;
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .chatInputRow {
@@ -510,11 +512,12 @@ pre {
 
 .proposalCard p {
   margin: 0;
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .tabRow {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
@@ -523,6 +526,7 @@ pre {
   background: #fff;
   border: 1px solid #e8ede8;
   color: #64748b;
+  min-width: fit-content;
 }
 
 .tabBtn.active {
@@ -531,49 +535,17 @@ pre {
   color: #0fbf2c;
 }
 
-.goalSectionTabRow {
-  position: relative;
-  gap: 0;
-  background: rgba(15, 23, 42, 0.06);
-  border-radius: 12px;
-  padding: 4px;
-}
-
-.goalSectionActivePill {
-  position: absolute;
-  top: 4px;
-  left: 4px;
-  bottom: 4px;
-  width: calc((100% - 8px) / 2);
-  border-radius: 10px;
-  background: rgba(19, 236, 55, 0.16);
-  border: 1px solid rgba(19, 236, 55, 0.4);
-  box-shadow: 0 8px 16px rgba(19, 236, 55, 0.16);
-  transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
-  pointer-events: none;
-}
-
-.goalSectionTabRow .tabBtn {
-  position: relative;
-  z-index: 1;
-  border: none;
-  background: transparent;
-}
-
-.goalSectionTabRow .tabBtn.active {
-  background: transparent;
-  border-color: transparent;
-  color: #0f1f10;
-}
-
+.goalSectionTabRow,
 .planTabRow {
   position: relative;
   gap: 0;
   background: rgba(15, 23, 42, 0.06);
   border-radius: 12px;
   padding: 4px;
+  display: flex;
 }
 
+.goalSectionActivePill,
 .planTabActivePill {
   position: absolute;
   top: 4px;
@@ -587,6 +559,11 @@ pre {
   pointer-events: none;
 }
 
+.goalSectionActivePill {
+  width: calc((100% - 8px) / 2);
+}
+
+.goalSectionTabRow .tabBtn,
 .planTabRow .tabBtn {
   position: relative;
   z-index: 1;
@@ -594,103 +571,68 @@ pre {
   background: transparent;
 }
 
+.goalSectionTabRow .tabBtn.active,
 .planTabRow .tabBtn.active {
   background: transparent;
   border-color: transparent;
   color: #0f1f10;
 }
 
-.planContentTransition {
+.planContentTransition,
+.goalSectionTransition,
+.routeTransition {
   will-change: opacity, transform;
+  width: 100%;
+  flex: 1;
 }
 
-.planContentTransitionForward {
-  animation: planContentSlideInFromRight 220ms ease;
+.planContentTransitionForward,
+.routeTransitionForward {
+  animation: slideInFromRight 220ms ease;
 }
 
-.planContentTransitionBackward {
-  animation: planContentSlideInFromLeft 220ms ease;
+.planContentTransitionBackward,
+.routeTransitionBackward {
+  animation: slideInFromLeft 220ms ease;
 }
 
-.planContentTransitionNeutral {
-  animation: planContentFadeIn 160ms ease;
-}
-
-@keyframes planContentSlideInFromRight {
-  from {
-    opacity: 0;
-    transform: translateX(12px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-@keyframes planContentSlideInFromLeft {
-  from {
-    opacity: 0;
-    transform: translateX(-12px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-@keyframes planContentFadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-.goalSectionTransition {
-  will-change: opacity, transform;
+.planContentTransitionNeutral,
+.routeTransitionNeutral {
+  animation: fadeIn 160ms ease;
 }
 
 .goalSectionTransitionForward {
-  animation: goalSectionSlideInFromRight 240ms ease;
+  animation: slideInFromRight 240ms ease;
 }
 
 .goalSectionTransitionBackward {
-  animation: goalSectionSlideInFromLeft 240ms ease;
+  animation: slideInFromLeft 240ms ease;
 }
 
 .goalSectionTransitionNeutral {
   animation: none;
 }
 
-@keyframes goalSectionSlideInFromRight {
-  from {
-    opacity: 0;
-    transform: translateX(14px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
+@keyframes slideInFromRight {
+  from { opacity: 0; transform: translateX(14px); }
+  to { opacity: 1; transform: translateX(0); }
 }
 
-@keyframes goalSectionSlideInFromLeft {
-  from {
-    opacity: 0;
-    transform: translateX(-14px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
+@keyframes slideInFromLeft {
+  from { opacity: 0; transform: translateX(-14px); }
+  to { opacity: 1; transform: translateX(0); }
 }
 
-@keyframes goalSectionFadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .routeTransition,
+  .planContentTransition,
+  .goalSectionTransition {
+    animation: none;
   }
 }
 
@@ -729,19 +671,22 @@ pre {
 }
 
 .slideViewport::-webkit-scrollbar,
-.dailySlidePage::-webkit-scrollbar {
+.dailySlidePage::-webkit-scrollbar,
+.planScrollArea::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
 .slideViewport::-webkit-scrollbar-thumb,
-.dailySlidePage::-webkit-scrollbar-thumb {
+.dailySlidePage::-webkit-scrollbar-thumb,
+.planScrollArea::-webkit-scrollbar-thumb {
   background: rgba(15, 23, 42, 0.25);
   border-radius: 999px;
 }
 
 .slideViewport::-webkit-scrollbar-track,
-.dailySlidePage::-webkit-scrollbar-track {
+.dailySlidePage::-webkit-scrollbar-track,
+.planScrollArea::-webkit-scrollbar-track {
   background: rgba(15, 23, 42, 0.08);
   border-radius: 999px;
 }
@@ -757,20 +702,6 @@ pre {
 
 .planScrollAreaDaily {
   max-height: 560px;
-}
-
-.planScrollArea::-webkit-scrollbar {
-  width: 8px;
-}
-
-.planScrollArea::-webkit-scrollbar-thumb {
-  background: rgba(15, 23, 42, 0.25);
-  border-radius: 999px;
-}
-
-.planScrollArea::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.08);
-  border-radius: 999px;
 }
 
 .planUnit {
@@ -801,15 +732,16 @@ pre {
 .authLabel {
   display: grid;
   gap: 6px;
-  font-size: 13px;
+  font-size: 14px;
   color: #475569;
 }
 
 .authError {
   margin: 0;
   color: #b91c1c;
-  font-size: 13px;
+  font-size: 14px;
 }
+
 .bottomNav {
   position: fixed;
   left: 50%;
@@ -848,7 +780,6 @@ pre {
   pointer-events: none;
 }
 
-
 .bottomNavLink {
   position: relative;
   z-index: 1;
@@ -869,122 +800,14 @@ pre {
 }
 
 .bottomNavIcon {
-  font-size: 19px;
+  font-size: 22px;
 }
 
 .bottomNavText {
-  font-size: 10px;
+  font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   font-weight: 700;
-}
-
-.routeTransition {
-  will-change: opacity, transform;
-  width: 100%;
-  flex: 1;
-}
-
-.routeTransitionForward {
-  animation: routeSlideInFromRight 220ms ease;
-}
-
-.routeTransitionBackward {
-  animation: routeSlideInFromLeft 220ms ease;
-}
-
-.routeTransitionNeutral {
-  animation: routeFadeIn 180ms ease;
-}
-
-@keyframes routeSlideInFromRight {
-  from {
-    opacity: 0;
-    transform: translateX(18px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-@keyframes routeSlideInFromLeft {
-  from {
-    opacity: 0;
-    transform: translateX(-18px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-@keyframes routeFadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .routeTransition {
-    animation: none;
-  }
-}
-
-.routeTransition {
-  will-change: opacity, transform;
-}
-
-.routeTransitionForward {
-  animation: routeSlideInFromRight 220ms ease;
-}
-
-.routeTransitionBackward {
-  animation: routeSlideInFromLeft 220ms ease;
-}
-
-.routeTransitionNeutral {
-  animation: routeFadeIn 180ms ease;
-}
-
-@keyframes routeSlideInFromRight {
-  from {
-    opacity: 0;
-    transform: translateX(18px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-@keyframes routeSlideInFromLeft {
-  from {
-    opacity: 0;
-    transform: translateX(-18px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-@keyframes routeFadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .routeTransition {
-    animation: none;
-  }
 }
 
 .gamifiedApp {
@@ -992,9 +815,6 @@ pre {
   background-image: radial-gradient(#d1d9d1 1px, transparent 1px);
   background-size: 20px 20px;
 }
-
-
-
 
 .loadingPanda {
   height: 40px;
@@ -1006,208 +826,74 @@ pre {
 }
 
 @keyframes spinner4 {
-    to {
-      transform: scale(1.5);
-		  opacity: 0;
-    }
+  to { transform: scale(1.5); opacity: 0; }
 }
 
 .mover {
-  -webkit-animation-duration: 1.5s;
   animation-duration: 1.5s;
-  -webkit-animation-fill-mode: both;
   animation-fill-mode: both;
 }
 
 @keyframes rocketPulse {
-  0% {
-    -webkit-transform: scale3d(1,1,1);
-    transform: scale3d(1,1,1);
-  }
-
-  50% {
-    -webkit-transform: scale3d(2,2,2);
-    transform: scale3d(2,2,2);
-  }
-
-  100% {
-    -webkit-transform: scale3d(1,1,1);
-    transform: scale3d(1,1,1);
-  }
-}
-
-@-webkit-keyframes rocketPulse {
-  0% {
-    -webkit-transform: scale3d(1,1,1);
-    transform: scale3d(1,1,1);
-  }
-
-  50% {
-    -webkit-transform: scale3d(2,2,2);
-    transform: scale3d(2,2,2);
-  }
-
-  100% {
-    -webkit-transform: scale3d(1,1,1);
-    transform: scale3d(1,1,1);
-  }
+  0%, 100% { transform: scale3d(1,1,1); }
+  50% { transform: scale3d(2,2,2); }
 }
 
 .rocketPulse {
-  -webkit-animation-name: rocketPulse;
   animation-name: rocketPulse;
 }
 
-
 @keyframes targetPulse {
-  0%, 20%, 60% {
-    -webkit-transform: scale3d(1, 1, 1);
-    transform: scale3d(1, 1, 1);
-  }
-
-  40%, 80% {
-    -webkit-transform: scale3d(1.2, 1.2, 1.2);
-    transform: scale3d(1.2, 1.2, 1.2);
-  }
-
-  100% {
-    -webkit-transform: scale3d(1, 1, 1);
-    transform: scale3d(1, 1, 1);
-  }
+  0%, 20%, 60%, 100% { transform: scale3d(1, 1, 1); }
+  40%, 80% { transform: scale3d(1.2, 1.2, 1.2); }
 }
 
 .targetPulse {
-	animation-duration: 2s;
-	animation-name: targetPulse;
+  animation-duration: 2s;
+  animation-name: targetPulse;
 }
 
-@-webkit-keyframes bounceInUp {
-  0% {
-    -webkit-transform: translate3d(0, 25%, 0); }
-  60% {
-    -webkit-transform: translate3d(0, -3%, 0); }
-  75% {
-    -webkit-transform: translate3d(0, 1%, 0); }
-  90% {
-    -webkit-transform: translate3d(0, -1%, 0); }
-  100% {
-    -webkit-transform: none; } }
-@-moz-keyframes bounceInUp {
-  0% {
-    -moz-transform: translate3d(0, 25%, 0); }
-  60% {
-    -moz-transform: translate3d(0, -3%, 0); }
-  75% {
-    -moz-transform: translate3d(0, 1%, 0); }
-  90% {
-    -moz-transform: translate3d(0, -1%, 0); }
-  100% {
-    -moz-transform: none; } }
-@-o-keyframes bounceInUp {
-  0% {
-    -o-transform: translate3d(0, 25%, 0); }
-  60% {
-    -o-transform: translate3d(0, -3%, 0); }
-  75% {
-    -o-transform: translate3d(0, 1%, 0); }
-  90% {
-    -o-transform: translate3d(0, -1%, 0); }
-  100% {
-    -o-transform: none; } }
 @keyframes bounceInUp {
-  0% {
-    transform: translate3d(0, 25%, 0); }
-  60% {
-    transform: translate3d(0, -3%, 0); }
-  75% {
-    transform: translate3d(0, 1%, 0); }
-  90% {
-    transform: translate3d(0, -1%, 0); }
-  100% {
-    transform: none; } }
+  0% { transform: translate3d(0, 25%, 0); }
+  60% { transform: translate3d(0, -3%, 0); }
+  75% { transform: translate3d(0, 1%, 0); }
+  90% { transform: translate3d(0, -1%, 0); }
+  100% { transform: none; } 
+}
 
 .u--bounceInUp {
-  -webkit-animation: bounceInUp 2s cubic-bezier(0.215, 0.61, 0.355, 1);
-  -moz-animation: bounceInUp 2s cubic-bezier(0.215, 0.61, 0.355, 1);
-  -o-animation: bounceInUp 2s cubic-bezier(0.215, 0.61, 0.355, 1);
-  animation: bounceInUp 2s cubic-bezier(0.215, 0.61, 0.355, 1); }
+  animation: bounceInUp 2s cubic-bezier(0.215, 0.61, 0.355, 1); 
+}
 
-/* bounceInDown */
-@-webkit-keyframes bounceInDown {
-  0% {
-    -webkit-transform: translate3d(0, -25%, 0); }
-  60% {
-    -webkit-transform: translate3d(0, 3%, 0); }
-  75% {
-    -webkit-transform: translate3d(0, -1%, 0); }
-  90% {
-    -webkit-transform: translate3d(0, 1%, 0); }
-  100% {
-    -webkit-transform: none; } }
-@-moz-keyframes bounceInDown {
-  0% {
-    -moz-transform: translate3d(0, -25%, 0); }
-  60% {
-    -moz-transform: translate3d(0, 3%, 0); }
-  75% {
-    -moz-transform: translate3d(0, -1%, 0); }
-  90% {
-    -moz-transform: translate3d(0, 1%, 0); }
-  100% {
-    -moz-transform: none; } }
-@-o-keyframes bounceInDown {
-  0% {
-    -o-transform: translate3d(0, -25%, 0); }
-  60% {
-    -o-transform: translate3d(0, 3%, 0); }
-  75% {
-    -o-transform: translate3d(0, -1%, 0); }
-  90% {
-    -o-transform: translate3d(0, 1%, 0); }
-  100% {
-    -o-transform: none; } }
 @keyframes bounceInDown {
-  0% {
-    transform: translate3d(0, -25%, 0); }
-  60% {
-    transform: translate3d(0, 3%, 0); }
-  75% {
-    transform: translate3d(0, -1%, 0); }
-  90% {
-    transform: translate3d(0, 1%, 0); }
-  100% {
-    transform: none; } }
+  0% { transform: translate3d(0, -25%, 0); }
+  60% { transform: translate3d(0, 3%, 0); }
+  75% { transform: translate3d(0, -1%, 0); }
+  90% { transform: translate3d(0, 1%, 0); }
+  100% { transform: none; } 
+}
 
 .u--bounceInDown {
-  -webkit-animation: bounceInDown 2s cubic-bezier(0.215, 0.61, 0.355, 1);
-  -moz-animation: bounceInDown 2s cubic-bezier(0.215, 0.61, 0.355, 1);
-  -o-animation: bounceInDown 2s cubic-bezier(0.215, 0.61, 0.355, 1);
-  animation: bounceInDown 2s cubic-bezier(0.215, 0.61, 0.355, 1); }
+  animation: bounceInDown 2s cubic-bezier(0.215, 0.61, 0.355, 1); 
+}
 
-  /* ボタン本体のスタイル */
 .heart-button {
-  /* ボタン要素の大きさや色 */
   position: relative;
   display: inline-block;
   background-color: #ef4b53;
   padding: 0.8em 2.4em;
   border-radius: 5px;
   border: 2px solid transparent;
-
-  /* ボタンの文字の設定 */
   font-family: 'Quicksand', sans-serif;
   font-weight: bold;
   font-size: 20px;
   color: #fff;
   letter-spacing: 0.1em;
-
-  /* その他必要なスタイル */
   transition: all 0.3s ease;
   cursor: pointer;
   text-decoration: none;
 }
 
-/* ハートの共通スタイル */
 .heart-button::before,
 .heart-button::after {
   content: "";
@@ -1219,160 +905,37 @@ pre {
   opacity: 0;
 }
 
-/* 左上のハートのスタイル */
 .heart-button::before {
   background-image: url('heart.svg');
   top: 0;
   left: -12px;
 }
 
-/* 右下のハートのスタイル */
 .heart-button::after {
   background-image: url('heart-reverse.svg');
   bottom: -6px;
   right: -14px;
 }
 
-/* ========= ホバー時のスタイル ======== */
-
-/* ボタンホバー時のスタイル */
 .heart-button:hover {
   background-color: #fff;
   border-color: #ef4b53;
   color: #ef4b53;
 }
 
-/* ボタンホバー時の左上のハートのスタイル */
 .heart-button:hover::before {
   animation: heart 1.5s infinite ease-out;
 }
 
-/* ボタンホバー時の右下のハートのスタイル */
-.heart-button:hover::after {
-  animation: heart 1.5s 0.2s infinite ease-out;
-}
-
-/* ========= アニメーションの設定 ======== */
-@keyframes heart {
-  0% {
-    transform: translateY(0) scale(1);
-    opacity: 0;
-  }
-  25% {
-    opacity: 1;
-  }
-  75% {
-    opacity: 1;
-  }
-  100% {
-    transform: translateY(-20px) scale(1.4);
-    opacity: 0;
-  }
-}
-
-/* ========= SPのスタイル ======== */
-@media screen and (max-width: 768px) {
-
-  /* ボタン本体のスタイル */
-  .heart-button {
-    background-color: #fff;
-    border-color: #ef4b53;
-    color: #ef4b53;
-  }
-  
-  /* 左上のハートのスタイル */
-  .heart-button::before {
-    animation: heart 1.5s infinite ease-out;
-  }
-
-  /* 右下のハートのスタイル */
-  .heart-button::after {
-    animation: heart 1.5s 0.2s infinite ease-out;
-  }
-}
-.heart-button {
-  /* ボタン要素の大きさや色 */
-  position: relative;
-  display: inline-block;
-  background-color: #ef4b53; /* ボタンの背景色 */
-  padding: 0.8em 2.4em; /* ボタンの余白 */
-  border-radius: 5px; /* 角に丸みをつける */
-  border: 2px solid transparent; /* ホバー時のために透明のボーダーを設定しておく */
-
-  /* ボタンの文字の設定 */
-  font-family: 'Quicksand', sans-serif; /* ボタンのフォント指定 */
-  font-weight: bold; /* 文字の太さ */
-  font-size: 20px; /* 文字の大きさ */
-  color: #fff; /* 文字色 */
-  letter-spacing: 0.1em; /* 文字の間隔をあける */
-
-  /* その他必要なスタイル */
-  transition: all 0.3s ease; /* ホバー時の色の変化のスピードを調整 */
-  cursor: pointer; /* ホバーした時にポインターを表示 */
-  text-decoration: none; /* aタグを使用する場合は下線が引かれるので、非表示に */
-}
-/* ハートの共通スタイル */
-.heart-button::before,
-.heart-button::after {
-  content: "";
-  background-size: contain; /* 画像の比率を保ったまま縦横幅に収める */
-  background-repeat: no-repeat; /* 画像の繰り返しを無効 */
-  width: 20px; /* ハートの横幅 */
-  height: 20px; /* ハートの縦幅 */
-  position: absolute;
-  opacity: 0; /* 初期状態では透明に */
-}
-
-/* 左上のハートのスタイル */
-.heart-button::before {
-  background-image: url('heart.svg'); /* 画像へのパス */
-  top: 0;
-  left: -12px;
-}
-
-/* 右下のハートのスタイル */
-.heart-button::after {
-  background-image: url('heart-reverse.svg'); /* 画像へのパス */
-  bottom: -6px;
-  right: -14px;
-}
-/* ボタンホバー時のスタイル */
-.heart-button:hover {
-  background-color: #fff;
-  border-color: #ef4b53;
-  color: #ef4b53;
-}
-
-/* ボタンホバー時の左上のハートのスタイル */
-.heart-button:hover::before {
-  animation: heart 1.5s infinite ease-out;
-}
-
-/* ボタンホバー時の右下のハートのスタイル */
 .heart-button:hover::after {
   animation: heart 1.5s 0.2s infinite ease-out;
 }
 
 @keyframes heart {
-  0% {
-    transform: translateY(0) scale(1);
-    opacity: 0;
-  }
-  25% {
-    opacity: 1;
-  }
-  75% {
-    opacity: 1;
-  }
-  100% {
-    transform: translateY(-20px) scale(1.4);
-    opacity: 0;
-  }
+  0% { transform: translateY(0) scale(1); opacity: 0; }
+  25%, 75% { opacity: 1; }
+  100% { transform: translateY(-20px) scale(1.4); opacity: 0; }
 }
-
-/* =============================================
-   Landing Page Styles (Apple-inspired)
-   ============================================= */
 
 .lp-root {
   min-height: 100vh;
@@ -1385,7 +948,6 @@ pre {
   color: #13ec37;
 }
 
-/* ---- Nav ---- */
 .lp-nav {
   position: sticky;
   top: 0;
@@ -1420,17 +982,19 @@ pre {
   gap: 12px;
 }
 
-/* ---- Buttons ---- */
+.lp-btn-ghost, .lp-btn-green, .lp-btn-outline {
+  font-size: 0.9rem;
+  border-radius: 980px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
 .lp-btn-ghost {
   background: none;
   border: none;
   color: #1d1d1f;
-  font-size: 0.9rem;
   font-weight: 500;
   padding: 8px 16px;
-  border-radius: 980px;
-  cursor: pointer;
-  transition: background 0.2s ease;
 }
 
 .lp-btn-ghost:hover {
@@ -1441,12 +1005,8 @@ pre {
   background: #13ec37;
   color: #0f1f10;
   border: none;
-  font-size: 0.9rem;
   font-weight: 700;
   padding: 10px 22px;
-  border-radius: 980px;
-  cursor: pointer;
-  transition: all 0.2s ease;
 }
 
 .lp-btn-green:hover {
@@ -1458,12 +1018,8 @@ pre {
   background: none;
   color: #1d1d1f;
   border: 1.5px solid #1d1d1f;
-  font-size: 0.9rem;
   font-weight: 600;
   padding: 10px 22px;
-  border-radius: 980px;
-  cursor: pointer;
-  transition: all 0.2s ease;
 }
 
 .lp-btn-outline:hover {
@@ -1471,17 +1027,9 @@ pre {
   color: #fff;
 }
 
-.lp-btn-lg {
-  font-size: 1.05rem;
-  padding: 14px 32px;
-}
+.lp-btn-lg { font-size: 1.05rem; padding: 14px 32px; }
+.lp-btn-xl { font-size: 1.15rem; padding: 18px 48px; }
 
-.lp-btn-xl {
-  font-size: 1.15rem;
-  padding: 18px 48px;
-}
-
-/* ---- Hero ---- */
 .lp-hero {
   min-height: 90vh;
   display: flex;
@@ -1556,7 +1104,6 @@ pre {
   font-weight: 600;
 }
 
-/* ---- Features ---- */
 .lp-features {
   background: #f5f5f7;
   padding: 100px 24px;
@@ -1614,7 +1161,6 @@ pre {
   margin: 0;
 }
 
-/* ---- Stats ---- */
 .lp-stats {
   padding: 100px 24px;
   background: #ffffff;
@@ -1642,7 +1188,6 @@ pre {
   font-weight: 500;
 }
 
-/* ---- Bottom CTA ---- */
 .lp-cta-section {
   background: #1d1d1f;
   padding: 120px 24px;
@@ -1663,7 +1208,6 @@ pre {
   margin: 0 0 40px;
 }
 
-/* ---- Footer ---- */
 .lp-footer {
   background: #1d1d1f;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
@@ -1690,23 +1234,111 @@ pre {
   margin: 0;
 }
 
-/* ---- LP Mobile ---- */
+@media screen and (max-width: 768px) {
+  .appContainer {
+    padding: 0 12px 100px;
+  }
+  
+  .card {
+    padding: 12px;
+    gap: 12px;
+  }
+
+  .page {
+    gap: 12px;
+  }
+  
+  .statCard {
+    padding: 12px;
+  }
+
+  .visionCard {
+    padding: 18px;
+  }
+
+  .taskRow p, .chatBox p, .proposalCard p {
+    font-size: 15px;
+  }
+
+  .statValue {
+    font-size: 28px;
+  }
+
+  .statLabel {
+    font-size: 12px;
+  }
+
+  .chip {
+    font-size: 11px;
+    padding: 6px 12px;
+  }
+
+  button, input, textarea {
+    font-size: 16px;
+    padding: 12px;
+  }
+
+  .heart-button {
+    background-color: #fff;
+    border-color: #ef4b53;
+    color: #ef4b53;
+  }
+  .heart-button::before {
+    animation: heart 1.5s infinite ease-out;
+  }
+  .heart-button::after {
+    animation: heart 1.5s 0.2s infinite ease-out;
+  }
+  
+  .rankRow {
+    grid-template-columns: 36px 1fr auto;
+  }
+}
+
+@media screen and (max-width: 480px) {
+  .taskRow {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 10px;
+  }
+  
+  .rowActions {
+    justify-content: flex-end;
+    margin-top: 8px;
+  }
+
+  .chatInputRow {
+    flex-direction: column;
+  }
+
+  .bottomNav {
+    width: calc(100% - 24px);
+    bottom: 12px;
+  }
+}
+
 @media (max-width: 600px) {
   .lp-nav-actions .lp-btn-ghost {
     display: none;
   }
-
   .lp-hero {
     min-height: 85vh;
-    padding: 60px 20px 40px;
+    padding: 40px 12px 30px;
   }
-
+  .lp-hero-title {
+    font-size: 2.8rem;
+  }
+  .lp-hero-sub {
+    font-size: 1.1rem;
+  }
   .lp-features,
   .lp-stats,
   .lp-cta-section {
-    padding: 70px 20px;
+    padding: 50px 16px;
   }
-
+  .lp-feature-card {
+    padding: 24px 20px;
+  }
   .lp-footer-inner {
     flex-direction: column;
     text-align: center;

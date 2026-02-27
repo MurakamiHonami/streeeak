@@ -1,5 +1,5 @@
+import os
 from pathlib import Path
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import inspect, text
@@ -9,15 +9,14 @@ from app.api.router import api_router
 from app.core.config import settings
 from app.db.base import Base
 from app.db.session import engine
-from app.models import *  
+from app.models import *
 
-from app.db.base import Base
-# 自動マイグレーション
-Base.metadata.create_all(bind=engine)
+# パスの設定 (EC2の権限エラー回避)
+BASE_DIR = Path(__file__).resolve().parent.parent
+uploads_dir = BASE_DIR / "uploads"
+uploads_dir.mkdir(parents=True, exist_ok=True)
 
 app = FastAPI(title=settings.APP_NAME)
-uploads_dir = Path("/app/uploads")
-uploads_dir.mkdir(parents=True, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=str(uploads_dir)), name="uploads")
 
 app.add_middleware(
@@ -28,24 +27,34 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
 @app.on_event("startup")
 def on_startup():
+    # テーブルの作成
     Base.metadata.create_all(bind=engine)
-    # Lightweight schema sync for environments without Alembic migration step.
+    
+    # 自動カラム追加ロジック
     with engine.begin() as conn:
-        columns = {col["name"] for col in inspect(conn).get_columns("users")}
-        if "avatar_url" not in columns:
-            conn.execute(text("ALTER TABLE users ADD COLUMN avatar_url VARCHAR(255) NULL"))
-        if "avatar_data" not in columns:
-            conn.execute(text("ALTER TABLE users ADD COLUMN avatar_data BYTEA NULL"))
-        if "avatar_content_type" not in columns:
-            conn.execute(text("ALTER TABLE users ADD COLUMN avatar_content_type VARCHAR(64) NULL"))
-
+        inspector = inspect(conn)
+        columns = {col["name"] for col in inspector.get_columns("users")}
+        
+        required_columns = [
+            ("avatar_url", "VARCHAR(255)"),
+            ("avatar_data", "BYTEA"),
+            ("avatar_content_type", "VARCHAR(64)"),
+            ("is_premium", "BOOLEAN DEFAULT FALSE"),
+            ("is_verified", "BOOLEAN DEFAULT FALSE"),
+            ("verification_token", "VARCHAR(255)"),
+        ]
+        
+        for col_name, col_type in required_columns:
+            if col_name not in columns:
+                try:
+                    conn.execute(text(f"ALTER TABLE users ADD COLUMN {col_name} {col_type}"))
+                except Exception as e:
+                    print(f"Error adding {col_name}: {e}")
 
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
-
 
 app.include_router(api_router)
