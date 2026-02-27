@@ -540,6 +540,12 @@ export function GoalsPage() {
 
   const moveTaskStatus = (taskId: number, newColId: string) => {
     updateTaskDetailsMutation.mutate({ taskId, payload: { status: newColId } });
+    const targetColIndex = COLUMNS.findIndex((col) => col.id === newColId);
+    if (targetColIndex >= 0 && kanbanScrollRef.current) {
+      const el = kanbanScrollRef.current;
+      el.scrollTo({ left: targetColIndex * el.offsetWidth, behavior: "smooth" });
+      setActiveCol(targetColIndex);
+    }
   };
 
   const saveEditingTask = (taskId: number) => {
