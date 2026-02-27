@@ -6,11 +6,11 @@ from pydantic import BaseModel
 
 from app.db.session import get_db
 from app.models.goal import Goal
-from app.models.task import Task
+from app.models.task import Task, TaskType
 from app.models.user import User
 from app.schemas.goal import GoalCreate, GoalRead, GoalUpdate
 from app.api.deps import get_current_user
-from app.services.task_service import build_breakdown
+from app.services.task_service import build_breakdown, parse_note_subtasks
 
 router = APIRouter(prefix="/goals", tags=["goals"])
 
@@ -86,11 +86,27 @@ def generate_breakdown(
 
     if payload.persist:
         for m in breakdown_res.monthly:
-            db.add(Task(goal_id=goal.id, **m.model_dump()))
+            db.add(Task(goal_id=goal.id, user_id=goal.user_id, **m.model_dump()))
         for w in breakdown_res.weekly:
-            db.add(Task(goal_id=goal.id, **w.model_dump()))
+            db.add(Task(goal_id=goal.id, user_id=goal.user_id, **w.model_dump()))
         for d in breakdown_res.daily:
-            db.add(Task(goal_id=goal.id, **d.model_dump()))
+            subtasks = parse_note_subtasks(d.note)
+            if subtasks:
+                for sub in subtasks:
+                    db.add(
+                        Task(
+                            goal_id=goal.id,
+                            user_id=goal.user_id,
+                            type=TaskType.daily,
+                            title=sub,
+                            month=d.month,
+                            week_number=d.week_number,
+                            date=d.date,
+                            note=None,
+                        )
+                    )
+            else:
+                db.add(Task(goal_id=goal.id, user_id=goal.user_id, **d.model_dump()))
         db.commit()
 
     return breakdown_res

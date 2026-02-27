@@ -598,7 +598,64 @@ pre {
 
 .planContentTransitionNeutral,
 .routeTransitionNeutral {
-  animation: fadeIn 160ms ease;
+  animation: planContentFadeIn 160ms ease;
+}
+
+@keyframes planContentSlideInFromRight {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes planContentSlideInFromLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes planContentFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes addTaskPanelFloatIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes addTaskPanelFloatOut {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.96);
+  }
+}
+
+.goalSectionTransition {
+  will-change: opacity, transform;
 }
 
 .goalSectionTransitionForward {
