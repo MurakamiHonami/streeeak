@@ -41,8 +41,8 @@ const COLUMNS = [
 
 const PRIORITY = {
   high: { label: "高", color: "#ef4444" },
-  mid: { label: "中", color: "#f59e0b" },
-  low: { label: "低", color: "#6b7280" },
+  mid: { label: "中", color: "#eab308" },
+  low: { label: "低", color: "#10b981" },
 };
 
 const PRIORITY_ORDER = { high: 0, mid: 1, low: 2 } as const;
@@ -81,8 +81,14 @@ export function GoalsPage() {
   
   const [kanbanInput, setKanbanInput] = useState("");
   const [kanbanPriority, setKanbanPriority] = useState<"high" | "mid" | "low">("mid");
+  const [isAddTaskOpen, setIsAddTaskOpen] = useState(false);
+  const [isAddTaskClosing, setIsAddTaskClosing] = useState(false);
+  const [isAddTaskPinned, setIsAddTaskPinned] = useState(false);
   const [activeCol, setActiveCol] = useState(0);
   const kanbanScrollRef = useRef<HTMLDivElement | null>(null);
+  const addTaskWrapRef = useRef<HTMLDivElement | null>(null);
+  const addTaskPanelRef = useRef<HTMLDivElement | null>(null);
+  const addTaskButtonRef = useRef<HTMLButtonElement | null>(null);
 
   const goalSectionPrevTabRef = useRef<"create" | "review">("review");
   const planPrevTabRef = useRef<PlanTab>("yearly");
@@ -495,6 +501,24 @@ export function GoalsPage() {
     }
   }, [planTab, yearlyTasks, monthlyPlanTasks, weeklyTasks, dailyTasks]);
 
+  const currentMonth = useMemo(() => {
+    const [y, m] = (appContext.today || "").split("-").map(Number);
+    return typeof m === "number" ? m : new Date().getMonth() + 1;
+  }, [appContext.today]);
+
+  const isCurrentPeriod = (task: DraftTaskKanban): boolean => {
+    switch (planTab) {
+      case "yearly":
+        return task.title.includes("1年目");
+      case "monthly":
+        return task.month === currentMonth;
+      case "weekly":
+        return task.week_number === appContext.week;
+      default:
+        return true;
+    }
+  };
+
   const handleAddKanbanTask = () => {
     if (!kanbanInput.trim() || !activeGoalId) return;
     
@@ -523,33 +547,255 @@ export function GoalsPage() {
     setEditingTaskId(null);
   };
 
+  const periodLabel = planTab === "weekly" ? "今週" : planTab === "monthly" ? "今月" : "今年";
+
+  const renderTaskCard = (task: DraftTaskKanban, col: typeof COLUMNS[0], options?: { grayed?: boolean }) => {
+    const grayed = options?.grayed ?? false;
+    const isDailyView = planTab === "daily";
+    const leftBorderColor = isDailyView ? PRIORITY[task.priority].color : (grayed ? "#94a3b8" : "#13ec37");
+    return (
+      <div
+        key={task.task_id}
+        style={{
+          background: grayed ? "#f1f5f9" : "#fff",
+          border: "1px solid #e2e8f0",
+          borderLeft: `5px solid ${leftBorderColor}`,
+          borderRadius: 12, padding: "14px",
+          boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
+          opacity: grayed ? 0.85 : 1,
+        }}
+      >
+        {editingTaskId === task.task_id ? (
+          <div style={{ display: "flex", gap: 6, flexDirection: "column" }}>
+            <input
+              autoFocus
+              value={editingTaskTitle}
+              onChange={e => setEditingTaskTitle(e.target.value)}
+              onKeyDown={e => { if (e.key === "Enter") saveEditingTask(task.task_id); if (e.key === "Escape") setEditingTaskId(null); }}
+              style={{ width: "100%", boxSizing: "border-box", border: "2px solid #13ec37", borderRadius: 8, padding: "8px 10px", fontSize: 14, outline: "none" }}
+            />
+            <div style={{ display: "flex", gap: 6 }}>
+              <button type="button" onClick={() => saveEditingTask(task.task_id)} style={{ flex: 1, background: "#10b981", border: "none", borderRadius: 8, color: "#fff", padding: "8px", fontWeight: 700, cursor: "pointer" }}>保存</button>
+              <button type="button" onClick={() => setEditingTaskId(null)} style={{ flex: 1, background: "#94a3b8", border: "none", borderRadius: 8, color: "#fff", padding: "8px", fontWeight: 700, cursor: "pointer" }}>キャンセル</button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+              <div style={{ flex: 1 }}>
+                {planTab === "daily" && task.date && (
+                  <span style={{ display: "inline-block", background: "#f1f5f9", color: "#475569", fontSize: "10px", fontWeight: 800, padding: "2px 6px", borderRadius: "4px", marginBottom: "4px" }}>
+                    {new Date(task.date).toLocaleDateString("ja-JP", { month: "short", day: "numeric" })}
+                  </span>
+                )}
+                <span
+                  style={{
+                    display: "block", fontSize: 15, fontWeight: 700, lineHeight: 1.4,
+                    color: col.id === "done" ? "#94a3b8" : "#0f1f10",
+                    textDecoration: col.id === "done" ? "line-through" : "none",
+                    ...(getTaskTitleStyle(task.task_id) ?? {}),
+                  }}
+                  onClick={() => { setEditingTaskId(task.task_id); setEditingTaskTitle(task.title.replace(/^\d+.*?[:：]\s*/, "")); }}
+                >
+                  {task.title}
+                </span>
+              </div>
+              <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
+                <button type="button" onClick={() => { setEditingTaskId(task.task_id); setEditingTaskTitle(task.title.replace(/^\d+.*?[:：]\s*/, "")); }} style={{ background: "none", border: "none", cursor: "pointer", color: "#94a3b8", fontSize: 18, padding: "2px" }}><EditIcon /></button>
+                <button type="button" onClick={() => { if (window.confirm("削除しますか？")) deleteTaskMutation.mutate(task.task_id); }} style={{ background: "none", border: "none", cursor: "pointer", color: "#94a3b8", fontSize: 18, padding: "2px" }}><DeleteIcon /></button>
+              </div>
+            </div>
+
+            <div style={{ marginTop: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              {isDailyView ? (
+                <select
+                  value={task.priority}
+                  onChange={(e) => updateTaskDetailsMutation.mutate({ taskId: task.task_id, payload: { priority: e.target.value } })}
+                  style={{
+                    fontSize: 11,
+                    color: PRIORITY[task.priority].color,
+                    fontWeight: 800,
+                    background: `${PRIORITY[task.priority].color}20`,
+                    padding: "4px 8px",
+                    borderRadius: "12px",
+                    border: "none",
+                    cursor: "pointer",
+                    outline: "none",
+                    appearance: "none",
+                    textAlign: "center",
+                  }}
+                >
+                  {Object.entries(PRIORITY).map(([k, v]) => (
+                    <option key={k} value={k}>{v.label}優先</option>
+                  ))}
+                </select>
+              ) : (
+                isCurrentPeriod(task) ? (
+                  <span
+                    style={{
+                      fontSize: 11,
+                      color: "#13ec37",
+                      fontWeight: 800,
+                      background: "rgba(19, 236, 55, 0.125)",
+                      padding: "4px 8px",
+                      borderRadius: "12px",
+                    }}
+                  >
+                    {periodLabel}
+                  </span>
+                ) : null
+              )}
+              {isDailyView && (
+                <div style={{ display: "flex", gap: 6 }}>
+                  {COLUMNS.filter(c => c.id !== col.id).map(c => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => moveTaskStatus(task.task_id, c.id)}
+                      style={{ fontSize: 11, padding: "4px 10px", borderRadius: 8, border: `1px solid ${c.color}`, background: "none", color: c.color, cursor: "pointer", fontWeight: 800, transition: "all 0.2s" }}
+                    >
+                      → {c.label.split(" ")[1]}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </>
+        )}
+        {renderTaskProposalReview(task.task_id)}
+      </div>
+    );
+  };
+
+  const renderPlanList = () => {
+    const sorted = [...currentTasksToDisplay].sort(
+      (a, b) => COLUMNS.findIndex(c => c.id === a.status) - COLUMNS.findIndex(c => c.id === b.status) || PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority]
+    );
+    return (
+      <div style={{ display: "flex", flexDirection: "column", background: "#f8faf8", borderRadius: "16px", overflow: "hidden", marginTop: "16px", padding: "16px" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {sorted.map((task) => renderTaskCard(task, COLUMNS.find(c => c.id === task.status) ?? COLUMNS[0], { grayed: !isCurrentPeriod(task) }))}
+        </div>
+        {sorted.length === 0 && (
+          <div style={{ textAlign: "center", color: "#94a3b8", fontSize: 14, fontWeight: 700, paddingTop: 32, paddingBottom: 32 }}>
+            タスクがありません
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const closeAddTaskPanel = () => {
+    if (isAddTaskClosing) return;
+    setIsAddTaskClosing(true);
+  };
+
+  useEffect(() => {
+    if (!isAddTaskClosing) return;
+    const t = setTimeout(() => {
+      setIsAddTaskOpen(false);
+      setIsAddTaskPinned(false);
+      setIsAddTaskClosing(false);
+    }, 220);
+    return () => clearTimeout(t);
+  }, [isAddTaskClosing]);
+
+  const handleAddKanbanSubmit = () => {
+    handleAddKanbanTask();
+    if (kanbanInput.trim()) {
+      setKanbanInput("");
+      closeAddTaskPanel();
+    }
+  };
+
+  const handleAddTaskButtonClick = () => {
+    if (isAddTaskOpen) {
+      closeAddTaskPanel();
+    } else {
+      setIsAddTaskOpen(true);
+      setIsAddTaskPinned(true);
+    }
+  };
+
+  useEffect(() => {
+    if (!isAddTaskOpen || isAddTaskClosing) return;
+    const onMouseDown = (e: MouseEvent) => {
+      const target = e.target as Node;
+      const insidePanel = addTaskPanelRef.current?.contains(target);
+      const onAddTaskButton = addTaskButtonRef.current?.contains(target);
+      if (!insidePanel && !onAddTaskButton) closeAddTaskPanel();
+    };
+    document.addEventListener("mousedown", onMouseDown);
+    return () => document.removeEventListener("mousedown", onMouseDown);
+  }, [isAddTaskOpen, isAddTaskClosing]);
+
   const renderKanbanBoard = () => {
     return (
       <div style={{ display: "flex", flexDirection: "column", background: "#f8faf8", borderRadius: "16px", overflow: "hidden", marginTop: "16px" }}>
-        <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: 8, background: "#fff", borderBottom: "1px solid #e2e8f0" }}>
-          <input
-            value={kanbanInput}
-            onChange={e => setKanbanInput(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && handleAddKanbanTask()}
-            placeholder="新しいタスクを入力..."
-            style={{ width: "100%", boxSizing: "border-box", padding: "11px 14px", borderRadius: 10, border: "1px solid #e2e8f0", background: "#f8faf8", color: "#0f1f10", fontSize: 15, outline: "none" }}
-          />
-          <div style={{ display: "flex", gap: 8 }}>
-            <select
-              value={kanbanPriority}
-              onChange={e => setKanbanPriority(e.target.value as any)}
-              style={{ flex: 1, padding: "10px 12px", borderRadius: 10, border: "1px solid #e2e8f0", background: "#f8faf8", color: "#0f1f10", fontSize: 14, cursor: "pointer", fontWeight: 600 }}
+        <div
+          ref={addTaskWrapRef}
+          style={{ padding: "16px", background: "#fff", borderBottom: "1px solid #e2e8f0", position: "relative" }}
+        >
+          <button
+            ref={addTaskButtonRef}
+            type="button"
+            onClick={handleAddTaskButtonClick}
+            style={{
+              padding: "10px 20px", borderRadius: 10, border: "1px solid #e2e8f0", background: "#f8faf8",
+              color: "#0f1f10", fontSize: 15, fontWeight: 700, cursor: "pointer",
+              boxShadow: "0 2px 6px rgba(0,0,0,0.06)", transition: "all 0.2s",
+            }}
+          >
+            タスク追加
+          </button>
+          {isAddTaskOpen && (
+            <div
+              ref={addTaskPanelRef}
+              style={{
+                position: "absolute",
+                top: "100%",
+                left: 16,
+                right: 16,
+                marginTop: 8,
+                padding: "14px",
+                background: "#fff",
+                borderRadius: 12,
+                border: "1px solid #e2e8f0",
+                boxShadow: "0 12px 32px rgba(0,0,0,0.16)",
+                display: "flex",
+                flexDirection: "column",
+                gap: 10,
+                zIndex: 10,
+                animation: isAddTaskClosing
+                  ? "addTaskPanelFloatOut 0.22s ease-in forwards"
+                  : "addTaskPanelFloatIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)",
+              }}
             >
-              {Object.entries(PRIORITY).map(([k, v]) => <option key={k} value={k}>{v.label}優先度</option>)}
-            </select>
-            <button
-              onClick={handleAddKanbanTask}
-              disabled={addKanbanTaskMutation.isPending}
-              style={{ flex: 1, padding: "10px", borderRadius: 10, border: "none", background: "#13ec37", color: "#0f1f10", fontWeight: 800, fontSize: 15, cursor: "pointer", boxShadow: "0 4px 10px rgba(19,236,55,0.2)" }}
-            >
-              ＋ 追加
-            </button>
-          </div>
+              <input
+                value={kanbanInput}
+                onChange={e => setKanbanInput(e.target.value)}
+                onKeyDown={e => { if (e.key === "Enter") handleAddKanbanSubmit(); if (e.key === "Escape") closeAddTaskPanel(); }}
+                placeholder="新しいタスクを入力..."
+                style={{ width: "100%", boxSizing: "border-box", padding: "11px 14px", borderRadius: 10, border: "1px solid #e2e8f0", background: "#f8faf8", color: "#0f1f10", fontSize: 15, outline: "none" }}
+              />
+              <div style={{ display: "flex", gap: 8 }}>
+                <select
+                  value={kanbanPriority}
+                  onChange={e => setKanbanPriority(e.target.value as any)}
+                  style={{ flex: 1, padding: "10px 12px", borderRadius: 10, border: "1px solid #e2e8f0", background: "#f8faf8", color: "#0f1f10", fontSize: 14, cursor: "pointer", fontWeight: 600 }}
+                >
+                  {Object.entries(PRIORITY).map(([k, v]) => <option key={k} value={k}>{v.label}優先度</option>)}
+                </select>
+                <button
+                  onClick={handleAddKanbanSubmit}
+                  disabled={addKanbanTaskMutation.isPending}
+                  style={{ flex: 1, padding: "10px", borderRadius: 10, border: "none", background: "#13ec37", color: "#0f1f10", fontWeight: 800, fontSize: 15, cursor: "pointer", boxShadow: "0 4px 10px rgba(19,236,55,0.2)" }}
+                >
+                  ＋ 追加
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         <div style={{ display: "flex", padding: "12px 16px 8px", gap: 8, background: "#fff" }}>
@@ -561,7 +807,11 @@ export function GoalsPage() {
                 type="button"
                 onClick={() => {
                   setActiveCol(i);
-                  kanbanScrollRef.current?.children[i]?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "start" });
+                  const el = kanbanScrollRef.current;
+                  if (el) {
+                    const left = i * el.offsetWidth;
+                    el.scrollTo({ left, behavior: "smooth" });
+                  }
                 }}
                 style={{
                   flex: 1, padding: "8px 4px", borderRadius: 8, border: "none",
@@ -598,89 +848,7 @@ export function GoalsPage() {
             return (
               <div key={col.id} style={{ minWidth: "100%", scrollSnapAlign: "start", padding: "8px 16px 24px", boxSizing: "border-box" }}>
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                  {colTasks.map(task => (
-                    <div
-                      key={task.task_id}
-                      style={{
-                        background: "#fff", border: "1px solid #e2e8f0",
-                        borderLeft: `5px solid ${PRIORITY[task.priority].color}`,
-                        borderRadius: 12, padding: "14px",
-                        boxShadow: "0 2px 8px rgba(0,0,0,0.04)"
-                      }}
-                    >
-                      {editingTaskId === task.task_id ? (
-                        <div style={{ display: "flex", gap: 6, flexDirection: "column" }}>
-                          <input
-                            autoFocus
-                            value={editingTaskTitle}
-                            onChange={e => setEditingTaskTitle(e.target.value)}
-                            onKeyDown={e => { if (e.key === "Enter") saveEditingTask(task.task_id); if (e.key === "Escape") setEditingTaskId(null); }}
-                            style={{ width: "100%", boxSizing: "border-box", border: "2px solid #13ec37", borderRadius: 8, padding: "8px 10px", fontSize: 14, outline: "none" }}
-                          />
-                          <div style={{display: "flex", gap: 6}}>
-                            <button type="button" onClick={() => saveEditingTask(task.task_id)} style={{ flex: 1, background: "#10b981", border: "none", borderRadius: 8, color: "#fff", padding: "8px", fontWeight: 700, cursor: "pointer" }}>保存</button>
-                            <button type="button" onClick={() => setEditingTaskId(null)} style={{ flex: 1, background: "#94a3b8", border: "none", borderRadius: 8, color: "#fff", padding: "8px", fontWeight: 700, cursor: "pointer" }}>キャンセル</button>
-                          </div>
-                        </div>
-                      ) : (
-                        <>
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-                            <div style={{ flex: 1 }}>
-                              {planTab === "daily" && task.date && (
-                                <span style={{display: "inline-block", background: "#f1f5f9", color: "#475569", fontSize: "10px", fontWeight: 800, padding: "2px 6px", borderRadius: "4px", marginBottom: "4px"}}>
-                                  {new Date(task.date).toLocaleDateString("ja-JP", { month: "short", day: "numeric" })}
-                                </span>
-                              )}
-                              <span style={{ display: "block", fontSize: 15, fontWeight: 700, lineHeight: 1.4, color: col.id === "done" ? "#94a3b8" : "#0f1f10", textDecoration: col.id === "done" ? "line-through" : "none", ...(getTaskTitleStyle(task.task_id) ?? {}) }} onClick={() => {setEditingTaskId(task.task_id); setEditingTaskTitle(task.title.replace(/^\d+.*?[:：]\s*/, ''));}}>
-                                {task.title}
-                              </span>
-                            </div>
-                            <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
-                              <button type="button" onClick={() => {setEditingTaskId(task.task_id); setEditingTaskTitle(task.title.replace(/^\d+.*?[:：]\s*/, ''));}} style={{ background: "none", border: "none", cursor: "pointer", color: "#94a3b8", fontSize: 18, padding: "2px" }}><EditIcon/></button>
-                              <button type="button" onClick={() => {if(window.confirm("削除しますか？")) deleteTaskMutation.mutate(task.task_id);}} style={{ background: "none", border: "none", cursor: "pointer", color: "#94a3b8", fontSize: 18, padding: "2px" }}><DeleteIcon/></button>
-                            </div>
-                          </div>
-
-                          <div style={{ marginTop: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                            <select
-                              value={task.priority}
-                              onChange={(e) => updateTaskDetailsMutation.mutate({ taskId: task.task_id, payload: { priority: e.target.value } })}
-                              style={{
-                                fontSize: 11,
-                                color: PRIORITY[task.priority].color,
-                                fontWeight: 800,
-                                background: `${PRIORITY[task.priority].color}15`,
-                                padding: "4px 8px",
-                                borderRadius: "12px",
-                                border: "none",
-                                cursor: "pointer",
-                                outline: "none",
-                                appearance: "none",
-                                textAlign: "center"
-                              }}
-                            >
-                              {Object.entries(PRIORITY).map(([k, v]) => (
-                                <option key={k} value={k}>{v.label}優先</option>
-                              ))}
-                            </select>
-                            <div style={{ display: "flex", gap: 6 }}>
-                              {COLUMNS.filter(c => c.id !== col.id).map(c => (
-                                <button
-                                  key={c.id}
-                                  type="button"
-                                  onClick={() => moveTaskStatus(task.task_id, c.id)}
-                                  style={{ fontSize: 11, padding: "4px 10px", borderRadius: 8, border: `1px solid ${c.color}`, background: "none", color: c.color, cursor: "pointer", fontWeight: 800, transition: "all 0.2s" }}
-                                >
-                                  → {c.label.split(" ")[1]}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        </>
-                      )}
-                      {renderTaskProposalReview(task.task_id)}
-                    </div>
-                  ))}
+                  {colTasks.map(task => renderTaskCard(task, col))}
                   {colTasks.length === 0 && (
                     <div style={{ textAlign: "center", color: "#94a3b8", fontSize: 14, fontWeight: 700, paddingTop: 32, paddingBottom: 32 }}>
                       タスクがありません
@@ -898,7 +1066,7 @@ export function GoalsPage() {
             </div>
 
             <div className={`planContentTransition ${planTransitionClass}`}>
-               {renderKanbanBoard()}
+               {planTab === "daily" ? renderKanbanBoard() : renderPlanList()}
             </div>
           </div>
           

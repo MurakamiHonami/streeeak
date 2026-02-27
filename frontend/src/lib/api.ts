@@ -253,6 +253,8 @@ export async function createTask(payload: {
   date?: string | null;
   weekNumber?: number | null;
   month?: number | null;
+  priority?: "high" | "mid" | "low";
+  status?: "todo" | "in_progress" | "done";
 }) {
   const userId = getCurrentUserId();
   const res = await apiClient.post<Task>("/tasks", {
@@ -263,6 +265,8 @@ export async function createTask(payload: {
     date: payload.date ?? null,
     week_number: payload.weekNumber ?? null,
     month: payload.month ?? null,
+    priority: payload.priority ?? "mid",
+    status: payload.status ?? "todo",
   });
   return res.data;
 }
