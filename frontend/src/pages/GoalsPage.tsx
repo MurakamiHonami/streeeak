@@ -1028,7 +1028,7 @@ export function GoalsPage() {
             </div>
             {!activeGoalId && goalOptions.length > 0 && <p className="mutedText">目標を選択してください。</p>}
             {goalOptions.length === 0 ? (
-              <button type="button" onClick={() => setGoalSectionTab("create")}>目標を作成する</button>
+              <button type="button" className="goalCreateBtn" onClick={() => setGoalSectionTab("create")}>目標を作成する</button>
             ) : (
               <div className="chatInputRow goalChatInputRow">
                 <input
