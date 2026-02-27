@@ -102,10 +102,8 @@ def upload_user_avatar(
     if ext not in allowed_exts:
         raise HTTPException(status_code=400, detail="Unsupported image format")
 
-    bucket_name = os.environ.get("S3_BUCKET_NAME")
-    if not bucket_name:
-        raise HTTPException(status_code=500, detail="S3_BUCKET_NAME environment variable is not set")
-
+    bucket_name = os.environ.get("S3_BUCKET_NAME", "streeeak-frontend-111")
+    
     s3_client = boto3.client("s3")
     file_key = f"avatars/{user_id}_{uuid.uuid4().hex}{ext}"
 
@@ -119,8 +117,8 @@ def upload_user_avatar(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to upload to S3: {str(e)}")
 
-    region = s3_client.meta.region_name
-    s3_url = f"https://{bucket_name}.s3.{region}.amazonaws.com/{file_key}"
+
+    s3_url = f"https://streeeak.link/{file_key}"
 
     user.avatar_data = None
     user.avatar_content_type = None
