@@ -351,12 +351,12 @@ export function SharePage() {
               </div>
               <div className="bg-[#f8faf8] border border-[#e8ede8] rounded-lex rounded-lg p-1 items-center gap-2 justify-center">
                 <button
-                  className={`text-[12px] font-bold transition-all rounded-lg duration-700 cursor-pointer m-2 ${
+                  className={`inline-flex items-center justify-center gap-1.5 py-2 px-3 text-[12px] font-bold transition-all rounded-lg duration-700 cursor-pointer m-2 min-h-[34px] ${
                     inputMode === "task" ? "bg-[#13ec37]/10 text-[#0fbf2c] shadow-sm shadow-[0_4px_12px_rgba(19,236,55,0.1)]": "bg-white border-[#e8ede8] text-[#0f1f10] shadow-sm shadow-[0_4px_12px_rgba(19,236,55,0.1)]"
                   }`}
                   onClick={() => setInputMode(prev => prev === "task" ? "text" : "task")}
                 >
-                  <FormatListBulletedIcon fontSize="inherit" sx={{mr:0.5, mb:-0.5}}/>タスク選択
+                  <FormatListBulletedIcon sx={{ fontSize: 14, display: 'block' }} />タスク選択
                 </button>
                 <div className={`grid transition-all duration-300 ease-in-out ${inputMode === "task" ? "grid-rows-[1fr] opacity-100 mt-1" : "grid-rows-[0fr] opacity-0 mt-0"}`}>
                     <div className="overflow-hidden">

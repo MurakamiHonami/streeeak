@@ -372,7 +372,7 @@ export function HomePage() {
         </div>
 
         {currentGoalId ? renderKanbanBoard() : (
-          <button type="button" onClick={() => navigate("/goals", { state: { goalSectionTab: "create" } })}>
+          <button type="button" className="goalCreateBtn" onClick={() => navigate("/goals", { state: { goalSectionTab: "create" } })}>
             目標を作成する
           </button>
         )}

@@ -558,14 +558,18 @@ pre {
   color: #0fbf2c;
 }
 
+/* GoalsPage: 目標タブ・プランタブを明示定義（デプロイとローカルで見た目を統一） */
 .goalSectionTabRow,
 .planTabRow {
   position: relative;
+  width: 100%;
+  min-width: 0;
   gap: 0;
   background: rgba(15, 23, 42, 0.06);
   border-radius: 12px;
   padding: 4px;
   display: flex;
+  box-sizing: border-box;
 }
 
 .goalSectionActivePill,
@@ -580,6 +584,7 @@ pre {
   box-shadow: 0 8px 16px rgba(19, 236, 55, 0.16);
   transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
   pointer-events: none;
+  box-sizing: border-box;
 }
 
 .goalSectionActivePill {
@@ -590,15 +595,33 @@ pre {
 .planTabRow .tabBtn {
   position: relative;
   z-index: 1;
-  border: none;
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  color: #64748b;
   background: transparent;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: color 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+  box-sizing: border-box;
 }
 
 .goalSectionTabRow .tabBtn.active,
 .planTabRow .tabBtn.active {
   background: transparent;
-  border-color: transparent;
+  border: none;
   color: #0f1f10;
+}
+
+.goalSectionTabRow .tabBtn:hover:not(.active),
+.planTabRow .tabBtn:hover:not(.active) {
+  color: #475569;
 }
 
 .planContentTransition,
@@ -802,6 +825,20 @@ pre {
   min-width: 0;
 }
 
+/* AuthPage: 未定義だったクラスを明示定義（デプロイとローカルで見た目を統一） */
+.gameCard,
+form.authCard {
+  display: grid;
+  gap: 12px;
+  background: #fff;
+  border: 1px solid #e8ede8;
+  border-radius: 20px;
+  padding: 20px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+  width: 100%;
+  box-sizing: border-box;
+}
+
 .authSection {
   display: grid;
   gap: 12px;
@@ -817,11 +854,117 @@ pre {
   gap: 12px;
 }
 
+.formGroup {
+  display: grid;
+  gap: 6px;
+}
+
 .authLabel {
   display: grid;
   gap: 6px;
   font-size: 14px;
   color: #475569;
+  font-weight: 600;
+}
+
+.gameInput {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #d9deea;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 16px;
+  box-sizing: border-box;
+  background: #fff;
+  color: #0f1f10;
+}
+
+.gameInput::placeholder {
+  color: #94a3b8;
+}
+
+.gameErrorBox {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+  font-size: 14px;
+}
+
+.gameBtn {
+  padding: 10px 16px;
+  border-radius: 8px;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  border: none;
+  font-size: 16px;
+  transition: background-color 0.2s, border-color 0.2s;
+}
+
+.primaryBtn,
+.submitBtn {
+  background: #13ec37;
+  color: #0f1f10;
+}
+
+.primaryBtn:hover:not(:disabled),
+.submitBtn:hover:not(:disabled) {
+  background: #0fbf2c;
+}
+
+/* 「目標を作成する」ボタン（HomePage / GoalsPage）- デプロイとローカルで見た目を統一 */
+.goalCreateBtn {
+  display: inline-block;
+  width: auto;
+  min-width: 200px;
+  margin: 0;
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 700;
+  font-family: inherit;
+  color: #0f1f10;
+  background: #13ec37;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+  box-sizing: border-box;
+}
+
+.goalCreateBtn:hover {
+  background: #0fbf2c;
+}
+
+.tabRow.authTabs {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  margin-bottom: 4px;
+}
+
+.tabRow.authTabs .tabBtn {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: #fff;
+  border: 1px solid #e8ede8;
+  color: #64748b;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s, border-color 0.2s, color 0.2s;
+}
+
+.tabRow.authTabs .tabBtn.active {
+  background: rgba(19, 236, 55, 0.12);
+  border-color: rgba(19, 236, 55, 0.35);
+  color: #0fbf2c;
 }
 
 .authError {
