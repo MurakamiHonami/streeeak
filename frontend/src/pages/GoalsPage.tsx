@@ -953,7 +953,7 @@ export function GoalsPage() {
               <div className="flex flex-col items-center justify-center mt-10 mb-4">
                 <div className="relative">
                   <div className="absolute inset-0 rounded-full bg-[#13ec37] opacity-20 animate-ping"></div>
-                  <img src="/loading_panda.png" className="w-20 h-20 drop-shadow-lg relative z-10" alt="Loading Panda" style={{ animation: 'spin 2s linear infinite' }} />
+                  <img src="/loading_panda.png" className="w-20 h-20 drop-shadow-lg relative z-10 img-preserve-size" alt="Loading Panda" style={{ animation: 'spin 2s linear infinite' }} />
                 </div>
                 <p className="mt-4 text-sm font-extrabold text-[#0fbf2c] tracking-widest" style={{ animation: 'pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite' }}>
                   考え中...
@@ -964,7 +964,7 @@ export function GoalsPage() {
               <span className={["whitespace-nowrap rounded-lg bg-gray-800 mt-1 px-3 py-1.5", "text-sm text-white shadow-md absolute -top-10 left-1/2", "-translate-x-1/2 after:content-[''] after:absolute", "after:top-full after:left-1/2 after:-translate-x-1/2", "after:border-[6px] after:border-transparent after:border-t-gray-800"].join(" ")}>
                 {breakdownMutation.isPending ? "君を夢へ導くよ！" : hasAllInputs ? "それじゃあ夢を叶えよう！" : hasGoalAndDeadline ? "今の状況を教えて！" : isGoalInputActive ? "目標を教えて！" : "僕と相談しながら決めよう!"}
               </span>
-              <img src="/panda.png" alt="Mentor Panda" className="h-20 object-contain drop-shadow-sm" />
+              <img src="/panda.png" alt="Mentor Panda" className="h-20 object-contain drop-shadow-sm img-preserve-size" />
             </div>)}
             {hasGoalAndDeadline && (
               <textarea
@@ -1046,7 +1046,7 @@ export function GoalsPage() {
               <div className="flex flex-col items-center justify-center mt-6 mb-4">
                 <div className="relative">
                   <div className="absolute inset-0 rounded-full bg-[#13ec37] opacity-20 animate-ping"></div>
-                  <img src="/loading_panda.png" className="w-20 h-20 drop-shadow-lg relative z-10" alt="Loading Panda" style={{ animation: 'spin 2s linear infinite' }} />
+                  <img src="/loading_panda.png" className="w-20 h-20 drop-shadow-lg relative z-10 img-preserve-size" alt="Loading Panda" style={{ animation: 'spin 2s linear infinite' }} />
                 </div>
                 <p className="mt-4 text-sm font-extrabold text-[#0fbf2c] tracking-widest" style={{ animation: 'pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite' }}>考え中...</p>
               </div>
@@ -1055,7 +1055,7 @@ export function GoalsPage() {
                 <span className={["whitespace-nowrap rounded-lg bg-gray-800 mt-1 px-3 py-1.5", "text-sm text-white shadow-md absolute -top-10 left-1/2", "-translate-x-1/2 after:content-[''] after:absolute", "after:top-full after:left-1/2 after:-translate-x-1/2", "after:border-[6px] after:border-transparent after:border-t-gray-800"].join(" ")}>
                   {goalOptions.length === 0 ? "まず目標を作成してね！" : "修正が必要だったら言ってね！"}
                 </span>
-                <img src="/panda.png" alt="Mentor Panda" className="h-20 object-contain drop-shadow-sm" />
+                <img src="/panda.png" alt="Mentor Panda" className="h-20 object-contain drop-shadow-sm img-preserve-size" />
               </div>
             )}
           </form>

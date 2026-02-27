@@ -339,7 +339,7 @@ export function HomePage() {
               </>
             )}
             
-            <img src="/panda.png" alt="Mentor Panda" className="w-28 h-28 object-contain drop-shadow-md relative z-10" />
+            <img src="/panda.png" alt="Mentor Panda" className="w-28 h-28 object-contain drop-shadow-md relative z-10 img-preserve-size" />
             
             {sasaThrows.map((id) => (
               <div 
