@@ -110,6 +110,7 @@ export function GoalsPage() {
     onSuccess: (data) => {
       setTitle("");
       setDeadline("");
+      setCurrentSituation("");
       setActiveGoalId(data.goal.id);
       setGoalSectionTab("review");
       setChatHistory([]);
@@ -549,6 +550,23 @@ export function GoalsPage() {
 
   const periodLabel = planTab === "weekly" ? "今週" : planTab === "monthly" ? "今月" : "今年";
 
+  const getPeriodLabel = (task: DraftTaskKanban): string => {
+    if (planTab === "yearly") {
+      const m = task.title.match(/(\d)年目/);
+      if (!m) return "他";
+      return m[1] === "1" ? "今年" : `${m[1]}年目`;
+    }
+    if (planTab === "monthly") {
+      const monthOffset = ((task.month ?? 0) - currentMonth + 12) % 12;
+      return monthOffset === 0 ? "今月" : `${monthOffset + 1}ヶ月目`;
+    }
+    if (planTab === "weekly") {
+      const weekOffset = (task.week_number ?? 0) - appContext.week;
+      return weekOffset === 0 ? "今週" : weekOffset > 0 ? `${weekOffset + 1}週目` : `${-weekOffset}週前`;
+    }
+    return "";
+  };
+
   const renderTaskCard = (task: DraftTaskKanban, col: typeof COLUMNS[0], options?: { grayed?: boolean }) => {
     const grayed = options?.grayed ?? false;
     const isDailyView = planTab === "daily";
@@ -630,20 +648,19 @@ export function GoalsPage() {
                   ))}
                 </select>
               ) : (
-                isCurrentPeriod(task) ? (
-                  <span
-                    style={{
-                      fontSize: 11,
-                      color: "#13ec37",
-                      fontWeight: 800,
-                      background: "rgba(19, 236, 55, 0.125)",
-                      padding: "4px 8px",
-                      borderRadius: "12px",
-                    }}
-                  >
-                    {periodLabel}
-                  </span>
-                ) : null
+                <span
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 800,
+                    padding: "4px 8px",
+                    borderRadius: "12px",
+                    ...(isCurrentPeriod(task)
+                      ? { color: "#13ec37", background: "rgba(19, 236, 55, 0.125)" }
+                      : { color: "#94a3b8", background: "rgba(148, 163, 184, 0.2)" }),
+                  }}
+                >
+                  {getPeriodLabel(task)}
+                </span>
               )}
               {isDailyView && (
                 <div style={{ display: "flex", gap: 6 }}>

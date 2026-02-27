@@ -61,13 +61,14 @@ def _fallback_breakdown(goal: Goal, months: int, weeks_per_month: int, days_per_
         )
 
     for d in range(days_per_week):
+        day_date = today + dt.timedelta(days=d)
         daily.append(
             BreakdownTask(
                 type=TaskType.daily,
                 title=f"{goal.title} - デイリー行動 {d + 1}",
-                month=today.month,
-                week_number=current_week,
-                date=this_week_start + dt.timedelta(days=d),
+                month=day_date.month,
+                week_number=day_date.isocalendar().week,
+                date=day_date,
             )
         )
 
@@ -172,9 +173,9 @@ def _request_gemini_breakdown(
         "ルール:\n"
         f"- monthly: 直近{months}ヶ月の目標配列（文字列）\n"
         f"- weekly: 直近1ヶ月の週次目標配列（最大{weeks_per_month}件、文字列）\n"
-        f"- daily: 直近1週間の日次TODO配列（最大{days_per_week}件、文字列）\n"
+        f"- daily: 開始日（今日）から{days_per_week}日間の日次TODO配列（{days_per_week}件、文字列）\n"
         "- ユーザーの現状・期限・目標文脈を必ず反映\n"
-        "- まずmonthlyを作り、その直近1ヶ月を元にweekly、直近1週間を元にdailyを作成\n"
+        "- まずmonthlyを作り、その直近1ヶ月を元にweekly、開始日から7日間を元にdailyを作成\n"
         "- 目標が数値化できる場合（点数、秒、回数、距離、体重、件数など）は、monthly/weeklyに中間数値目標を必ず入れる\n"
         "- 数値は現状から最終目標に向けて単調に進むようにする（増やす指標は増加、減らす指標は減少）\n"
         "- 中間値は現実的で達成可能な幅にする。最後のmonthly/weeklyは最終目標値に一致させる\n"
@@ -188,7 +189,7 @@ def _request_gemini_breakdown(
         f"目標「{goal_title}」を達成したいです。"
         "そのためにこれからやるべき目標をmonthly単位で作成したのち、"
         "直近の1ヶ月のmonthly目標からその月のweekly分の目標を作成し、"
-        "直近の1週間の目標から、その週でやるべきことを1日ずつのdailyタスクとして作成してください。"
+        "開始日（今日）から7日間、1日ずつのdailyタスクとして作成してください。"
     )
 
     payload = {
@@ -511,13 +512,14 @@ def build_breakdown(
     for idx, title in enumerate(daily_titles):
         detail_lines = daily_details[idx] if idx < len(daily_details) else _fallback_daily_details(title)
         note = "\n".join([f"- {line}" for line in detail_lines])
+        day_date = today + dt.timedelta(days=idx)
         daily.append(
             BreakdownTask(
                 type=TaskType.daily,
                 title=title,
-                month=current_month,
-                week_number=current_week,
-                date=this_week_start + dt.timedelta(days=idx),
+                month=day_date.month,
+                week_number=day_date.isocalendar().week,
+                date=day_date,
                 note=note,
             )
         )
