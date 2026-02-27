@@ -50,17 +50,59 @@ def add_friend(payload: FriendRequest, db: Session = Depends(get_db), current_us
     if has_blocked:
         raise HTTPException(status_code=400, detail="ブロック中のユーザーです。先にブロックを解除してください")
 
-    new_friend = Friendship(user_id=current_user.id, friend_id=payload.friend_id)
+    existing_friendship = db.scalar(select(Friendship).where(
+        or_(
+            and_(Friendship.user_id == current_user.id, Friendship.friend_id == payload.friend_id),
+            and_(Friendship.user_id == payload.friend_id, Friendship.friend_id == current_user.id)
+        )
+    ))
+    if existing_friendship:
+        raise HTTPException(status_code=400, detail="既に申請済みか、フレンドです")
+
+    new_friend = Friendship(user_id=current_user.id, friend_id=payload.friend_id, status="pending")
     db.add(new_friend)
     db.commit()
-    return {"status": "success", "message": "フレンドを追加しました"}
+    return {"status": "success", "message": "フレンド申請を送信しました"}
+
+@router.get("/requests")
+def list_requests(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    requests = db.query(User, Friendship.id).join(Friendship, User.id == Friendship.user_id).filter(
+        Friendship.friend_id == current_user.id,
+        Friendship.status == "pending"
+    ).all()
+    return [{"id": req_id, "user_id": user.id, "name": user.name} for user, req_id in requests]
+
+@router.put("/{request_id}/accept")
+def accept_request(request_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    friendship = db.scalar(select(Friendship).where(
+        Friendship.id == request_id,
+        Friendship.friend_id == current_user.id,
+        Friendship.status == "pending"
+    ))
+    if not friendship:
+        raise HTTPException(status_code=404, detail="申請が見つかりません")
+    
+    friendship.status = "accepted"
+    db.commit()
+    return {"status": "success", "message": "承認しました"}
 
 @router.get("")
 def list_friends(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-
-    friends = db.query(User).join(Friendship, User.id == Friendship.friend_id).filter(Friendship.user_id == current_user.id).all()
-    return friends
-
+    friends_sent = db.query(User, Friendship.status).join(Friendship, User.id == Friendship.friend_id).filter(
+        Friendship.user_id == current_user.id, Friendship.status.in_(["accepted", "pending"])
+    ).all()
+    
+    friends_received = db.query(User, Friendship.status).join(Friendship, User.id == Friendship.user_id).filter(
+        Friendship.friend_id == current_user.id, Friendship.status == "accepted"
+    ).all()
+    
+    friends_dict = {}
+    for user, status in friends_sent:
+        friends_dict[user.id] = {"id": user.id, "name": user.name, "status": status}
+    for user, status in friends_received:
+        friends_dict[user.id] = {"id": user.id, "name": user.name, "status": status}
+        
+    return list(friends_dict.values())
 
 @router.post("/block")
 def block_user(payload: BlockRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
@@ -73,7 +115,6 @@ def block_user(payload: BlockRequest, db: Session = Depends(get_db), current_use
             and_(Friendship.user_id == payload.target_user_id, Friendship.friend_id == current_user.id)
         )
     ).delete(synchronize_session=False)
-
 
     existing_block = db.scalar(select(Block).where(
         Block.user_id == current_user.id, Block.blocked_user_id == payload.target_user_id

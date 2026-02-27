@@ -1,6 +1,8 @@
 export type TaskType = "monthly" | "weekly" | "daily";
 
 export type Task = {
+  priority: string;
+  status: string;
   id: number;
   goal_id: number | null;
   user_id: number;
