@@ -9,7 +9,11 @@ from app.api.router import api_router
 from app.core.config import settings
 from app.db.base import Base
 from app.db.session import engine
-from app.models import *  # noqa: F401,F403
+from app.models import *  
+
+from app.db.base import Base
+# 自動マイグレーション
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title=settings.APP_NAME)
 uploads_dir = Path("/app/uploads")

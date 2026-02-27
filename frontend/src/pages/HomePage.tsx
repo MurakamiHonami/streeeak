@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { appContext, carryOverTask, fetchDailyTasks, fetchRanking, toggleTaskDone, fetchGoals, resolveApiAssetUrl } from "../lib/api";
+import { appContext, carryOverTask, fetchDailyTasks, fetchRanking, toggleTaskDone, updateTask, fetchGoals, resolveApiAssetUrl } from "../lib/api";
 import CheckIcon from '@mui/icons-material/Check';
 import MoveDownIcon from '@mui/icons-material/MoveDown';
 import UndoIcon from '@mui/icons-material/Undo';
@@ -10,6 +10,18 @@ import MenuItem from '@mui/material/MenuItem';
 import FormControl from '@mui/material/FormControl';
 import Select, { SelectChangeEvent } from '@mui/material/Select';
 import { useNavigate } from "react-router-dom";
+
+const COLUMNS = [
+  { id: "todo", label: "📋 未着手", color: "#6366f1" },
+  { id: "in_progress", label: "⚡ 進行中", color: "#f59e0b" },
+  { id: "done", label: "✅ 完了", color: "#10b981" },
+];
+
+const PRIORITY: Record<string, { label: string; color: string }> = {
+  high: { label: "高", color: "#ef4444" },
+  mid: { label: "中", color: "#f59e0b" },
+  low: { label: "低", color: "#6b7280" },
+};
 
 export function HomePage() {
   const navigate = useNavigate();
@@ -22,6 +34,11 @@ export function HomePage() {
     mutationFn: toggleTaskDone,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["dailyTasks"] }),
   });
+
+  const updateStatusMutation = useMutation({
+    mutationFn: ({ taskId, payload }: { taskId: number; payload: any }) => updateTask(taskId, payload),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["dailyTasks"] }),
+  });
   
   const carryOverMutation = useMutation({
     mutationFn: carryOverTask,
@@ -30,6 +47,8 @@ export function HomePage() {
 
   const [currentGoalId, setCurrentGoalId] = useState<number | "">("");
   const [sasaThrows, setSasaThrows] = useState<number[]>([]);
+  const [activeCol, setActiveCol] = useState(0);
+  const kanbanScrollRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const goalList = goals.data ?? [];
@@ -40,7 +59,6 @@ export function HomePage() {
       return;
     }
 
-    // Keep user's current selection if it still exists.
     if (currentGoalId !== "" && goalList.some((goal) => goal.id === currentGoalId)) {
       return;
     }
@@ -63,17 +81,31 @@ export function HomePage() {
       setTimeout(() => {
         setSasaThrows((prev) => prev.filter((t) => t !== id));
       }, 1500);
+      updateStatusMutation.mutate({ taskId: task.id, payload: { status: "done" } });
+    } else {
+        updateStatusMutation.mutate({ taskId: task.id, payload: { status: "todo" } });
     }
     doneMutation.mutate(task.id);
   };
 
-  const tasks = dailyTasks.data ?? [];
-  const filteredTasks = currentGoalId !== "" 
-    ? tasks.filter(task => task.goal_id === currentGoalId)
-    : [];
+  const moveTask = (taskId: number, newStatus: string) => {
+    updateStatusMutation.mutate({ taskId, payload: { status: newStatus } });
+    const task = dailyTasks.data?.find((t) => t.id === taskId);
+    if (task) {
+        if (newStatus === "done" && !task.is_done) {
+            handleDone(task);
+        } else if (newStatus !== "done" && task.is_done) {
+            doneMutation.mutate(taskId);
+        }
+    }
+  };
 
-  const doneCount = filteredTasks.filter((task) => task.is_done).length;
-  const firstPendingId = filteredTasks.find((task) => !task.is_done)?.id;
+  const tasks = dailyTasks.data ?? [];
+  const filteredTasks = useMemo(() => 
+    currentGoalId !== "" ? tasks.filter(task => task.goal_id === currentGoalId) : [],
+  [tasks, currentGoalId]);
+
+  const doneCount = filteredTasks.filter((task) => task.is_done || task.status === "done").length;
   const doneRate = filteredTasks.length ? Math.round((doneCount / filteredTasks.length) * 100) : 0;
   const isAllDone = filteredTasks.length > 0 && doneCount === filteredTasks.length;
   
@@ -130,16 +162,129 @@ export function HomePage() {
     );
   };
 
+  const renderKanbanBoard = () => (
+    <div style={{ display: "flex", flexDirection: "column", background: "#f8faf8", borderRadius: "20px", overflow: "hidden", marginTop: "16px" }}>
+      <div style={{ display: "flex", padding: "12px 16px 8px", gap: 8, background: "#fff" }}>
+        {COLUMNS.map((col, i) => {
+          const count = filteredTasks.filter(t => {
+            if (col.id === "done") return t.is_done || t.status === "done";
+            if (col.id === "todo") return !t.is_done && (!t.status || t.status === "todo");
+            return !t.is_done && t.status === col.id;
+          }).length;
+          return (
+            <button
+              type="button"
+              key={col.id}
+              onClick={() => {
+                setActiveCol(i);
+                kanbanScrollRef.current?.children[i]?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "start" });
+              }}
+              style={{
+                flex: 1, padding: "8px 4px", borderRadius: "12px", border: "none",
+                background: activeCol === i ? col.color : "#f1f5f9",
+                color: activeCol === i ? "#fff" : "#64748b",
+                fontWeight: 800, fontSize: "11px", cursor: "pointer", transition: "all 0.2s",
+                display: "flex", flexDirection: "column", alignItems: "center", gap: 2,
+              }}
+            >
+              <span>{col.label.split(" ")[1]}</span>
+              <span style={{ fontSize: "14px", fontWeight: 900 }}>{count}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      <div
+        ref={kanbanScrollRef}
+        onScroll={(e) => {
+          const target = e.target as HTMLDivElement;
+          const idx = Math.round(target.scrollLeft / target.offsetWidth);
+          if (activeCol !== idx) setActiveCol(idx);
+        }}
+        style={{ display: "flex", overflowX: "scroll", scrollSnapType: "x mandatory", scrollbarWidth: "none", flex: 1 }}
+      >
+        {COLUMNS.map((col) => {
+          const colTasks = filteredTasks.filter(t => {
+            if (col.id === "done") return t.is_done || t.status === "done";
+            if (col.id === "todo") return !t.is_done && (!t.status || t.status === "todo");
+            return !t.is_done && t.status === col.id;
+          });
+          return (
+            <div key={col.id} style={{ minWidth: "100%", scrollSnapAlign: "start", padding: "12px 16px 24px", boxSizing: "border-box" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {colTasks.map(task => {
+                    const priorityData = PRIORITY[task.priority || 'mid'] || PRIORITY.mid;
+                    const isDoneCol = col.id === "done";
+                    
+                    return (
+                        <div key={task.id} style={{ background: "#fff", border: "1px solid #e2e8f0", borderLeft: `5px solid ${priorityData.color}`, borderRadius: "14px", padding: "14px", boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}>
+                            <div className="flex justify-between items-start gap-4">
+                            <p style={{ margin: 0, fontSize: "14px", fontWeight: 700, color: isDoneCol ? "#94a3b8" : "#0f1f10", textDecoration: isDoneCol ? "line-through" : "none" }}>
+                                {task.title}
+                            </p>
+                            <div className="flex gap-2">
+                                {!isDoneCol && (
+                                    <button type="button" onClick={() => carryOverMutation.mutate(task.id)} style={{ background: "#f1f5f9", color: "#64748b", padding: "4px", borderRadius: "8px", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", height: "28px", width: "28px" }}>
+                                        <MoveDownIcon fontSize="small" sx={{color:"#ef4444", opacity: 0.7}}/>
+                                    </button>
+                                )}
+                                <button
+                                    type="button" 
+                                    onClick={() => handleDone(task)} 
+                                    style={{ 
+                                        background: isDoneCol ? "#10b981" : "#f1f5f9", 
+                                        color: isDoneCol ? "#fff" : "#64748b", 
+                                        padding: "4px", 
+                                        borderRadius: "8px", 
+                                        border: "none", 
+                                        cursor: "pointer",
+                                        display: "flex", 
+                                        alignItems: "center", 
+                                        justifyContent: "center",
+                                        height: "28px", 
+                                        width: "28px",
+                                        transition: "all 0.2s"
+                                    }}
+                                >
+                                    {isDoneCol ? <UndoIcon fontSize="small" sx={{color: "#13ec37", opacity: 0.7}} /> : <CheckIcon fontSize="small" sx={{color: "#13ec37", opacity: 0.7}}/>}
+                                </button>
+                            </div>
+                            </div>
+                            
+                            <div style={{ marginTop: "12px", display: "flex", justifyContent: "flex-end", gap: 6 }}>
+                            {COLUMNS.filter(c => c.id !== col.id).map(c => (
+                                <button
+                                type="button"
+                                key={c.id}
+                                onClick={() => moveTask(task.id, c.id)}
+                                style={{ fontSize: "10px", padding: "4px 10px", borderRadius: "8px", border: `1px solid ${c.color}`, background: "none", color: c.color, cursor: "pointer", fontWeight: 800 }}
+                                >
+                                → {c.label.split(" ")[1]}
+                                </button>
+                            ))}
+                            </div>
+                        </div>
+                    );
+                })}
+                {colTasks.length === 0 && <div className="text-center py-8 text-gray-400 text-sm font-bold">タスクがありません</div>}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+
   return (
     <section className="page">
-            <Box sx={{ minWidth: 120, mt: 2 }}>
+      <Box sx={{ minWidth: 120, mt: 2 }}>
         <FormControl
           fullWidth
           sx={{
             '& .MuiInputLabel-root': { color: '#666' },
             '& .MuiInputLabel-root.Mui-focused': { color: '#111' },
             '& .MuiOutlinedInput-root': {
-              '& fieldset': { borderColor: '#ccc' },
+              '& fieldset': { borderColor: '#ccc', borderRadius: '12px' },
               '&:hover fieldset': { borderColor: '#888' },
               '&.Mui-focused fieldset': { borderColor: '#111' },
             },
@@ -162,7 +307,10 @@ export function HomePage() {
       <section className="visionCard">
         <p className="chip">Long-term Vision</p>
         <h2>{selectedGoal ? selectedGoal.title : "長期目標が未設定です"}</h2>
-        <p className="mutedText">今日の達成率: {doneRate}%</p>
+        <div className="flex justify-between items-end">
+           <p className="mutedText">今日の達成率: {doneRate}%</p>
+           {isAllDone && <span className="text-[#13ec37] font-black text-sm">ALL CLEAR! 🐼✨</span>}
+        </div>
         <div className="progressTrack">
           <div className="progressFill" style={{ width: `${doneRate}%` }} />
         </div>
@@ -182,11 +330,7 @@ export function HomePage() {
       </div>
 
       <section className="card">
-        <div className="flex gap-1 items-center justify-center m-1">
-          <h3 className="font-medium text-2xl">Today's Tasks</h3>
-        </div>
-        
-        <div className="flex justify-center my-6 relative">
+        <div className="flex justify-center mb-4 relative">
           <div className={`relative ${isAllDone ? "u--bounceInUp" : sasaThrows.length > 0 ? "targetPulse" : ""}`}>
             {isAllDone && (
               <>
@@ -223,47 +367,14 @@ export function HomePage() {
           }
         `}</style>
         
-        {filteredTasks.length ? (
-          filteredTasks.map((task) => {
-            const subTasks = task.note 
-              ? task.note.split("\n").map((line: string) => line.replace(/^- /, "").trim()).filter(Boolean)
-              : [];
+        <div className="flex gap-1 items-center justify-center m-1">
+          <h3 className="font-medium text-2xl">Today's Tasks</h3>
+        </div>
 
-            if (subTasks.length === 0) {
-              return (
-                <TaskRow 
-                  key={task.id} 
-                  task={task} 
-                  title={task.title} 
-                  isNext={firstPendingId === task.id && !task.is_done}
-                  onDone={() => handleDone(task)}
-                  onCarryOver={() => carryOverMutation.mutate(task.id)}
-                />
-              );
-            }
-
-            return (
-              <div key={task.id} className="mb-4">
-                <p className="text-sm font-bold text-gray-500 mb-2">■ {task.title}</p>
-                {subTasks.map((subTaskText: string, idx: number) => (
-                  <TaskRow 
-                    key={`${task.id}-${idx}`} 
-                    task={task} 
-                    title={subTaskText} 
-                    isNext={firstPendingId === task.id && !task.is_done && idx === 0}
-                    onDone={() => handleDone(task)}
-                    onCarryOver={() => carryOverMutation.mutate(task.id)}
-                  />
-                ))}
-              </div>
-            );
-          })
-        ) : goals.data && goals.data.length === 0 ? (
+        {currentGoalId ? renderKanbanBoard() : (
           <button type="button" onClick={() => navigate("/goals", { state: { goalSectionTab: "create" } })}>
             目標を作成する
           </button>
-        ) : (
-          <p>この目標に対する今日のタスクはありません。</p>
         )}
       </section>
 
@@ -284,38 +395,5 @@ export function HomePage() {
         </div>
       </section>
     </section>
-  );
-}
-
-function TaskRow({ task, title, isNext, onDone, onCarryOver }: any) {
-  return (
-    <div className={isNext ? "taskRow nextTask" : "taskRow"}>
-      <div>
-        <p className={`transition-all duration-300 ease-in-out ${task.is_done ? "done opacity-60" : ""}`}>{title}</p>
-        {task.tags && <small>{task.tags}</small>}
-      </div>
-      <div className="rowActions flex flex-col items-center justify-center">
-        <button 
-          onClick={onDone} 
-          className="relative w-8 h-8 flex items-center justify-center text-sm transition-transform duration-200 ease-in-out hover:scale-110 active:scale-90"
-        >
-          <div className={`absolute flex items-center justify-center transition-all duration-300 ease-in-out ${task.is_done ? 'opacity-0 scale-50 rotate-90 pointer-events-none' : 'opacity-100 scale-100 rotate-0'}`}>
-            <CheckIcon />
-          </div>
-          <div className={`absolute flex items-center justify-center transition-all duration-300 ease-in-out ${task.is_done ? 'opacity-100 scale-100 rotate-0' : 'opacity-0 scale-50 -rotate-90 pointer-events-none'}`}>
-            <UndoIcon />
-          </div>
-        </button>
-        
-        <div className={`transition-all duration-300 ease-in-out origin-top flex items-center justify-center ${task.is_done ? 'opacity-0 max-h-0 scale-y-0 pointer-events-none mt-0' : 'opacity-100 max-h-10 scale-y-100 mt-2'}`}>
-          <button 
-            onClick={onCarryOver} 
-            className="w-8 h-8 flex items-center justify-center text-sm bg-gray-200 rounded-full transition-transform duration-200 ease-in-out hover:scale-110 active:scale-90"
-          >
-            <MoveDownIcon />
-          </button>
-        </div>
-      </div>
-    </div>
   );
 }
