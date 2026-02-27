@@ -42,7 +42,6 @@ function App() {
     previousPathRef.current = location.pathname;
   }, [location.pathname]);
 
-  // Landing page renders without app chrome (no header/navbar)
   if (location.pathname === "/lp") {
     return (
       <Routes>
@@ -61,11 +60,11 @@ function App() {
     <div className="appShell gamifiedApp">
       <div className="appContainer">
         <header className={currentUserId ? "topHeader" : "topHeader authHeader"}>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3 sm:gap-4 md:gap-6">
             <img src="/sasa.png" className="sasa" alt="Streeeak mascot" />
             <div className="brandText">
               <h1 className="headerTitle" onClick={() => navigate("/")} style={{cursor: "pointer"}}>
-                Str<span className="text-[#13ec37]">eee</span>ak
+                Str<span className="text-[#13ec37] drop-shadow-sm">eee</span>ak
               </h1>
             </div>
           </div>
@@ -74,10 +73,10 @@ function App() {
               <IconButton 
                 onClick={() => setIsSettingsOpen(true)}
                 sx={{
-                  width: 48,
-                  height: 48,
+                  width: { xs: 52, sm: 56, md: 64 },
+                  height: { xs: 52, sm: 56, md: 64 },
                   bgcolor: '#eafbe9',
-                  border: '2px solid #bbf2c4',
+                  border: { xs: '2px solid #bbf2c4', md: '3px solid #bbf2c4' },
                   color: '#0f1f10',
                   transition: 'all 0.3s ease',
                   '&:hover': {
@@ -87,7 +86,7 @@ function App() {
                   }
                 }}
               >
-                <SettingsIcon fontSize="medium" sx={{color: '#13ec37'}}/>
+                <SettingsIcon sx={{ fontSize: { xs: 28, sm: 32, md: 36 }, color: '#13ec37' }}/>
               </IconButton>
               <Settings 
                 open={isSettingsOpen} 
