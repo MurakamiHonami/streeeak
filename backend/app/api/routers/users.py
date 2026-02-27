@@ -1,5 +1,8 @@
+import os
+import uuid
 from pathlib import Path
 
+import boto3
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from fastapi.responses import Response
 from sqlalchemy import select
@@ -12,7 +15,6 @@ from app.schemas.user import UserCreate, UserRead, UserUpdate
 from app.services.auth_service import hash_password
 
 router = APIRouter(prefix="/users", tags=["users"])
-
 
 @router.post("", response_model=UserRead, status_code=status.HTTP_201_CREATED)
 def create_user(payload: UserCreate, db: Session = Depends(get_db)):
@@ -34,7 +36,6 @@ def create_user(payload: UserCreate, db: Session = Depends(get_db)):
     response.auto_post_time = settings.auto_post_time
     return response
 
-
 @router.get("/{user_id}/avatar")
 def get_user_avatar(user_id: int, db: Session = Depends(get_db)):
     user = db.get(User, user_id)
@@ -45,7 +46,6 @@ def get_user_avatar(user_id: int, db: Session = Depends(get_db)):
         media_type=user.avatar_content_type or "image/png",
     )
 
-
 @router.get("/{user_id}", response_model=UserRead)
 def get_user(user_id: int, db: Session = Depends(get_db)):
     user = db.get(User, user_id)
@@ -55,7 +55,6 @@ def get_user(user_id: int, db: Session = Depends(get_db)):
     response = UserRead.model_validate(user)
     response.auto_post_time = settings.auto_post_time if settings else None
     return response
-
 
 @router.put("/{user_id}", response_model=UserRead)
 def update_user(user_id: int, payload: UserUpdate, db: Session = Depends(get_db)):
@@ -81,7 +80,6 @@ def update_user(user_id: int, payload: UserUpdate, db: Session = Depends(get_db)
     response.auto_post_time = settings.auto_post_time
     return response
 
-
 @router.post("/{user_id}/avatar", response_model=UserRead)
 def upload_user_avatar(
     user_id: int,
@@ -104,13 +102,29 @@ def upload_user_avatar(
     if ext not in allowed_exts:
         raise HTTPException(status_code=400, detail="Unsupported image format")
 
-    data = file.file.read()
-    if len(data) > 2 * 1024 * 1024:
-        raise HTTPException(status_code=400, detail="Image must be 2MB or smaller")
+    bucket_name = os.environ.get("S3_BUCKET_NAME")
+    if not bucket_name:
+        raise HTTPException(status_code=500, detail="S3_BUCKET_NAME environment variable is not set")
 
-    user.avatar_data = data
-    user.avatar_content_type = file.content_type
-    user.avatar_url = f"/users/{user_id}/avatar"
+    s3_client = boto3.client("s3")
+    file_key = f"avatars/{user_id}_{uuid.uuid4().hex}{ext}"
+
+    try:
+        s3_client.upload_fileobj(
+            file.file,
+            bucket_name,
+            file_key,
+            ExtraArgs={"ContentType": file.content_type}
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to upload to S3: {str(e)}")
+
+    region = s3_client.meta.region_name
+    s3_url = f"https://{bucket_name}.s3.{region}.amazonaws.com/{file_key}"
+
+    user.avatar_data = None
+    user.avatar_content_type = None
+    user.avatar_url = s3_url
     db.commit()
     db.refresh(user)
 
@@ -118,7 +132,6 @@ def upload_user_avatar(
     response = UserRead.model_validate(user)
     response.auto_post_time = settings.auto_post_time if settings else None
     return response
-
 
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_user(user_id: int, db: Session = Depends(get_db)):
