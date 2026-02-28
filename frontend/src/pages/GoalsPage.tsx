@@ -974,7 +974,7 @@ export function GoalsPage() {
                 rows={3}
               />
             )}
-            <button type="submit" disabled={!canSubmit}>
+            <button type="submit" className="goalCreateBtn" disabled={!canSubmit}>
               {breakdownMutation.isPending ? <span className="loadingInline"><span className="loadingSpinner" aria-hidden="true" />プラン考え中</span> : "プランを立てる"}
             </button>            
             {breakdownMutation.isError && (
