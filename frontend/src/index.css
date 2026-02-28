@@ -1653,3 +1653,123 @@ form.authCard {
     text-align: center;
   }
 }
+
+/* ============================
+   NEW Minimal × Premium LP
+   ============================ */
+
+:root {
+  --green: #13ec37;
+  --green-dark: #0fbf2c;
+  --text-main: #1d1d1f;
+  --text-sub: #6e6e73;
+  --bg-soft: #f7f7fb;
+  --radius-xl: 28px;
+}
+
+/* NAV */
+.lp-nav {
+  position: sticky;
+  top: 0;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(18px);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.lp-nav-inner {
+  max-width: 1080px;
+  height: 64px;
+  margin: 0 auto;
+  padding: 0 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.lp-nav-logo {
+  font-family: "din", sans-serif;
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+/* Buttons */
+.lp-btn-primary {
+  background: linear-gradient(135deg, #13ec37, #0fbf2c);
+  color: #0f1f10;
+  border-radius: 80px;
+  padding: 12px 26px;
+  font-weight: 700;
+  transition: 0.25s ease;
+}
+
+.lp-btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(19, 236, 55, 0.25);
+}
+
+/* HERO */
+.lp-hero {
+  min-height: 90vh;
+  display: flex;
+  justify-content: center;
+  text-align: center;
+  padding: 120px 24px;
+  background: radial-gradient(
+    circle at 50% 10%,
+    rgba(19, 236, 55, 0.08),
+    transparent 60%
+  );
+}
+
+.lp-hero-inner {
+  max-width: 880px;
+}
+
+.lp-hero-title {
+  font-family: "Plus Jakarta Sans", sans-serif;
+  font-size: clamp(2.8rem, 6vw, 4.8rem);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  margin-bottom: 24px;
+  color: var(--text-main);
+}
+
+.lp-hero-lead {
+  font-size: 1.35rem;
+  color: var(--text-sub);
+  line-height: 1.8;
+  margin-bottom: 40px;
+}
+
+/* Feature Cards */
+.lp-feature-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 28px;
+}
+
+.lp-card {
+  background: #fff;
+  border-radius: var(--radius-xl);
+  padding: 36px 32px;
+  box-shadow: 0 6px 28px rgba(0, 0, 0, 0.06);
+  transition: 0.25s ease;
+  border: 1px solid #ececec;
+}
+
+.lp-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+}
+
+.lp-card-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+
+.lp-problem {
+  background: var(--bg-soft);
+  padding: 100px 24px;
+}

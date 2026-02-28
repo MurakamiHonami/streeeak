@@ -4,7 +4,7 @@ from pathlib import Path
 
 import boto3
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
-from fastapi.responses import Response
+from fastapi.responses import Response, RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -39,8 +39,15 @@ def create_user(payload: UserCreate, db: Session = Depends(get_db)):
 @router.get("/{user_id}/avatar")
 def get_user_avatar(user_id: int, db: Session = Depends(get_db)):
     user = db.get(User, user_id)
-    if not user or not user.avatar_data:
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    if user.avatar_url and user.avatar_url.startswith("http"):
+        return RedirectResponse(url=user.avatar_url)
+
+    if not user.avatar_data:
         raise HTTPException(status_code=404, detail="Avatar not found")
+        
     return Response(
         content=user.avatar_data,
         media_type=user.avatar_content_type or "image/png",
@@ -104,7 +111,7 @@ def upload_user_avatar(
 
     bucket_name = os.environ.get("S3_BUCKET_NAME", "streeeak-frontend-111")
     
-    s3_client = boto3.client("s3")
+    s3_client = boto3.client("s3", region_name="ap-northeast-1")
     file_key = f"avatars/{user_id}_{uuid.uuid4().hex}{ext}"
 
     try:
@@ -116,7 +123,6 @@ def upload_user_avatar(
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to upload to S3: {str(e)}")
-
 
     s3_url = f"https://streeeak.link/{file_key}"
 

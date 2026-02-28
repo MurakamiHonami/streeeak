@@ -49,6 +49,9 @@ export function HomePage() {
   const [sasaThrows, setSasaThrows] = useState<number[]>([]);
   const [activeCol, setActiveCol] = useState(0);
   const kanbanScrollRef = useRef<HTMLDivElement | null>(null);
+  
+  
+  const initializedGoalIdForKanban = useRef<number | "">("");
 
   useEffect(() => {
     const goalList = goals.data ?? [];
@@ -104,6 +107,39 @@ export function HomePage() {
   const filteredTasks = useMemo(() => 
     currentGoalId !== "" ? tasks.filter(task => task.goal_id === currentGoalId) : [],
   [tasks, currentGoalId]);
+
+  
+  useEffect(() => {
+    
+    if (filteredTasks.length === 0 || initializedGoalIdForKanban.current === currentGoalId) {
+      return;
+    }
+    const inProgressCount = filteredTasks.filter(t => !t.is_done && t.status === "in_progress").length;
+    const todoCount = filteredTasks.filter(t => !t.is_done && (!t.status || t.status === "todo")).length;
+
+    let targetCol = 0;
+    
+
+    if (inProgressCount > 0) {
+      targetCol = 1;
+    } else if (todoCount > 0) {
+      targetCol = 0;
+    } else {
+      targetCol = 2;
+    }
+
+    setActiveCol(targetCol);
+    initializedGoalIdForKanban.current = currentGoalId;
+    if (kanbanScrollRef.current) {
+      setTimeout(() => {
+        kanbanScrollRef.current?.children[targetCol]?.scrollIntoView({ 
+          behavior: "smooth", 
+          block: "nearest", 
+          inline: "start" 
+        });
+      }, 50);
+    }
+  }, [filteredTasks, currentGoalId]);
 
   const doneCount = filteredTasks.filter((task) => task.is_done || task.status === "done").length;
   const doneRate = filteredTasks.length ? Math.round((doneCount / filteredTasks.length) * 100) : 0;
