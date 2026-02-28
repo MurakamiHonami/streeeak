@@ -24,17 +24,17 @@ phases:
       - echo "STRIPE_API_KEY=$STRIPE_API_KEY" >> backend/.env
       - echo "STRIPE_WEBHOOK_SECRET=$STRIPE_WEBHOOK_SECRET" >> backend/.env
       - echo "STRIPE_PRICE_ID=$STRIPE_PRICE_ID" >> backend/.env
-      - echo "VITE_STRIPE_PUBLIC_KEY=$VITE_STRIPE_PUBLIC_KEY" >> frontend/.env
-      - echo "ENV=local" >> backend/.env
-      
       - echo "ENVIRONMENT=local" >> backend/.env
       - echo "AWS_REGION=$AWS_REGION" >> backend/.env
       - echo "AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID" >> backend/.env
       - echo "AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY" >> backend/.env
+      - echo "S3_BUCKET_NAME=$S3_BUCKET_NAME" >> backend/.env
+      - echo "CDN_DOMAIN=https://streeeak.link" >> backend/.env
+      - echo "VITE_STRIPE_PUBLIC_KEY=$VITE_STRIPE_PUBLIC_KEY" >> frontend/.env
   post_build:
     commands:
       - echo "Deploying frontend to S3..."
-      - aws s3 sync frontend/dist s3://$S3_BUCKET_NAME/ --delete
+      - aws s3 sync frontend/dist s3://$S3_BUCKET_NAME/ --delete --exclude "avatars/*" --exclude "uploads/*"
       - echo "Invalidating CloudFront cache..."
       - aws cloudfront create-invalidation --distribution-id $CLOUDFRONT_ID --paths "/*"
 

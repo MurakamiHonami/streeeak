@@ -13,6 +13,7 @@ from app.db.session import get_db
 from app.models.user import User, UserSetting
 from app.schemas.user import UserCreate, UserRead, UserUpdate
 from app.services.auth_service import hash_password
+from app.core.config import settings
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -36,22 +37,57 @@ def create_user(payload: UserCreate, db: Session = Depends(get_db)):
     response.auto_post_time = settings.auto_post_time
     return response
 
-@router.get("/{user_id}/avatar")
-def get_user_avatar(user_id: int, db: Session = Depends(get_db)):
+@router.post("/{user_id}/avatar", response_model=UserRead)
+def upload_user_avatar(
+    user_id: int,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.id != user_id:
+        raise HTTPException(status_code=403, detail="You can only update your own avatar")
+
     user = db.get(User, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    
-    if user.avatar_url and user.avatar_url.startswith("http"):
-        return RedirectResponse(url=user.avatar_url)
 
-    if not user.avatar_data:
-        raise HTTPException(status_code=404, detail="Avatar not found")
-        
-    return Response(
-        content=user.avatar_data,
-        media_type=user.avatar_content_type or "image/png",
-    )
+    if not file.content_type or not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="Only image files are allowed")
+
+    ext = Path(file.filename or "").suffix.lower() or ".png"
+    allowed_exts = {".png", ".jpg", ".jpeg", ".gif", ".webp"}
+    if ext not in allowed_exts:
+        raise HTTPException(status_code=400, detail="Unsupported image format")
+
+
+    bucket_name = getattr(settings, "S3_BUCKET_NAME", "streeeak-frontend-111")
+    cdn_domain = getattr(settings, "CDN_DOMAIN", "https://streeeak.link")
+    
+    s3_client = boto3.client("s3", region_name="ap-northeast-1")
+    file_key = f"avatars/{user_id}_{uuid.uuid4().hex}{ext}"
+
+    try:
+        s3_client.upload_fileobj(
+            file.file,
+            bucket_name,
+            file_key,
+            ExtraArgs={"ContentType": file.content_type}
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to upload to S3: {str(e)}")
+
+    s3_url = f"{cdn_domain.rstrip('/')}/{file_key}"
+
+    user.avatar_data = None
+    user.avatar_content_type = None
+    user.avatar_url = s3_url
+    db.commit()
+    db.refresh(user)
+
+    user_settings = db.get(UserSetting, user_id)
+    response = UserRead.model_validate(user)
+    response.auto_post_time = user_settings.auto_post_time if user_settings else None
+    return response
 
 @router.get("/{user_id}", response_model=UserRead)
 def get_user(user_id: int, db: Session = Depends(get_db)):
