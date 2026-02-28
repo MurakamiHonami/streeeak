@@ -8,10 +8,11 @@ import {
 import { Dialog, DialogContent, IconButton, Fade, CircularProgress, Chip } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
+import Diversity3Icon from '@mui/icons-material/Diversity3';
 import { FriendsDialogContent } from "../components/FriendsDialogContent";
+import { GroupDialogContent } from "../components/GroupDialogContent";
 import MilitaryTechIcon from '@mui/icons-material/MilitaryTech';
 import ViewTimelineIcon from '@mui/icons-material/ViewTimeline';
-import ArrowCircleLeftIcon from '@mui/icons-material/ArrowCircleLeft';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
 import FavoriteIcon from '@mui/icons-material/Favorite';
@@ -27,6 +28,7 @@ export function SharePage() {
   const queryClient = useQueryClient();
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isGroupDialogOpen, setIsGroupDialogOpen] = useState(false);
   const [tab, setTab] = useState<"feed" | "rank">("feed");
   
   const [comment, setComment] = useState(localStorage.getItem("streeeak_draft_comment") || "");
@@ -267,14 +269,44 @@ export function SharePage() {
 
       <div className="flex justify-between items-center mb-8">
         <h2 className="text-[24px] font-extrabold m-0 tracking-[-0.02em] text-[#0f1f10]">COMMUNITY</h2>
-        <button 
-          onClick={() => setIsDialogOpen(true)}
-          className="flex items-center gap-2 bg-[#13ec37] text-[#0f1f10] px-4 py-2 rounded-full text-[13px] font-bold shadow-[0_4px_16px_rgba(19,236,55,0.25)] border-none transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer"
-        >
-          <PersonAddIcon fontSize="small" />
-          Add Friends
-        </button>
+        <div className="flex gap-2">
+          <button 
+            onClick={() => setIsGroupDialogOpen(true)}
+            className="flex items-center gap-1.5 bg-white border border-[#e8ede8] text-[#0f1f10] px-3 py-2 rounded-full text-[13px] font-bold shadow-sm transition-all duration-300 hover:bg-gray-50 active:scale-95 cursor-pointer"
+          >
+            <Diversity3Icon fontSize="small" sx={{ color: "#0fbf2c" }} />
+            Groups
+          </button>
+          
+
+          <button 
+            onClick={() => setIsDialogOpen(true)}
+            className="flex items-center gap-1.5 bg-[#13ec37] text-[#0f1f10] px-3 py-2 rounded-full text-[13px] font-bold shadow-[0_4px_16px_rgba(19,236,55,0.25)] border-none transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer"
+          >
+            <PersonAddIcon fontSize="small" />
+            Add
+          </button>
+        </div>
       </div>
+
+
+      <Dialog 
+        open={isGroupDialogOpen} 
+        onClose={() => setIsGroupDialogOpen(false)}
+        TransitionComponent={Fade}
+        transitionDuration={{ enter: 400, exit: 300 }}
+        fullWidth
+        maxWidth="xs"
+        PaperProps={{ sx: { borderRadius: '24px', border: '1px solid #e8ede8', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' } }}
+      >
+        <div className="flex justify-between items-center px-6 pt-6 pb-2">
+          <h3 className="text-xl font-extrabold m-0 text-[#0f1f10]">Groups</h3>
+          <IconButton onClick={() => setIsGroupDialogOpen(false)} className="transition-transform duration-300 hover:rotate-90"><CloseIcon /></IconButton>
+        </div>
+        <DialogContent sx={{ px: 3, pb: 4 }}>
+          <GroupDialogContent />
+        </DialogContent>
+      </Dialog>
 
       <Dialog 
         open={isDialogOpen} 

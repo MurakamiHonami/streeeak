@@ -377,3 +377,62 @@ export async function fetchBlockedUsers() {
   const res = await apiClient.get<{ id: number; name: string; email: string }[]>("/friendships/blocks");
   return res.data;
 }
+export async function fetchGroups(userId: number) {
+  const res = await apiClient.get(`/groups`, { params: { user_id: userId } });
+  return res.data;
+}
+
+export async function getGroup(groupId: number) {
+  const res = await apiClient.get(`/groups/${groupId}`);
+  return res.data;
+}
+
+export async function createGroup(payload: { name: string; owner_id: number }) {
+  const res = await apiClient.post('/groups', payload);
+  return res.data;
+}
+
+export async function updateGroup(groupId: number, payload: { name?: string }) {
+  const res = await apiClient.put(`/groups/${groupId}`, payload);
+  return res.data;
+}
+
+export async function deleteGroup(groupId: number) {
+  await apiClient.delete(`/groups/${groupId}`);
+}
+
+export async function fetchGroupMembers(groupId: number) {
+  const res = await apiClient.get(`/groups/${groupId}/members`);
+  return res.data;
+}
+
+export async function addGroupMember(payload: { groupId: number; userId: number }) {
+  const res = await apiClient.post(`/groups/${payload.groupId}/members`, { user_id: payload.userId });
+  return res.data;
+}
+
+export async function removeGroupMember(payload: { groupId: number; userId: number }) {
+  await apiClient.delete(`/groups/${payload.groupId}/members/${payload.userId}`);
+}
+
+export async function fetchGroupTasks(groupId: number) {
+  const res = await apiClient.get(`/groups/${groupId}/tasks`);
+  return res.data;
+}
+
+export async function createGroupTask(payload: { groupId: number; title: string; assigned_to?: number | null }) {
+  const res = await apiClient.post(`/groups/${payload.groupId}/tasks`, {
+    title: payload.title,
+    assigned_to: payload.assigned_to ?? null,
+  });
+  return res.data;
+}
+
+export async function updateGroupTask(taskId: number, payload: any) {
+  const res = await apiClient.put(`/group-tasks/${taskId}`, payload);
+  return res.data;
+}
+
+export async function deleteGroupTask(taskId: number) {
+  await apiClient.delete(`/group-tasks/${taskId}`);
+}
