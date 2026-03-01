@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { getAuthSession } from "../lib/api";
 import FlagIcon from '@mui/icons-material/Flag';
@@ -10,16 +10,27 @@ export function LandingPage() {
   const navigate = useNavigate();
   const [isTutorialOpen, setIsTutorialOpen] = useState(false);
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [isRendered, setIsRendered] = useState(false);
 
   const tutorialData = [
-    { src: "/tutorial1.png", text: "" },
-    { src: "/tutorial2.png", text: "" },
-    { src: "/tutorial3.png", text: "" },
+    { src: "/tutorial1.png", text: "ユーザー登録をしてください" },
+    { src: "/tutorial2.png", text: "ホーム画面から目標作成ボタンをクリック" },
+    { src: "/tutorial3.png", text: "長期目標と期限、現状を入力して「プランを立てる」をクリック" },
+    { src: "/tutorial3_2.png", text: "メンターAIが目標をブレイクダウンして毎日のTODOを作成してくれます" },
     { src: "/tutorial4.png", text: "タスクが完了したらホーム画面で完了ボタンを押しましょう" },
     { src: "/tutorial5.png", text: "タスクをすべて完了するとメンターAIが喜んでくれます" },
-    { src: "/tutorial6.png", text: "タスクを完了したら進捗を友達と共有しましょう" },
+    { src: "/tutorial6.png", text: "タスクを完了したら友達と進捗を共有しましょう" },
     { src: "/tutorial7.png", text: "STATS画面で今までの頑張りを振り返りましょう" }
   ];
+
+  useEffect(() => {
+    if (isTutorialOpen) {
+      setIsRendered(true);
+    } else {
+      const timer = setTimeout(() => setIsRendered(false), 500);
+      return () => clearTimeout(timer);
+    }
+  }, [isTutorialOpen]);
 
   const handleStartFree = () => {
     const session = getAuthSession();
@@ -44,7 +55,7 @@ export function LandingPage() {
 
   const closeTutorial = () => {
     setIsTutorialOpen(false);
-    setCurrentSlide(0);
+    setTimeout(() => setCurrentSlide(0), 500);
   };
 
   return (
@@ -256,11 +267,21 @@ export function LandingPage() {
         </div>
       </footer>
 
-      {isTutorialOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 sm:p-6">
-          <div className="relative w-full max-w-5xl rounded-2xl bg-white shadow-2xl flex flex-col overflow-hidden">
+      {isRendered && (
+        <div
+          className={`fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 sm:p-6 transition-opacity duration-500 ease-in-out ${
+            isTutorialOpen ? "opacity-100" : "opacity-0"
+          }`}
+        >
+          <div
+            className={`relative w-full max-w-5xl rounded-2xl bg-white shadow-2xl flex flex-col overflow-hidden transition-all duration-500 ease-out transform ${
+              isTutorialOpen ? "scale-100 translate-y-0" : "scale-95 translate-y-8"
+            }`}
+          >
             <div className="flex items-center justify-between p-4 border-b border-gray-100 bg-gray-50/50">
-              <h3 className="text-lg font-bold text-slate-800">チュートリアル ({currentSlide + 1} / {tutorialData.length})</h3>
+              <h3 className="text-lg font-bold text-slate-800">
+                チュートリアル ({currentSlide + 1} / {tutorialData.length})
+              </h3>
               <button
                 onClick={closeTutorial}
                 className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-200 text-gray-600 hover:bg-gray-300 transition-colors"
@@ -269,42 +290,56 @@ export function LandingPage() {
               </button>
             </div>
 
-            <div className="relative flex-1 bg-gray-100 flex items-center justify-center min-h-[300px] sm:min-h-[500px]">
-              <img
-                src={tutorialData[currentSlide].src}
-                alt={`Tutorial Slide ${currentSlide + 1}`}
-                className="max-h-full max-w-full object-contain"
-              />
-              
+            <div className="relative flex-1 bg-gray-100 flex items-center justify-center min-h-[300px] sm:min-h-[500px] overflow-hidden">
+              {tutorialData.map((data, index) => (
+                <img
+                  key={index}
+                  src={data.src}
+                  alt={`Tutorial Slide ${index + 1}`}
+                  className={`absolute max-h-full max-w-full object-contain transition-all duration-700 ease-in-out ${
+                    index === currentSlide
+                      ? "opacity-100 scale-100 z-10"
+                      : "opacity-0 scale-95 z-0 pointer-events-none"
+                  }`}
+                />
+              ))}
+
               <button
                 onClick={prevSlide}
-                className="absolute left-4 top-1/2 -translate-y-1/2 flex h-12 w-12 items-center justify-center rounded-full bg-white/80 shadow-md text-slate-800 hover:bg-white hover:scale-105 transition-all"
+                className="absolute left-4 top-1/2 -translate-y-1/2 z-20 flex h-12 w-12 items-center justify-center rounded-full bg-white/80 shadow-md text-slate-800 hover:bg-white hover:scale-105 transition-all"
               >
                 <span className="material-symbols-outlined">arrow_back_ios_new</span>
               </button>
-              
+
               <button
                 onClick={nextSlide}
-                className="absolute right-4 top-1/2 -translate-y-1/2 flex h-12 w-12 items-center justify-center rounded-full bg-white/80 shadow-md text-slate-800 hover:bg-white hover:scale-105 transition-all"
+                className="absolute right-4 top-1/2 -translate-y-1/2 z-20 flex h-12 w-12 items-center justify-center rounded-full bg-white/80 shadow-md text-slate-800 hover:bg-white hover:scale-105 transition-all"
               >
                 <span className="material-symbols-outlined">arrow_forward_ios</span>
               </button>
             </div>
 
-            {tutorialData[currentSlide].text && (
-              <div className="w-full bg-white border-t border-gray-100 px-6 py-4 flex justify-center items-center">
-                <p className="text-center text-slate-700 font-medium text-sm sm:text-base">
-                  {tutorialData[currentSlide].text}
+            <div className="relative w-full bg-white border-t border-gray-100 px-6 py-4 flex justify-center items-center min-h-[72px] overflow-hidden">
+              {tutorialData.map((data, index) => (
+                <p
+                  key={index}
+                  className={`absolute text-center text-slate-700 font-medium text-sm sm:text-base w-full px-6 transition-all duration-700 ease-in-out ${
+                    index === currentSlide
+                      ? "opacity-100 translate-y-0"
+                      : "opacity-0 translate-y-2 pointer-events-none"
+                  }`}
+                >
+                  {data.text}
                 </p>
-              </div>
-            )}
+              ))}
+            </div>
 
             <div className="flex items-center justify-center gap-3 p-4 bg-white border-t border-gray-50">
               {tutorialData.map((_, index) => (
                 <button
                   key={index}
                   onClick={() => setCurrentSlide(index)}
-                  className={`h-2.5 rounded-full transition-all duration-300 ${
+                  className={`h-2.5 rounded-full transition-all duration-500 ease-out ${
                     index === currentSlide ? "w-8 bg-[#13ec37]" : "w-2.5 bg-gray-300 hover:bg-gray-400"
                   }`}
                   aria-label={`Slide ${index + 1}`}
