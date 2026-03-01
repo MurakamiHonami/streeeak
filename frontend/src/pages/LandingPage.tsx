@@ -19,7 +19,7 @@ export function LandingPage() {
     { src: "/tutorial3_2.png", text: "メンターAIが目標をブレイクダウンして毎日のTODOを作成してくれます" },
     { src: "/tutorial4.png", text: "タスクが完了したらホーム画面で完了ボタンを押しましょう" },
     { src: "/tutorial5.png", text: "タスクをすべて完了するとメンターAIが喜んでくれます" },
-    { src: "/tutorial6.png", text: "タスクを完了したら友達と進捗を共有しましょう" },
+    { src: "/tutorial6.png", text: "タイムラインで友達と進捗を共有しましょう" },
     { src: "/tutorial7.png", text: "STATS画面で今までの頑張りを振り返りましょう" }
   ];
 
