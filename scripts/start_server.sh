@@ -1,5 +1,11 @@
 #!/bin/bash
 
+# 不足しているDBカラムを追加（既存ならスキップ）
+cd /home/ec2-user/streeeak/backend
+source .venv/bin/activate
+python fix_db.py || true
+cd - > /dev/null
+
 # Ubuntu環境に合わせてパスとユーザーを修正
 cat << 'EOF' > /etc/systemd/system/streeeak-api.service
 [Unit]

@@ -75,6 +75,9 @@ class DraftTask(BaseModel):
     subtasks: list[str] = []
     status: TaskStatus | None = TaskStatus.todo
     priority: TaskPriority | None = TaskPriority.mid
+    date: dt.date | None = None
+    month: int | None = None
+    week_number: int | None = None
 
 class RevisionChatMessage(BaseModel):
     role: Literal["user", "assistant"]
@@ -98,6 +101,7 @@ class RevisionChatResponse(BaseModel):
     source: str = "fallback"
     assistant_message: str
     proposals: list[TaskRevisionProposal]
+    new_goal_title: str | None = None
 
 class ApplyRevisionsRequest(BaseModel):
     accepted_proposals: list[TaskRevisionProposal]

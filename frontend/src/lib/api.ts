@@ -146,12 +146,22 @@ export async function fetchGoals() {
   return res.data;
 }
 
-export async function createGoal(payload: { title: string; deadline?: string }) {
+export async function createGoal(payload: { title: string; deadline?: string; currentSituation?: string }) {
   const userId = getCurrentUserId();
   const res = await apiClient.post<Goal>("/goals", {
     user_id: userId,
     title: payload.title,
     deadline: payload.deadline || null,
+    current_situation: payload.currentSituation?.trim() || null,
+  });
+  return res.data;
+}
+
+export async function updateGoal(goalId: number, payload: { title?: string; deadline?: string | null; currentSituation?: string | null }) {
+  const res = await apiClient.put<Goal>(`/goals/${goalId}`, {
+    ...(payload.title !== undefined && { title: payload.title }),
+    ...(payload.deadline !== undefined && { deadline: payload.deadline }),
+    ...(payload.currentSituation !== undefined && { current_situation: payload.currentSituation?.trim() || null }),
   });
   return res.data;
 }
@@ -179,9 +189,13 @@ export async function createGoalAndBreakdown(payload: {
   deadline?: string;
   currentSituation?: string;
 }) {
-  const goal = await createGoal(payload);
-  const breakdown = await generateBreakdown(goal.id, {
+  const goal = await createGoal({
+    title: payload.title,
+    deadline: payload.deadline,
     currentSituation: payload.currentSituation,
+  });
+  const breakdown = await generateBreakdown(goal.id, {
+    currentSituation: payload.currentSituation ?? (goal as { current_situation?: string }).current_situation,
   });
   return { goal, breakdown };
 }

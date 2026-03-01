@@ -24,6 +24,7 @@ export type Goal = {
   user_id: number;
   title: string;
   deadline: string | null;
+  current_situation: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -91,4 +92,5 @@ export type RevisionChatResponse = {
   source: "gemini" | "fallback";
   assistant_message: string;
   proposals: TaskRevisionProposal[];
+  new_goal_title?: string | null;
 };

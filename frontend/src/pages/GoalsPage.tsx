@@ -21,6 +21,7 @@ import {
   fetchGoalTasks,
   revisionChat,
   updateTask,
+  updateGoal,
   appContext
 } from "../lib/api";
 
@@ -75,7 +76,10 @@ export function GoalsPage() {
   const [chatHistory, setChatHistory] = useState<RevisionChatMessage[]>([]);
   const [proposals, setProposals] = useState<TaskRevisionProposal[]>([]);
   const [decisionMap, setDecisionMap] = useState<Record<string, "accepted" | "rejected">>({});
+  const [exitingProposalId, setExitingProposalId] = useState<string | null>(null);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [goalTitleDraft, setGoalTitleDraft] = useState("");
+  const [isEditingGoalTitle, setIsEditingGoalTitle] = useState(false);
   const [goalSectionTab, setGoalSectionTab] = useState<"create" | "review">("review");
   const [planTab, setPlanTab] = useState<PlanTab>("yearly");
   
@@ -94,6 +98,7 @@ export function GoalsPage() {
   const planPrevTabRef = useRef<PlanTab>("yearly");
   const lastInitializedGoalIdRef = useRef<number | null>(null);
   const proposalRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const prevPathnameRef = useRef<string>(location.pathname);
   const queryClient = useQueryClient();
 
   const goals = useQuery({ queryKey: ["goals"], queryFn: fetchGoals });
@@ -128,6 +133,15 @@ export function GoalsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["goals"] });
       setActiveGoalId(null);
+    },
+  });
+
+  const updateGoalMutation = useMutation({
+    mutationFn: ({ goalId, title }: { goalId: number; title: string }) => updateGoal(goalId, { title }),
+    onSuccess: (_, { goalId }) => {
+      queryClient.invalidateQueries({ queryKey: ["goals"] });
+      queryClient.invalidateQueries({ queryKey: ["goalTasks", goalId] });
+      setIsEditingGoalTitle(false);
     },
   });
 
@@ -212,16 +226,57 @@ export function GoalsPage() {
 
   const revisionMutation = useMutation({
     mutationFn: revisionChat,
-    onSuccess: (data) => {
-      setChatHistory((prev) => [...prev, { role: "assistant", content: data.assistant_message }]);
+    onSuccess: (data, variables) => {
+      const rawList = Array.isArray(data?.proposals) ? data.proposals : [];
+      const normalized = rawList.map((p: any) => ({
+        proposal_id: String(p?.proposal_id ?? ""),
+        target_task_id: Number(p?.target_task_id),
+        target_type: (p?.target_type ?? "monthly") as TaskRevisionProposal["target_type"],
+        subtask_index: p?.subtask_index ?? null,
+        before: String(p?.before ?? ""),
+        after: String(p?.after ?? ""),
+        reason: String(p?.reason ?? ""),
+      })).filter((p) => p.proposal_id && !Number.isNaN(p.target_task_id));
+      const assistantMsg =
+        normalized.length === 0
+          ? (rawList.length > 0
+            ? "提案の形式が正しくありませんでした。別の言い方で試してみてください。"
+            : "今回のメッセージでは修正案がありませんでした。範囲（週次・月次・今日など）や表現を変えて試してみてください。")
+          : (data?.assistant_message ?? "提案を作成しました。");
+      setChatHistory((prev) => [...prev, { role: "assistant", content: assistantMsg }]);
       setProposals((prev) => {
         const incomingByTaskId = new Map<number, TaskRevisionProposal>();
-        for (const proposal of data.proposals) {
+        for (const proposal of normalized) {
           incomingByTaskId.set(proposal.target_task_id, proposal);
         }
         const kept = prev.filter((p) => !incomingByTaskId.has(p.target_task_id));
         return [...kept, ...incomingByTaskId.values()];
       });
+      if (normalized.length > 0 && variables.draftTasks.length > 0) {
+        const getTabForTask = (t: { task_type: string; title: string }): PlanTab =>
+          t.task_type === "monthly" && t.title.includes("年目の目標") ? "yearly" : (t.task_type as PlanTab);
+        const tabOrder: PlanTab[] = ["yearly", "monthly", "weekly", "daily"];
+        const tabsWithTasks = [...new Set(variables.draftTasks.map(getTabForTask))];
+        for (const tab of tabOrder) {
+          if (!tabsWithTasks.includes(tab)) continue;
+          const hasProposal = normalized.some((p) => {
+            const task = variables.draftTasks.find((t) => t.task_id === p.target_task_id);
+            return task && getTabForTask(task) === tab;
+          });
+          if (hasProposal) {
+            setPlanTab(tab);
+            break;
+          }
+        }
+      }
+      if (data?.new_goal_title?.trim() && variables.goalId) {
+        updateGoal(variables.goalId, { title: data.new_goal_title.trim() }).then(() => {
+          queryClient.invalidateQueries({ queryKey: ["goals"] });
+        });
+      }
+    },
+    onError: () => {
+      setChatHistory((prev) => [...prev, { role: "assistant", content: "修正提案の取得に失敗しました。しばらくしてからもう一度お試しください。" }]);
     },
   });
 
@@ -285,6 +340,9 @@ export function GoalsPage() {
 
   const handleSendRevisionChat = () => {
     if (!activeGoalId || !chatInput.trim()) return;
+    if (appliedDraftTasks.length === 0) {
+      return; // タスクが無いと提案できない
+    }
     const userMessage = chatInput.trim();
     const nextHistory = [...chatHistory, { role: "user" as const, content: userMessage }];
     setChatHistory(nextHistory);
@@ -296,6 +354,8 @@ export function GoalsPage() {
     });
     setChatInput("");
   };
+
+  const hasTasksForRevision = appliedDraftTasks.length > 0;
 
   const scrollToProposal = (proposalId: string) => {
     const target = proposalRefs.current[proposalId];
@@ -350,24 +410,37 @@ export function GoalsPage() {
   };
 
   const handleProposalDecision = (proposal: TaskRevisionProposal, decision: "accepted" | "rejected") => {
-    const nextDecisionMap = { ...decisionMap, [proposal.proposal_id]: decision };
-    setDecisionMap(nextDecisionMap);
-    scrollToNextProposal(proposal.proposal_id, nextDecisionMap);
-    
-    if (decision === "accepted" && activeGoalId) {
-      applyMutation.mutate(
-        { goalId: activeGoalId, acceptedProposals: [proposal] },
-        {
-          onError: () => {
-            setDecisionMap((prev) => {
-              const rollback = { ...prev };
-              delete rollback[proposal.proposal_id];
-              return rollback;
-            });
-          },
-        }
-      );
-    }
+    setDecisionMap((prev) => ({ ...prev, [proposal.proposal_id]: decision }));
+  };
+
+  const handleProposalConfirm = (proposal: TaskRevisionProposal) => {
+    setExitingProposalId(proposal.proposal_id);
+    const doConfirm = () => {
+      setExitingProposalId(null);
+      const decision = decisionMap[proposal.proposal_id];
+      if (decision === "accepted" && activeGoalId) {
+        applyMutation.mutate(
+          { goalId: activeGoalId, acceptedProposals: [proposal] },
+          {
+            onError: () => {
+              setDecisionMap((prev) => {
+                const next = { ...prev };
+                delete next[proposal.proposal_id];
+                return next;
+              });
+            },
+          }
+        );
+      } else {
+        setProposals((prev) => prev.filter((p) => p.proposal_id !== proposal.proposal_id));
+        setDecisionMap((prev) => {
+          const next = { ...prev };
+          delete next[proposal.proposal_id];
+          return next;
+        });
+      }
+    };
+    setTimeout(doConfirm, 240);
   };
 
   const handleProposalReset = (proposalId: string) => {
@@ -416,19 +489,56 @@ export function GoalsPage() {
     const proposal = proposalsByTaskId.get(taskId);
     if (!proposal) return null;
     const decision = decisionMap[proposal.proposal_id];
+    const isExiting = exitingProposalId === proposal.proposal_id;
 
     if (decision) {
-      return (
-        <div style={{ marginTop: "8px", display: "flex", justifyContent: "flex-end" }}>
-          <button type="button" onClick={() => handleProposalReset(proposal.proposal_id)} style={{ background: "#94a3b8", color: "#0f172a", margin: 0, width: "auto", padding: "6px 10px" }}>
+      const adoptedText = decision === "accepted" ? proposal.after : proposal.before;
+      const adoptedBlock = (
+        <div
+          className="proposalAdoptedIn"
+          style={{
+            background: decision === "accepted" ? "#dcfce7" : "#f1f5f9",
+            color: decision === "accepted" ? "#14532d" : "#0f172a",
+            border: `1px solid ${decision === "accepted" ? "#86efac" : "#e2e8f0"}`,
+            borderRadius: "8px",
+            padding: "10px 12px",
+            marginBottom: "8px",
+            fontSize: 14,
+            lineHeight: 1.5,
+            fontWeight: 600,
+          }}
+        >
+          {adoptedText}
+        </div>
+      );
+      const buttons = (
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+          <button type="button" onClick={() => handleProposalReset(proposal.proposal_id)} style={{ background: "#94a3b8", color: "#0f172a", margin: 0, padding: "6px 12px", borderRadius: 8, border: "none", fontWeight: 700, cursor: "pointer" }}>
             戻る
           </button>
+          <button type="button" onClick={() => handleProposalConfirm(proposal)} style={{ background: "#13ec37", color: "#0f172a", margin: 0, padding: "6px 12px", borderRadius: 8, border: "none", fontWeight: 700, cursor: "pointer" }}>
+            確定
+          </button>
+        </div>
+      );
+      return (
+        <div
+          className={isExiting ? "proposalCardExiting" : undefined}
+          style={{ marginTop: "8px" }}
+          ref={(el) => { proposalRefs.current[proposal.proposal_id] = el; }}
+        >
+          {adoptedBlock}
+          {buttons}
         </div>
       );
     }
 
     return (
-      <div className="proposalCard" style={{ marginTop: "8px", background: "#f8faf8", width: "100%", boxSizing: "border-box" }} ref={(el) => { proposalRefs.current[proposal.proposal_id] = el; }}>
+      <div
+        className={`proposalCard proposalCardIn ${isExiting ? "proposalCardExiting" : ""}`}
+        style={{ marginTop: "8px", background: "#f8faf8", width: "100%", boxSizing: "border-box" }}
+        ref={(el) => { proposalRefs.current[proposal.proposal_id] = el; }}
+      >
         <div style={{ background: "#fee2e2", color: "#7f1d1d", border: "1px solid #fecaca", borderRadius: "8px", padding: "8px", marginBottom: "8px" }}>
           <small style={{ display: "block", fontWeight: 700, marginBottom: "4px" }}>Before</small>
           <p style={{ margin: 0, fontSize: "14px" }}>{proposal.before}</p>
@@ -445,12 +555,23 @@ export function GoalsPage() {
     );
   };
 
+  const getTabForTask = (t: { task_type: string; title: string }): PlanTab =>
+    t.task_type === "monthly" && t.title.includes("年目の目標") ? "yearly" : (t.task_type as PlanTab);
+
   useEffect(() => {
-    if (!orderedProposalIds.length) return;
+    if (!orderedProposalIds.length || !appliedDraftTasks.length) return;
     const firstUndecidedId = orderedProposalIds.find((id) => !decisionMap[id]);
     if (!firstUndecidedId) return;
-    requestAnimationFrame(() => scrollToProposal(firstUndecidedId));
-  }, [orderedProposalIds, decisionMap]);
+    const proposal = proposals.find((p) => p.proposal_id === firstUndecidedId);
+    const task = proposal ? appliedDraftTasks.find((t) => t.task_id === proposal.target_task_id) : null;
+    const targetTab = task ? getTabForTask(task) : null;
+    if (targetTab && !availablePlanTabs.includes(targetTab)) return;
+    if (targetTab && planTab !== targetTab) {
+      setPlanTab(targetTab);
+    }
+    const t = setTimeout(() => scrollToProposal(firstUndecidedId), 320);
+    return () => clearTimeout(t);
+  }, [orderedProposalIds, decisionMap, planTab, appliedDraftTasks, proposals, availablePlanTabs]);
 
   useEffect(() => {
     if (!availablePlanTabs.includes(planTab)) {
@@ -484,12 +605,46 @@ export function GoalsPage() {
     }
   }, [goalSectionTab, goalOptions, activeGoalId]);
 
+  const activeGoal = useMemo(
+    () => goalOptions.find((g: any) => g.id === activeGoalId),
+    [goalOptions, activeGoalId]
+  );
+
+  useEffect(() => {
+    if (activeGoal?.title != null) {
+      setGoalTitleDraft(activeGoal.title);
+    } else {
+      setGoalTitleDraft("");
+    }
+    setIsEditingGoalTitle(false);
+  }, [activeGoal?.id, activeGoal?.title]);
+
   useEffect(() => {
     const requestedTab = (location.state as any)?.goalSectionTab;
     if (requestedTab === "create" || requestedTab === "review") {
       setGoalSectionTab(requestedTab);
     }
   }, [location.state]);
+
+  useEffect(() => {
+    const prev = prevPathnameRef.current;
+    const current = location.pathname;
+    prevPathnameRef.current = current;
+    if (prev !== "/goals" || current === "/goals") return;
+    const decidedIds = Object.keys(decisionMap);
+    if (decidedIds.length === 0) return;
+    const accepted = proposals.filter((p) => decisionMap[p.proposal_id] === "accepted");
+    const decidedIdSet = new Set(decidedIds);
+    setProposals((prevProposals) => prevProposals.filter((p) => !decidedIdSet.has(p.proposal_id)));
+    setDecisionMap((prevMap) => {
+      const next = { ...prevMap };
+      decidedIds.forEach((id) => delete next[id]);
+      return next;
+    });
+    if (accepted.length > 0 && activeGoalId) {
+      applyMutation.mutate({ goalId: activeGoalId, acceptedProposals: accepted });
+    }
+  }, [location.pathname]);
 
 
   const currentTasksToDisplay = useMemo(() => {
@@ -576,6 +731,7 @@ export function GoalsPage() {
   const renderTaskCard = (task: DraftTaskKanban, col: typeof COLUMNS[0], options?: { grayed?: boolean }) => {
     const grayed = options?.grayed ?? false;
     const isDailyView = planTab === "daily";
+    const hasProposal = !!proposalsByTaskId.get(task.task_id);
     const leftBorderColor = isDailyView ? PRIORITY[task.priority].color : (grayed ? "#94a3b8" : "#13ec37");
     return (
       <div
@@ -605,32 +761,39 @@ export function GoalsPage() {
           </div>
         ) : (
           <>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-              <div style={{ flex: 1 }}>
-                {planTab === "daily" && task.date && (
-                  <span style={{ display: "inline-block", background: "#f1f5f9", color: "#475569", fontSize: "10px", fontWeight: 800, padding: "2px 6px", borderRadius: "4px", marginBottom: "4px" }}>
-                    {new Date(task.date).toLocaleDateString("ja-JP", { month: "short", day: "numeric" })}
+            {!hasProposal && (
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                <div style={{ flex: 1 }}>
+                  {planTab === "daily" && task.date && (
+                    <span style={{ display: "inline-block", background: "#f1f5f9", color: "#475569", fontSize: "10px", fontWeight: 800, padding: "2px 6px", borderRadius: "4px", marginBottom: "4px" }}>
+                      {new Date(task.date).toLocaleDateString("ja-JP", { month: "short", day: "numeric" })}
+                    </span>
+                  )}
+                  <span
+                    style={{
+                      display: "block", fontSize: 15, fontWeight: 700, lineHeight: 1.4,
+                      color: col.id === "done" ? "#94a3b8" : "#0f1f10",
+                      textDecoration: col.id === "done" ? "line-through" : "none",
+                      ...(getTaskTitleStyle(task.task_id) ?? {}),
+                    }}
+                    onClick={() => { setEditingTaskId(task.task_id); setEditingTaskTitle(task.title.replace(/^\d+.*?[:：]\s*/, "")); }}
+                  >
+                    {task.title}
                   </span>
-                )}
-                <span
-                  style={{
-                    display: "block", fontSize: 15, fontWeight: 700, lineHeight: 1.4,
-                    color: col.id === "done" ? "#94a3b8" : "#0f1f10",
-                    textDecoration: col.id === "done" ? "line-through" : "none",
-                    ...(getTaskTitleStyle(task.task_id) ?? {}),
-                  }}
-                  onClick={() => { setEditingTaskId(task.task_id); setEditingTaskTitle(task.title.replace(/^\d+.*?[:：]\s*/, "")); }}
-                >
-                  {task.title}
-                </span>
+                </div>
+                <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
+                  <button type="button" onClick={() => { setEditingTaskId(task.task_id); setEditingTaskTitle(task.title.replace(/^\d+.*?[:：]\s*/, "")); }} style={{ background: "none", border: "none", cursor: "pointer", color: "#94a3b8", fontSize: 18, padding: "2px" }}><EditIcon /></button>
+                  <button type="button" onClick={() => { if (window.confirm("削除しますか？")) deleteTaskMutation.mutate(task.task_id); }} style={{ background: "none", border: "none", cursor: "pointer", color: "#94a3b8", fontSize: 18, padding: "2px" }}><DeleteIcon /></button>
+                </div>
               </div>
-              <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
-                <button type="button" onClick={() => { setEditingTaskId(task.task_id); setEditingTaskTitle(task.title.replace(/^\d+.*?[:：]\s*/, "")); }} style={{ background: "none", border: "none", cursor: "pointer", color: "#94a3b8", fontSize: 18, padding: "2px" }}><EditIcon /></button>
-                <button type="button" onClick={() => { if (window.confirm("削除しますか？")) deleteTaskMutation.mutate(task.task_id); }} style={{ background: "none", border: "none", cursor: "pointer", color: "#94a3b8", fontSize: 18, padding: "2px" }}><DeleteIcon /></button>
-              </div>
-            </div>
+            )}
+            {hasProposal && planTab === "daily" && task.date && (
+              <span style={{ display: "inline-block", background: "#f1f5f9", color: "#475569", fontSize: "10px", fontWeight: 800, padding: "2px 6px", borderRadius: "4px", marginBottom: "8px" }}>
+                {new Date(task.date).toLocaleDateString("ja-JP", { month: "short", day: "numeric" })}
+              </span>
+            )}
 
-            <div style={{ marginTop: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ marginTop: hasProposal ? 0 : 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               {isDailyView ? (
                 <select
                   value={task.priority}
@@ -1023,6 +1186,55 @@ export function GoalsPage() {
                       ))}
                     </Select>
                   </FormControl>
+                  {activeGoalId && activeGoal && (
+                    <div className="flex flex-col gap-2 mt-3 w-full">
+                      {!isEditingGoalTitle ? (
+                        <button
+                          type="button"
+                          onClick={() => setIsEditingGoalTitle(true)}
+                          className="text-[12px] font-bold text-[#0fbf2c] border border-[#13ec37]/40 bg-[#13ec37]/10 px-3 py-2 rounded-lg hover:bg-[#13ec37]/20 transition-colors w-fit"
+                        >
+                          最終目標を修正
+                        </button>
+                      ) : null}
+                      <div
+                        className={`grid transition-all duration-300 ease-out overflow-hidden ${isEditingGoalTitle ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}
+                      >
+                        <div className="min-h-0 flex flex-col gap-2">
+                          <div className="flex gap-2 items-center">
+                            <input
+                              type="text"
+                              className="gameInput flex-1"
+                              value={goalTitleDraft}
+                              onChange={(e) => setGoalTitleDraft(e.target.value)}
+                              placeholder="目標のタイトル"
+                            />
+                            <button
+                              type="button"
+                              className="goalCreateBtn"
+                              disabled={!goalTitleDraft.trim() || goalTitleDraft.trim() === activeGoal.title || updateGoalMutation.isPending}
+                              onClick={() => {
+                                const t = goalTitleDraft.trim();
+                                if (t && activeGoalId) updateGoalMutation.mutate({ goalId: activeGoalId, title: t });
+                              }}
+                            >
+                              {updateGoalMutation.isPending ? "保存中..." : "保存"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setGoalTitleDraft(activeGoal.title);
+                                setIsEditingGoalTitle(false);
+                              }}
+                              className="text-[12px] font-bold text-[#64748b] border border-[#e8ede8] bg-white px-3 py-2 rounded-lg hover:bg-[#f8faf8] transition-colors"
+                            >
+                              キャンセル
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </Box>
               ) : null}
             </div>
@@ -1030,17 +1242,22 @@ export function GoalsPage() {
             {goalOptions.length === 0 ? (
               <button type="button" className="goalCreateBtn" onClick={() => setGoalSectionTab("create")}>目標を作成する</button>
             ) : (
-              <div className="chatInputRow goalChatInputRow">
-                <input
-                  value={chatInput}
-                  onChange={(e) => setChatInput(e.target.value)}
-                  placeholder="例: 週次タスクをもっと具体化して"
-                  disabled={!activeGoalId}
-                />
-                <button type="button" onClick={handleSendRevisionChat} disabled={!activeGoalId || !chatInput.trim()}>
-                  <span aria-hidden="true">➤</span>
-                </button>
-              </div>
+              <>
+                {activeGoalId && !hasTasksForRevision && (
+                  <p className="mutedText" style={{ marginBottom: 8 }}>この目標にはまだプランがありません。「プランを立てる」で目標を選び、プランを作成してから修正できます。</p>
+                )}
+                <div className="chatInputRow goalChatInputRow">
+                  <input
+                    value={chatInput}
+                    onChange={(e) => setChatInput(e.target.value)}
+                    placeholder="例: 週次タスクをもっと具体化して"
+                    disabled={!activeGoalId}
+                  />
+                  <button type="button" onClick={handleSendRevisionChat} disabled={!activeGoalId || !chatInput.trim() || !hasTasksForRevision}>
+                    <span aria-hidden="true">➤</span>
+                  </button>
+                </div>
+              </>
             )}
             {revisionMutation.isPending ? (
               <div className="flex flex-col items-center justify-center mt-6 mb-4">
