@@ -548,8 +548,8 @@ export function GoalsPage() {
           <p style={{ margin: 0, fontSize: "14px" }}>{proposal.after}</p>
         </div>
         <div className="rowActions" style={{ marginTop: "8px" }}>
-          <button type="button" onClick={() => handleProposalDecision(proposal, "accepted")}>Accept</button>
-          <button type="button" onClick={() => handleProposalDecision(proposal, "rejected")} style={{ background: "#475569", color: "#fff" }}>Reject</button>
+          <button type="button" className="proposalAcceptBtn" onClick={() => handleProposalDecision(proposal, "accepted")}>Accept</button>
+          <button type="button" className="proposalRejectBtn" onClick={() => handleProposalDecision(proposal, "rejected")}>Reject</button>
         </div>
       </div>
     );
@@ -1253,7 +1253,12 @@ export function GoalsPage() {
                     placeholder="例: 週次タスクをもっと具体化して"
                     disabled={!activeGoalId}
                   />
-                  <button type="button" onClick={handleSendRevisionChat} disabled={!activeGoalId || !chatInput.trim() || !hasTasksForRevision}>
+                  <button
+                    type="button"
+                    className="goalChatSendBtn"
+                    onClick={handleSendRevisionChat}
+                    disabled={!activeGoalId || !chatInput.trim() || !hasTasksForRevision}
+                  >
                     <span aria-hidden="true">➤</span>
                   </button>
                 </div>

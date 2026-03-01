@@ -518,6 +518,63 @@ pre {
   height: 42px;
 }
 
+/* 修正相談の送信ボタン：デプロイ先でも同じ見た目にする */
+.goalChatSendBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 42px;
+  height: 42px;
+  padding: 0 14px;
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  font-family: inherit;
+  color: #0f1f10;
+  background: #13ec37;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.goalChatSendBtn:hover:not(:disabled) {
+  background: #0fbf2c;
+}
+.goalChatSendBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Accept / Reject：デプロイ先でも同じ見た目にする */
+.proposalAcceptBtn,
+.proposalRejectBtn {
+  margin: 0;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 700;
+  font-family: inherit;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s ease, opacity 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.proposalAcceptBtn {
+  background: #13ec37;
+  color: #0f1f10;
+}
+.proposalAcceptBtn:hover {
+  background: #0fbf2c;
+}
+.proposalRejectBtn {
+  background: #475569;
+  color: #fff;
+}
+.proposalRejectBtn:hover {
+  background: #334155;
+}
+
 .goalField {
   height: 42px;
   min-height: 42px;
