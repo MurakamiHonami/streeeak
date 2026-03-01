@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getAuthSession } from "../lib/api";
 import FlagIcon from '@mui/icons-material/Flag';
@@ -8,6 +8,18 @@ import ForumIcon from '@mui/icons-material/Forum';
 
 export function LandingPage() {
   const navigate = useNavigate();
+  const [isTutorialOpen, setIsTutorialOpen] = useState(false);
+  const [currentSlide, setCurrentSlide] = useState(0);
+
+  const tutorialData = [
+    { src: "/tutorial1.png", text: "" },
+    { src: "/tutorial2.png", text: "" },
+    { src: "/tutorial3.png", text: "" },
+    { src: "/tutorial4.png", text: "タスクが完了したらホーム画面で完了ボタンを押しましょう" },
+    { src: "/tutorial5.png", text: "タスクをすべて完了するとメンターAIが喜んでくれます" },
+    { src: "/tutorial6.png", text: "タスクを完了したら進捗を友達と共有しましょう" },
+    { src: "/tutorial7.png", text: "STATS画面で今までの頑張りを振り返りましょう" }
+  ];
 
   const handleStartFree = () => {
     const session = getAuthSession();
@@ -22,14 +34,26 @@ export function LandingPage() {
     navigate("/auth/login");
   };
 
+  const nextSlide = () => {
+    setCurrentSlide((prev) => (prev === tutorialData.length - 1 ? 0 : prev + 1));
+  };
+
+  const prevSlide = () => {
+    setCurrentSlide((prev) => (prev === 0 ? tutorialData.length - 1 : prev - 1));
+  };
+
+  const closeTutorial = () => {
+    setIsTutorialOpen(false);
+    setCurrentSlide(0);
+  };
+
   return (
     <div className="relative flex min-h-screen w-full flex-col overflow-x-hidden bg-white text-slate-800 font-sans antialiased selection:bg-[#13ec37] selection:text-black">
-
       <header className="sticky top-0 z-50 w-full border-b border-gray-200 bg-white/90 backdrop-blur-md">
         <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded bg-white/10 text-[#13ec37]">
-              <img src="/sasa.png" alt="ロゴ画像"/>
+              <img src="/sasa.png" alt="ロゴ画像" />
             </div>
             <h2 className="text-xl font-bold tracking-tight text-slate-900">
               Str<span className="text-[#13ec37]">eee</span>ak
@@ -51,13 +75,14 @@ export function LandingPage() {
           </div>
         </div>
       </header>
+
       <section className="relative flex flex-col items-center justify-center py-24 lg:py-32 overflow-hidden bg-white">
         <div className="absolute -top-20 -right-20 w-[600px] h-[600px] bg-gray-50 rounded-full blur-3xl pointer-events-none -z-10"></div>
         <div className="absolute top-40 -left-20 w-[400px] h-[400px] bg-green-50 rounded-full blur-3xl pointer-events-none -z-10"></div>
         <div className="container relative z-10 px-4 text-center">
           <h1 className="mx-auto max-w-5xl text-4xl font-black leading-[1.3] tracking-tight text-slate-900 md:text-6xl lg:text-7xl">
-            「漠然とした夢」を、<br/>
-            今日クリアすべき<span className="text-[#13ec37]">「クエスト」</span><br/>に変えよう。
+            「漠然とした夢」を、<br />
+            今日クリアすべき<span className="text-[#13ec37]">「クエスト」</span><br />に変えよう。
           </h1>
           <p className="mx-auto mt-8 max-w-2xl text-lg text-slate-500 md:text-xl leading-relaxed font-light">
             AIがメンターになり、あなたの目標を完全ナビゲート。<br className="hidden md:block" />
@@ -73,6 +98,15 @@ export function LandingPage() {
               <span className="flex items-center gap-2">
                 無料で目標をブレイクダウン
                 <span className="material-symbols-outlined text-[#13ec37] group-hover:translate-x-1 transition-transform">arrow_forward</span>
+              </span>
+            </button>
+            <button
+              onClick={() => setIsTutorialOpen(true)}
+              className="flex h-14 w-full sm:w-auto items-center justify-center rounded-full bg-white px-8 text-base font-bold text-slate-700 border-2 border-slate-200 transition-all hover:bg-slate-50 hover:-translate-y-0.5 shadow-lg shadow-gray-200"
+            >
+              <span className="flex items-center gap-2">
+                チュートリアルを見る
+                <span className="material-symbols-outlined text-slate-500">play_circle</span>
               </span>
             </button>
           </div>
@@ -186,7 +220,6 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* CTA Section */}
       <section className="relative py-32 overflow-hidden flex items-center justify-center bg-[#F3F4F6]">
         <div className="container relative z-10 px-4 text-center">
           <h2 className="mb-6 text-3xl md:text-4xl font-black text-slate-900 tracking-tight">
@@ -212,7 +245,7 @@ export function LandingPage() {
           <div className="flex flex-col items-center justify-between gap-6 md:flex-row">
             <div className="flex items-center gap-2">
               <div className="flex h-6 w-6 items-center justify-center rounded bg-white/10 text-[#13ec37]">
-                <img src="/sasa.png" alt="ロゴ画像"/>
+                <img src="/sasa.png" alt="ロゴ画像" />
               </div>
               <span className="text-lg font-bold text-slate-900 tracking-tight">Streeeak</span>
             </div>
@@ -222,6 +255,65 @@ export function LandingPage() {
           </div>
         </div>
       </footer>
+
+      {isTutorialOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 sm:p-6">
+          <div className="relative w-full max-w-5xl rounded-2xl bg-white shadow-2xl flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b border-gray-100 bg-gray-50/50">
+              <h3 className="text-lg font-bold text-slate-800">チュートリアル ({currentSlide + 1} / {tutorialData.length})</h3>
+              <button
+                onClick={closeTutorial}
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-200 text-gray-600 hover:bg-gray-300 transition-colors"
+              >
+                <span className="material-symbols-outlined text-sm">close</span>
+              </button>
+            </div>
+
+            <div className="relative flex-1 bg-gray-100 flex items-center justify-center min-h-[300px] sm:min-h-[500px]">
+              <img
+                src={tutorialData[currentSlide].src}
+                alt={`Tutorial Slide ${currentSlide + 1}`}
+                className="max-h-full max-w-full object-contain"
+              />
+              
+              <button
+                onClick={prevSlide}
+                className="absolute left-4 top-1/2 -translate-y-1/2 flex h-12 w-12 items-center justify-center rounded-full bg-white/80 shadow-md text-slate-800 hover:bg-white hover:scale-105 transition-all"
+              >
+                <span className="material-symbols-outlined">arrow_back_ios_new</span>
+              </button>
+              
+              <button
+                onClick={nextSlide}
+                className="absolute right-4 top-1/2 -translate-y-1/2 flex h-12 w-12 items-center justify-center rounded-full bg-white/80 shadow-md text-slate-800 hover:bg-white hover:scale-105 transition-all"
+              >
+                <span className="material-symbols-outlined">arrow_forward_ios</span>
+              </button>
+            </div>
+
+            {tutorialData[currentSlide].text && (
+              <div className="w-full bg-white border-t border-gray-100 px-6 py-4 flex justify-center items-center">
+                <p className="text-center text-slate-700 font-medium text-sm sm:text-base">
+                  {tutorialData[currentSlide].text}
+                </p>
+              </div>
+            )}
+
+            <div className="flex items-center justify-center gap-3 p-4 bg-white border-t border-gray-50">
+              {tutorialData.map((_, index) => (
+                <button
+                  key={index}
+                  onClick={() => setCurrentSlide(index)}
+                  className={`h-2.5 rounded-full transition-all duration-300 ${
+                    index === currentSlide ? "w-8 bg-[#13ec37]" : "w-2.5 bg-gray-300 hover:bg-gray-400"
+                  }`}
+                  aria-label={`Slide ${index + 1}`}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
