@@ -1,188 +1,83 @@
 # Streeeak
+～ 「漠然とした夢」を、今日クリアすべき「クエスト」に変えよう。 ～
 
-Streeeak は、長期目標を月次/週次/日次に分解し、日々の達成を継続可視化する Web アプリです。
+## 1. プロジェクトについて
+「大きな夢はあるけれど、今何をすべきかわからない」
+「一人で頑張ろうと決意しても、つい後回しにして三日坊主で終わってしまう」
+そんなもどかしさや焦りを感じたことはありませんか？
 
-## 技術スタック
+Streeeak（ストリーク）は、長期目標を月次・週次・日次に分解し、日々の達成を継続・可視化するWebアプリです。
+AIが専属メンターとしてあなたの目標を完全ナビゲートし、「今日やること」まで具体的に逆算してくれます。
+さらに、仲間と進捗を共有し競い合うことで「サボれない環境」を作り出し、モチベーションの低下を防ぎます。
+一人では続かない目標達成を、ゲーム感覚のクエストへと変えるサービスです。
 
-- Frontend: React + TypeScript + Vite + TanStack Query
-- Backend: FastAPI + SQLAlchemy 2.0 + Pydantic
-- DB: Supabase (PostgreSQL)
-- Deploy 想定: Vercel (frontend) / Render (backend)
+## 2. コア機能
+ - 目標ブレイクダウン
+Gemini API（gemini-2.0-flash）を活用。
+「長期目標」と「期限」を入力するだけで、メンターAIが対話形式であなたにぴったりの短期目標や毎日のTODOを自動生成・調整してくれます。
 
-## ディレクトリ構成
+ - デイリーTODO＆持ち越し機能
+「今日やるべきこと」がひと目でわかるUI。
+もしタスクが未達成で終わってしまっても、翌日へ自動的に引き継がれるため、挫折せずに再スタートを切ることができます。
 
-- `frontend`: 画面実装
-- `backend`: API / DBモデル / 業務ロジック
+ - チームランキング＆シェア
+1週間の達成率をもとにグループ内でトップ3をランキング表示。
+「あいつ、今日も進めてる…！」というポジティブな焦りを生み出します。週末にはリセットされ、新たなバトルがスタートします。
 
-## 起動方法
+ - 自動投稿＆AIエール
+指定した時間に自動で進捗をタイムラインにシェア。
+さらに、タスクを完了すると特別な演出を表示するなど、モチベーションを維持する仕組みが詰まっています。
+## 3. 使用技術
+### Frontend
+| カテゴリ | 技術・ライブラリ | 用途・備考 |
+| :--- | :--- | :--- |
+| **Core** | React 19, TypeScript 5.9 | UI構築、静的型付けによる堅牢な開発 |
+| **Build & Routing** | Vite 7, Node.js 20, React Router 7 | 高速な開発環境・ビルド、クライアントサイドルーティング |
+| **State & Fetch** | TanStack Query 5, Axios | サーバー状態のキャッシュ・非同期通信の最適化 |
+| **UI & Styling** | MUI 7, Tailwind CSS 4, Emotion | コンポーネント基盤、ユーティリティファーストなスタイリング |
+| **Others** | Stripe React, i18next, Day.js | 決済UI、多言語対応、直感的な日付操作 |
 
-### 0) 前提
+### Backend
+| カテゴリ | 技術・ライブラリ | 用途・備考 |
+| :--- | :--- | :--- |
+| **Core** | Python 3.11, FastAPI, Uvicorn | 高速なAPIルーティングと非同期処理（ASGI） |
+| **ORM & Validation** | SQLAlchemy 2, Pydantic 2 | DBアクセス、リクエスト/レスポンスの厳格な型バリデーション |
+| **Auth & Security** | python-jose, passlib (bcrypt) | JWTによるトークンベース認証、パスワードのハッシュ化 |
+| **External Integrations**| httpx, boto3, Stripe | Gemini API等の外部連携、AWS S3へのアバター画像アップロード、サブスク決済処理 |
 
-- PostgreSQL がローカルで起動していること
-- データベース `streeeak` が作成済みであること
+### Database & Infrastructure
+| カテゴリ | 技術・ライブラリ | 用途・備考 |
+| :--- | :--- | :--- |
+| **Database** | PostgreSQL, psycopg 3 | 本番RDB環境、コネクションプールによる死活監視 |
+| **AI** | Google Gemini API (1.5-flash等) | 自然言語処理による目標のブレイクダウンとリビジョン提案 |
 
-例:
-
-```bash
-brew services start postgresql@17
-/opt/homebrew/opt/postgresql@17/bin/createdb streeeak
+### 4. 起動方法
+1) Backendの起動
 ```
-
-### 1) Backend
-
-```bash
+Bash
 cd backend
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env
-uvicorn app.main:app --reload
 ```
+.env に環境変数を設定後、サーバーを起動します。
 
-`backend/.env` の主な設定:
-
-```env
 DATABASE_URL=postgresql+psycopg://<user>@localhost:5432/streeeak
 GEMINI_API_KEY=<your_api_key>
-GEMINI_MODEL=gemini-2.0-flash
+STRIPE_SECRET_KEY=<your_stripe_key>
+
+2) Frontendの起動
+必要に応じて frontend/.env を作成し、以下を設定してください：
+
+VITE_API_BASE_URL=http://localhost:8000
+VITE_DEFAULT_USER_ID=1
+開発サーバーを起動します：
+
 ```
-
-### 2) Frontend
-
-```bash
+Bash
 cd frontend
 npm install
 npm run dev
 ```
-
-必要に応じて `frontend/.env` を作成して以下を設定:
-
-```bash
-VITE_API_BASE_URL=http://localhost:8000
-VITE_DEFAULT_USER_ID=1
-```
-
-ブラウザ:
-
-- Frontend: `http://localhost:5173`
-- Backend: `http://127.0.0.1:8000`
-
-## データベース設計
-
-現在は `backend/app/models` のSQLAlchemyモデルを元に、起動時にテーブル生成されます。
-
-### テーブル一覧（概要）
-
-- `users`
-  - `id`, `email`, `name`, `password_hash`, `created_at`, `updated_at`
-- `user_settings`
-  - `user_id`, `auto_post_time`
-- `goals`
-  - `id`, `user_id`, `title`, `deadline`, `created_at`, `updated_at`
-- `tasks`
-  - `id`, `goal_id`, `user_id`, `type(monthly|weekly|daily)`, `title`
-  - `month`, `week_number`, `date`, `is_done`, `carried_over`
-  - `tags`, `note`, `created_at`, `updated_at`
-- `posts`
-  - `id`, `user_id`, `group_id`, `date`, `week_number`, `comment`, `achieved`, `created_at`
-- `friendships`
-  - `id`, `user_id`, `friend_id`, `created_at`
-- `groups`
-  - `id`, `name`, `owner_id`, `created_at`
-- `group_members`
-  - `id`, `group_id`, `user_id`, `created_at`
-
-### 設計補足
-
-- 長期目標は `goals` に保存
-- ブレイクダウン結果（月次/週次/日次）は `tasks` に保存
-- 日次タスクの詳細TODOは `tasks.note` に保存
-- 日次未達成の持ち越しは `POST /tasks/:id/carry-over` で複製作成
-
-## CRUD設計 / API設計
-
-ベースURL: `http://127.0.0.1:8000`
-
-### Auth
-
-- `POST /auth/register`
-- `POST /auth/login`
-- `POST /auth/logout`
-
-### Users
-
-- `POST /users` ユーザー作成
-- `GET /users/{user_id}` ユーザー取得
-- `PUT /users/{user_id}` ユーザー更新
-- `DELETE /users/{user_id}` ユーザー削除
-
-### Goals
-
-- `POST /goals` 長期目標作成
-- `GET /goals?user_id=` 長期目標一覧
-- `GET /goals/{goal_id}` 長期目標詳細
-- `PUT /goals/{goal_id}` 長期目標更新
-- `DELETE /goals/{goal_id}` 長期目標削除
-
-### Tasks
-
-- `POST /goals/{goal_id}/tasks/breakdown`
-  - Geminiで分解（12ヶ月→直近1ヶ月週次→直近1週間日次）
-  - `persist=true` で `tasks` へ保存
-- `POST /tasks` タスク単体作成
-- `POST /tasks/bulk` タスク一括作成
-- `GET /tasks?user_id=&type=monthly&month=`
-- `GET /tasks?user_id=&type=weekly&week_number=`
-- `GET /tasks?user_id=&type=daily&date=`
-- `PUT /tasks/{task_id}` タスク更新
-- `PATCH /tasks/{task_id}/done` 完了切替
-- `POST /tasks/{task_id}/carry-over` 翌日へ持ち越し
-- `DELETE /tasks/{task_id}` タスク削除
-
-### Posts
-
-- `POST /posts` 投稿作成
-- `GET /posts?user_id=&week=` フィード取得（本人＋フレンド）
-- `GET /posts?group_id=&week=` グループ絞り込み
-- `PUT /posts/{post_id}` 投稿更新
-- `DELETE /posts/{post_id}` 投稿削除
-
-### Friendships
-
-- `POST /friendships` フレンド追加
-- `GET /friendships?user_id=` フレンド一覧
-- `DELETE /friendships/{friendship_id}` フレンド解除
-
-### Groups / Members
-
-- `POST /groups`
-- `GET /groups?user_id=`
-- `GET /groups/{group_id}`
-- `PUT /groups/{group_id}`
-- `DELETE /groups/{group_id}`
-- `POST /groups/{group_id}/members`
-- `GET /groups/{group_id}/members`
-- `DELETE /groups/{group_id}/members/{user_id}`
-
-### Analytics
-
-- `GET /analytics/ranking?user_id=&week=&top_n=3`
-  - 週次達成率の平均でTOP Nを返却
-
-## 画面と主API対応
-
-- ホーム
-  - `GET /tasks?type=daily&date=today`
-  - `PATCH /tasks/:id/done`
-  - `POST /tasks/:id/carry-over`
-  - `GET /analytics/ranking`
-- 目標設定
-  - `POST /goals`
-  - `POST /goals/:id/tasks/breakdown`
-  - `DELETE /goals/:id`
-- 個人リザルト
-  - `GET /tasks?type=weekly`
-- シェア
-  - `GET /posts`
-  - `POST /posts`
-  - `GET /analytics/ranking`
+### http://localhost:5173 にアクセスしてください
