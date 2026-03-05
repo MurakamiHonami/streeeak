@@ -44,3 +44,11 @@ variable "stripe_api_key" { type = string }
 variable "stripe_webhook_secret" { type = string }
 variable "stripe_price_id" { type = string }
 variable "vite_stripe_public_key" { type = string }
+variable "secret_key" {
+  type      = string
+  sensitive = true
+}
+
+variable "access_token_expire_minutes" {
+  type = string
+}

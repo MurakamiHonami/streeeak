@@ -27,7 +27,7 @@ resource "aws_lb_listener" "http" {
 
   default_action {
     type             = "forward"
-    target_group_arn = aws_lb_target_group.main.arn
+    target_group_arn = aws_lb_target_group.ecs.arn
   }
 }
 
@@ -48,4 +48,12 @@ resource "aws_lb_target_group_attachment" "app_1" {
   target_group_arn = aws_lb_target_group.main.arn
   target_id        = aws_instance.app_1.id
   port             = 8000
+}
+resource "aws_ecr_repository" "backend" {
+  name                 = "streeeak-backend"
+  image_tag_mutability = "MUTABLE"
+
+  image_scanning_configuration {
+    scan_on_push = true
+  }
 }
