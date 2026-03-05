@@ -4,42 +4,57 @@ phases:
   install:
     runtime-versions:
       nodejs: 20
-      python: 3.11
   pre_build:
     commands:
-      - echo "Installing frontend dependencies..."
+      # 1. AWS ECR へのログイン準備
+      - echo "Logging in to Amazon ECR..."
+      - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin 382715181910.dkr.ecr.$AWS_REGION.amazonaws.com
+      - REPOSITORY_URI=382715181910.dkr.ecr.$AWS_REGION.amazonaws.com/streeeak-backend
+      - COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
+      - IMAGE_TAG=${COMMIT_HASH:=latest}
+      
+      # 2. フロントエンドの環境変数セットアップ
+      - echo "Setting up frontend environment variables..."
       - cd frontend
+      - echo "VITE_API_BASE_URL=$VITE_API_BASE_URL" > .env
+      - echo "VITE_DEFAULT_USER_ID=$VITE_DEFAULT_USER_ID" >> .env
+      - echo "VITE_SUPABASE_URL=$VITE_SUPABASE_URL" >> .env
+      - echo "VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY" >> .env
+      - echo "VITE_STRIPE_PUBLIC_KEY=$VITE_STRIPE_PUBLIC_KEY" >> .env
       - npm install
       - cd ..
+
   build:
     commands:
+      # フロントエンドのビルド
       - echo "Building frontend..."
       - cd frontend
       - npx vite build
       - cd ..
-      - echo "Creating backend .env file..."
-      - echo "GEMINI_API_KEY=$GEMINI_API_KEY" >> backend/.env
-      - echo "DATABASE_URL=$DATABASE_URL" >> backend/.env
-      - echo "SECRET_KEY=$SECRET_KEY" >> backend/.env
-      - echo "STRIPE_API_KEY=$STRIPE_API_KEY" >> backend/.env
-      - echo "STRIPE_WEBHOOK_SECRET=$STRIPE_WEBHOOK_SECRET" >> backend/.env
-      - echo "STRIPE_PRICE_ID=$STRIPE_PRICE_ID" >> backend/.env
-      - echo "ENVIRONMENT=local" >> backend/.env
-      - echo "AWS_REGION=$AWS_REGION" >> backend/.env
-      - echo "AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID" >> backend/.env
-      - echo "AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY" >> backend/.env
-      - echo "S3_BUCKET_NAME=$S3_BUCKET_NAME" >> backend/.env
-      - echo "CDN_DOMAIN=https://streeeak.link" >> backend/.env
-      - echo "VITE_STRIPE_PUBLIC_KEY=$VITE_STRIPE_PUBLIC_KEY" >> frontend/.env
+      
+      # バックエンドのDockerイメージビルド
+      - echo "Building backend Docker image..."
+      - cd backend
+      - docker build -t $REPOSITORY_URI:latest .
+      - docker tag $REPOSITORY_URI:latest $REPOSITORY_URI:$IMAGE_TAG
+      - cd ..
+
   post_build:
     commands:
+      # フロントエンドを S3 & CloudFront にデプロイ
       - echo "Deploying frontend to S3..."
       - aws s3 sync frontend/dist s3://$S3_BUCKET_NAME/ --delete --exclude "avatars/*" --exclude "uploads/*"
       - echo "Invalidating CloudFront cache..."
       - aws cloudfront create-invalidation --distribution-id $CLOUDFRONT_ID --paths "/*"
+      
+      # バックエンドを ECR に Push
+      - echo "Pushing backend Docker images to ECR..."
+      - docker push $REPOSITORY_URI:latest
+      - docker push $REPOSITORY_URI:$IMAGE_TAG
+      
+      - echo "Writing image definitions file for ECS deployment..."
+      - printf '[{"name":"streeeak-backend-container","imageUri":"%s"}]' $REPOSITORY_URI:$IMAGE_TAG > imagedefinitions.json
 
 artifacts:
   files:
-    - backend/**/*
-    - scripts/**/*
-    - appspec.yml
+    - imagedefinitions.json

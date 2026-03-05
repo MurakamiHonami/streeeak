@@ -93,35 +93,35 @@ resource "aws_codebuild_project" "main" {
 }
 
 # 2. CodeDeploy アプリケーション
-resource "aws_codedeploy_app" "main" {
-  name             = "streeeak-app"
-  compute_platform = "Server"
-}
+# resource "aws_codedeploy_app" "main" {
+#   name             = "streeeak-app"
+#   compute_platform = "Server"
+# }
 
 # デプロイグループ（ここもインポートが必要です）
-resource "aws_codedeploy_deployment_group" "main" {
-  app_name              = aws_codedeploy_app.main.name
-  deployment_group_name = "streeeak-dg"
-  service_role_arn      = "arn:aws:iam::382715181910:role/CodeDeploy-Service-Role"
+# resource "aws_codedeploy_deployment_group" "main" {
+#   app_name              = aws_codedeploy_app.main.name
+#   deployment_group_name = "streeeak-dg"
+#   service_role_arn      = "arn:aws:iam::382715181910:role/CodeDeploy-Service-Role"
 
-  deployment_style {
-    deployment_option = "WITH_TRAFFIC_CONTROL" # ALBを使わない場合はこれ、使う場合は調整
-    deployment_type   = "IN_PLACE"
-  }
-  load_balancer_info {
-    target_group_info {
-      name = "streeeak-tg"
-    }
-  }
+#   deployment_style {
+#     deployment_option = "WITH_TRAFFIC_CONTROL" # ALBを使わない場合はこれ、使う場合は調整
+#     deployment_type   = "IN_PLACE"
+#   }
+#   load_balancer_info {
+#     target_group_info {
+#       name = "streeeak-tg"
+#     }
+#   }
 
-  ec2_tag_set {
-    ec2_tag_filter {
-      key   = "Name"
-      type  = "KEY_AND_VALUE"
-      value = "streeeak-api"
-    }
-  }
-}
+#   ec2_tag_set {
+#     ec2_tag_filter {
+#       key   = "Name"
+#       type  = "KEY_AND_VALUE"
+#       value = "streeeak-api"
+#     }
+#   }
+# }
 # 3. CodePipeline
 resource "aws_codepipeline" "main" {
   name     = "streeeak-pipeline"
@@ -176,13 +176,14 @@ resource "aws_codepipeline" "main" {
       name            = "Deploy"
       category        = "Deploy"
       owner           = "AWS"
-      provider        = "CodeDeploy"
+      provider        = "ECS"
       input_artifacts = ["build_output"]
       version         = "1"
 
       configuration = {
-        ApplicationName     = aws_codedeploy_app.main.name
-        DeploymentGroupName = aws_codedeploy_deployment_group.main.deployment_group_name
+        ClusterName = aws_ecs_cluster.main.name
+        ServiceName = aws_ecs_service.backend.name
+        FileName    = "imagedefinitions.json"
       }
     }
   }

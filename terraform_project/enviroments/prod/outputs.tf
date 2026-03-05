@@ -17,3 +17,7 @@ output "web_sg_id" {
   description = "The ID of the Web Security Group"
   value       = aws_security_group.web_sg.id
 }
+output "cognito_client_id" {
+  value       = aws_cognito_user_pool_client.client.id
+  description = "FastAPIやReactに設定するCognitoのクライアントID"
+}
