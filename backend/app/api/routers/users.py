@@ -180,3 +180,27 @@ def delete_user(user_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="User not found")
     db.delete(user)
     db.commit()
+
+from pydantic import BaseModel
+
+class VerifyPayload(BaseModel):
+    username: str
+    code: str
+
+@router.post("/verify")
+def verify_user(payload: VerifyPayload):
+    if settings.ENVIRONMENT == "local":
+        return {"message": "Local mode: Verification bypassed"}
+
+    try:
+        cognito_client.confirm_sign_up(
+            ClientId=settings.COGNITO_CLIENT_ID,
+            Username=payload.username,
+            ConfirmationCode=payload.code
+        )
+        return {"message": "Verification successful"}
+    except ClientError as e:
+        raise HTTPException(
+            status_code=400,
+            detail=e.response['Error']['Message']
+        )
