@@ -3,6 +3,7 @@ import uuid
 from pathlib import Path
 
 import boto3
+from botocore.exceptions import ClientError
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from fastapi.responses import Response, RedirectResponse
 from sqlalchemy import select
@@ -17,10 +18,28 @@ from app.core.config import settings
 
 router = APIRouter(prefix="/users", tags=["users"])
 
+cognito_client = boto3.client("cognito-idp", region_name=settings.AWS_REGION)
+
 @router.post("", response_model=UserRead, status_code=status.HTTP_201_CREATED)
 def create_user(payload: UserCreate, db: Session = Depends(get_db)):
     if db.scalar(select(User).where(User.email == payload.email)):
         raise HTTPException(status_code=400, detail="Email already exists")
+
+    if settings.ENVIRONMENT != "local":
+        try:
+            cognito_client.sign_up(
+                ClientId=settings.COGNITO_CLIENT_ID,
+                Username=payload.email,
+                Password=payload.password,
+                UserAttributes=[{"Name": "email", "Value": payload.email}],
+            )
+        except cognito_client.exceptions.UsernameExistsException:
+            raise HTTPException(status_code=400, detail="User already exists in Cognito")
+        except ClientError as e:
+            raise HTTPException(status_code=400, detail=e.response["Error"]["Message"])
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
     user = User(
         email=payload.email,
         name=payload.name,
@@ -29,10 +48,12 @@ def create_user(payload: UserCreate, db: Session = Depends(get_db)):
     )
     db.add(user)
     db.flush()
+    
     user_settings = UserSetting(user_id=user.id)
     db.add(user_settings)
     db.commit()
     db.refresh(user)
+    
     response = UserRead.model_validate(user)
     response.auto_post_time = user_settings.auto_post_time
     return response
@@ -43,7 +64,6 @@ def get_user_avatar(user_id: int, db: Session = Depends(get_db)):
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
-    # DBにS3のURLがあれば、そのURLにリダイレクトさせる
     if user.avatar_url and user.avatar_url.startswith("http"):
         return RedirectResponse(url=user.avatar_url)
 
@@ -115,12 +135,10 @@ def upload_user_avatar(
     cdn_domain = getattr(settings, "CDN_DOMAIN", "https://streeeak.link")
     region = getattr(settings, "AWS_REGION", "ap-northeast-1")
     
-    # 💡 ローカルと本番（EC2）両対応の Boto3 クライアント作成
     aws_access_key = getattr(settings, "AWS_ACCESS_KEY_ID", None)
     aws_secret_key = getattr(settings, "AWS_SECRET_ACCESS_KEY", None)
 
     if aws_access_key and aws_secret_key:
-        # ローカルの場合は .env の鍵を使う
         s3_client = boto3.client(
             "s3", 
             region_name=region,
@@ -128,7 +146,6 @@ def upload_user_avatar(
             aws_secret_access_key=aws_secret_key
         )
     else:
-        # EC2の場合はIAMロールを自動で使う
         s3_client = boto3.client("s3", region_name=region)
 
     file_key = f"avatars/{user_id}_{uuid.uuid4().hex}{ext}"

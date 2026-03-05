@@ -52,3 +52,8 @@ variable "secret_key" {
 variable "access_token_expire_minutes" {
   type = string
 }
+
+variable "cognito_client_id" {
+  type        = string
+  description = "Cognito User Pool Client ID"
+}

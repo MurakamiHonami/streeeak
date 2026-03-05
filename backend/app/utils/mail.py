@@ -1,37 +1,31 @@
 import boto3
-from botocore.exceptions import ClientError
 from app.core.config import settings
 
-def send_verification_email(to_email: str, token: str):
-    client = boto3.client('ses', region_name=settings.AWS_REGION)
+cognito_client = boto3.client('cognito-idp', region_name=settings.AWS_REGION)
 
-    verify_url = f"https://streeeak.link/verify?token={token}"
-    
-    SENDER = "Streeeak <noreply@streeeak.link>"
-    SUBJECT = "【Streeeak】メールアドレスの確認"
-    BODY_TEXT = f"Streeeakへようこそ！以下のリンクをクリックして登録を完了してください。\n{verify_url}"
-    BODY_HTML = f"""
-    <html>
-    <body>
-        <h2>Streeeakへようこそ！</h2>
-        <p>以下のリンクをクリックして登録を完了してください。</p>
-        <a href="{verify_url}">メールアドレスを認証する</a>
-    </body>
-    </html>
+def register_user(email: str, password: str):
     """
+    ユーザーをCognitoに登録する。
+    ※メール送信はCognitoが裏側で自動的にLambdaをキックして行ってくれます。
+    """
+    if settings.ENVIRONMENT == "local":
+        print("\n" + "="*50)
+        print("【ローカル】Cognitoへのダミー登録（スキップ等）")
+        print("="*50 + "\n")
+        return
 
     try:
-        response = client.send_email(
-            Destination={'ToAddresses': [to_email]},
-            Message={
-                'Body': {
-                    'Html': {'Charset': "UTF-8", 'Data': BODY_HTML},
-                    'Text': {'Charset': "UTF-8", 'Data': BODY_TEXT},
-                },
-                'Subject': {'Charset': "UTF-8", 'Data': SUBJECT},
-            },
-            Source=SENDER,
+        response = cognito_client.sign_up(
+            ClientId=settings.COGNITO_CLIENT_ID, # 環境変数に追加してください
+            Username=email,
+            Password=password,
+            UserAttributes=[
+                {'Name': 'email', 'Value': email}
+            ]
         )
-    except ClientError as e:
-        print(f"Email send error: {e.response['Error']['Message']}")
+        return response
+    except cognito_client.exceptions.UsernameExistsException:
+        raise Exception("このメールアドレスは既に登録されています")
+    except Exception as e:
+        print(f"Cognito Signup Error: {e}")
         raise e
