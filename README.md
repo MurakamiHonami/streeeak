@@ -45,13 +45,28 @@ Gemini API（gemini-2.0-flash）を活用。<br>
 | **Auth & Security** | python-jose, passlib (bcrypt) | JWTによるトークンベース認証、パスワードのハッシュ化 |
 | **External Integrations**| httpx, boto3, Stripe | Gemini API等の外部連携、AWS S3へのアバター画像アップロード、サブスク決済処理 |
 
-### Database & Infrastructure
+### Database
 | カテゴリ | 技術・ライブラリ | 用途・備考 |
 | :--- | :--- | :--- |
 | **Database** | PostgreSQL, psycopg 3 | 本番RDB環境、コネクションプールによる死活監視 |
 | **AI** | Google Gemini API (1.5-flash等) | 自然言語処理による目標のブレイクダウンとリビジョン提案 |
 
-### 4. 起動方法
+### Infrastructure (IaC)
+| カテゴリ | 技術・ライブラリ | 用途・備考 |
+| :--- | :--- | :--- |
+| **Provisioning,Terraform** | 1.11 | インフラのコード化（IaC）による環境の再現性確保 |
+| **Remote State** | S3 & DynamoDB | ステートファイルの共有と排他制御（ロック機能）|
+| **Compute** | AWS EC2 (Amazon Linux 2) | アプリケーションサーバーのホスティング |
+| **Storage & CDN** | S3 & CloudFront | 静的コンテンツ（React）の配信、アバター画像の保存 |
+| **Database** | RDS for PostgreSQL | Multi-AZ構成による高い可用性と自動フェイルオーバー |
+| **Networking** | ALB, Route53, ACM | 負荷分散、独自ドメイン運用、全通信の常時 HTTPS 化 |
+| **CI/CD** | AWS CodePipeline | CodeBuild / CodeDeploy を連携させたフルオートデプロイ |
+
+### 4. システム構成図
+<img width="2816" height="1536" alt="構成図" src="https://github.com/user-attachments/assets/34d83f6b-0e7e-458d-a7c8-126f19155f2f" />
+
+
+### 5. 起動方法
 1) Backendの起動
 ```
 Bash
