@@ -88,11 +88,20 @@ STRIPE_SECRET_KEY=<your_stripe_key>
 VITE_API_BASE_URL=http://localhost:8000
 VITE_DEFAULT_USER_ID=1
 開発サーバーを起動します：
-
 ```
 Bash
 cd frontend
 npm install
 npm run dev
 ```
+
+3) インフラの構築 (Terraform)
+terraform.tfvarsを作成し、必要な機密情報（APIキー等）を入力
+```
+Bash
+cd terraform_project/enviroments/prod
+terraform init
+terraform apply
+```
+
 ### http://localhost:5173 にアクセスしてください
