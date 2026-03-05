@@ -1,8 +1,39 @@
+# --- OS / IDE ---
 .DS_Store
-node_modules
-.venv
-__pycache__
+Thumbs.db
+.vscode/
+.idea/
+
+# --- Python & Backend ---
+.venv/
+venv/
+ENV/
+__pycache__/
 *.pyc
+*.pyo
+*.pyd
+.Python
+backend/uploads/avatars/*
+!backend/uploads/avatars/.gitkeep
+*.log
+
+# --- Frontend (Node/Vite) ---
+node_modules/
+frontend/dist/
+.eslintcache
+npm-debug.log*
+
+# --- Terraform ---
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+crash.log
+
+# --- Secrets / 機密情報 ---
 .env
-frontend/dist
-/backend/uploads/avatars/
+.env.*
+!.env.example
+*.pem
+*.key
