@@ -1,5 +1,6 @@
 # Streeeak
 ～ 「漠然とした夢」を、今日クリアすべき「クエスト」に変えよう。 ～
+<img width="933" height="528" alt="スクリーンショット 2026-03-05 171213" src="https://github.com/user-attachments/assets/1830315c-eda0-483a-9179-27ad9653733c" />
 
 ## 1. プロジェクトについて
 「大きな夢はあるけれど、今何をすべきかわからない」<br>
@@ -56,14 +57,17 @@ Gemini API（gemini-2.0-flash）を活用。<br>
 | :--- | :--- | :--- |
 | **Provisioning,Terraform** | 1.11 | インフラのコード化（IaC）による環境の再現性確保 |
 | **Remote State** | S3 & DynamoDB | ステートファイルの共有と排他制御（ロック機能）|
-| **Compute** | AWS EC2 (Amazon Linux 2) | アプリケーションサーバーのホスティング |
+| **Compute** | AWS ECS (Fargate) | アプリケーションコンテナのホスティング。サーバー管理不要なFargateでの運用。 |
+| **Registry** | Amazon ECR | Dockerイメージの保存と管理。CI/CDパイプラインとの連携。 |
 | **Storage & CDN** | S3 & CloudFront | 静的コンテンツ（React）の配信、アバター画像の保存 |
 | **Database** | RDS for PostgreSQL | Multi-AZ構成による高い可用性と自動フェイルオーバー |
 | **Networking** | ALB, Route53, ACM | 負荷分散、独自ドメイン運用、全通信の常時 HTTPS 化 |
-| **CI/CD** | AWS CodePipeline | CodeBuild / CodeDeploy を連携させたフルオートデプロイ |
+| **Monitoring** | Amazon CloudWatch | コンテナログ（FastAPI）の収集、インフラメトリクスの監視。 |
+| **CI/CD** | AWS CodePipeline | CodeBuildと連携し、GitHubへのPushをトリガーとしたフルオートデプロイ（ECRビルド・ECSデプロイ）。 |
 
 ### 4. システム構成図
-<img width="2816" height="1536" alt="構成図" src="https://github.com/user-attachments/assets/34d83f6b-0e7e-458d-a7c8-126f19155f2f" />
+<img width="2760" height="1504" alt="インフラストラクチャー" src="https://github.com/user-attachments/assets/dd126d43-724f-4638-91c3-54953e16e36e" />
+
 
 
 ### 5. 起動方法
