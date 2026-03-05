@@ -95,7 +95,7 @@ npm install
 npm run dev
 ```
 
-3) インフラの構築 (Terraform)
+3) インフラの構築 (Terraform)<br>
 terraform.tfvarsを作成し、必要な機密情報（APIキー等）を入力
 ```
 Bash
