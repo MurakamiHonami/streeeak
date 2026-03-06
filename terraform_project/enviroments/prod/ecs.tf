@@ -33,6 +33,7 @@ resource "aws_ecs_task_definition" "backend" {
   cpu                      = "256"
   memory                   = "512"
   execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
+  task_role_arn = aws_iam_role.ecs_task_execution_role.arn
 
   container_definitions = jsonencode([
     {
@@ -62,6 +63,7 @@ resource "aws_ecs_task_definition" "backend" {
         { name = "AWS_SECRET_ACCESS_KEY", value = var.aws_secret_access_key },
         { name = "COGNITO_CLIENT_ID", value = var.cognito_client_id },
         { name = "AWS_REGION", value = "ap-northeast-1" },
+        { name = "ENVIRONMENT", value = "prod" }
       ]
     }
   ])
@@ -94,9 +96,9 @@ resource "aws_ecs_service" "backend" {
   launch_type     = "FARGATE"
 
   network_configuration {
-    subnets          = [aws_subnet.private_1a.id]
+    subnets          = [aws_subnet.public_1a.id]
     security_groups  = [aws_security_group.web_sg.id]
-    assign_public_ip = false
+    assign_public_ip = true
   }
 
   load_balancer {
@@ -105,4 +107,8 @@ resource "aws_ecs_service" "backend" {
     container_port   = 8000
   }
   depends_on = [aws_lb_listener.http]
+}
+resource "aws_iam_role_policy_attachment" "ecs_cognito_policy" {
+  role       = aws_iam_role.ecs_task_execution_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonCognitoPowerUser"
 }
