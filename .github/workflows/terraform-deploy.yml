@@ -43,7 +43,7 @@ jobs:
 
   apply:
     name: Terraform Apply
-    nedds: plan
+    needs: plan
     runs-on: ubuntu-latest
     environment: production
     defaults:
