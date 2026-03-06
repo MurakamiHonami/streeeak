@@ -63,10 +63,12 @@ Gemini API（gemini-2.0-flash）を活用。<br>
 | **Database** | RDS for PostgreSQL | Multi-AZ構成による高い可用性と自動フェイルオーバー |
 | **Networking** | ALB, Route53, ACM | 負荷分散、独自ドメイン運用、全通信の常時 HTTPS 化 |
 | **Monitoring** | Amazon CloudWatch | コンテナログ（FastAPI）の収集、インフラメトリクスの監視。 |
-| **CI/CD** | AWS CodePipeline | CodeBuildと連携し、GitHubへのPushをトリガーとしたフルオートデプロイ（ECRビルド・ECSデプロイ）。 |
+| **CI/CD** | GitHub Actions | Terraformによるインフラ構築の自動化。本番環境適用前の手動承認プロセスを導入 |
 
 ### 4. システム構成図
-<img width="2760" height="1504" alt="インフラストラクチャー" src="https://github.com/user-attachments/assets/dd126d43-724f-4638-91c3-54953e16e36e" />
+<img width="2760" height="1504" alt="構成図2" src="https://github.com/user-attachments/assets/951b6ad7-5c5c-4a1d-806e-ceb82b3cc457" />
+
+
 
 
 
