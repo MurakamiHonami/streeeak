@@ -1,6 +1,6 @@
 data "archive_file" "cognito_message_zip" {
   type        = "zip"
-  source_dir  = "${path.module}/../../../infrastructure/lambda/cognito_message" # パスは環境に合わせてください
+  source_dir  = "${path.module}/../../../infrastructure/lambda/cognito_message"
   output_path = "${path.module}/cognito_message.zip"
 }
 
