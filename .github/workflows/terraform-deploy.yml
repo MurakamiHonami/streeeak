@@ -17,24 +17,24 @@ env:
   TF_VAR_cloudfront_id: ${{ secrets.CLOUDFRONT_ID }}
 
   # Frontend Variables
-  TF_VAR_vite_api_base_url: ${{ secrets.VITE_API_BASE_URL }}
-  TF_VAR_vite_default_user_id: ${{ secrets.VITE_DEFAULT_USER_ID }}
+  TF_VAR_vite_api_base_url: "https://api.streeeak.link"
+  TF_VAR_vite_default_user_id: "1"
   TF_VAR_vite_supabase_url: ${{ secrets.VITE_SUPABASE_URL }}
   TF_VAR_vite_supabase_anon_key: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
   TF_VAR_vite_stripe_public_key: ${{ secrets.VITE_STRIPE_PUBLIC_KEY }}
 
   # Backend Variables
-  TF_VAR_app_name: ${{ secrets.APP_NAME }}
-  TF_VAR_env_name: ${{ secrets.ENV_NAME }}
+  TF_VAR_app_name: "Streeeak API"
+  TF_VAR_env_name: "production"
   TF_VAR_database_url: ${{ secrets.DATABASE_URL }}
   TF_VAR_secret_key: ${{ secrets.SECRET_KEY }}
-  TF_VAR_access_token_expire_minutes: ${{ secrets.ACCESS_TOKEN_EXPIRE_MINUTES }}
+  TF_VAR_access_token_expire_minutes: "60"
   TF_VAR_gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
-  TF_VAR_gemini_model: ${{ secrets.GEMINI_MODEL }}
+  TF_VAR_gemini_model: "gemini-1.5-flash"
   TF_VAR_stripe_api_key: ${{ secrets.STRIPE_API_KEY }}
   TF_VAR_stripe_webhook_secret: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
   TF_VAR_stripe_price_id: ${{ secrets.STRIPE_PRICE_ID }}
-  TF_VAR_aws_region_name: ${{ secrets.AWS_REGION_NAME }}
+  TF_VAR_aws_region_name: "ap-northeast-1"
   TF_VAR_aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
   TF_VAR_aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
   TF_VAR_cognito_client_id: ${{ secrets.COGNITO_CLIENT_ID }}

@@ -61,14 +61,6 @@ resource "aws_codebuild_project" "main" {
       value = var.aws_region_name
     }
     environment_variable {
-      name  = "AWS_ACCESS_KEY_ID"
-      value = var.aws_access_key_id
-    }
-    environment_variable {
-      name  = "AWS_SECRET_ACCESS_KEY"
-      value = var.aws_secret_access_key
-    }
-    environment_variable {
       name  = "STRIPE_API_KEY"
       value = var.stripe_api_key
     }
