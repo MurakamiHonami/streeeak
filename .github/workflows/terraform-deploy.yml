@@ -4,14 +4,19 @@ on:
   push:
     branches:
       - main
+  pull_request:
+    branches:
+      - main
 
 permissions:
   id-token: write
   contents: read
+  pull-requests: write
 
 env:
   AWS_REGION: ap-northeast-1
   TF_WORKING_DIR: terraform_project/environments/prod
+  
   # Infrastructure Variables
   TF_VAR_s3_bucket_name: ${{ secrets.S3_BUCKET_NAME }}
   TF_VAR_cloudfront_id: ${{ secrets.CLOUDFRONT_ID }}
@@ -55,6 +60,7 @@ jobs:
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
+          
       - name: Setup tfcmt
         env:
           TFCMT_VERSION: v4.7.1
@@ -63,10 +69,11 @@ jobs:
           tar xzf /tmp/tfcmt.tar.gz -C /tmp
           sudo mv /tmp/tfcmt /usr/local/bin
           tfcmt --version
+          
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
-            terraform_version: "1.11.0"
+          terraform_version: "1.11.0"
 
       - name: Terraform Init
         run: terraform init
@@ -74,13 +81,19 @@ jobs:
       - name: Terraform Plan
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: tfcmt plan -patch -- terraform plan
+        run: |
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            tfcmt plan -patch -- terraform plan
+          else
+            terraform plan
+          fi
 
   apply:
     name: Terraform Apply
     needs: plan
     runs-on: ubuntu-latest
     environment: production
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     defaults:
       run:
         working-directory: ${{ env.TF_WORKING_DIR }}
@@ -97,7 +110,7 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
-            terraform_version: "1.11.0"
+          terraform_version: "1.11.0"
 
       - name: Terraform Init
         run: terraform init
