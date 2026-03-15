@@ -37,3 +37,13 @@ output "ecs_service_name" {
   description = "ECS service name"
   value       = aws_ecs_service.backend.name
 }
+
+output "api_nlb_dns_name" {
+  description = "Network Load Balancer DNS name for backend API"
+  value       = aws_lb.api_nlb.dns_name
+}
+
+output "ecs_backend_log_group" {
+  description = "CloudWatch Logs group for ECS backend"
+  value       = aws_cloudwatch_log_group.ecs_backend.name
+}
