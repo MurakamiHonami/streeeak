@@ -16,9 +16,12 @@ from app.schemas.task import (
     TaskType,
     TaskUpdate,
 )
+from app.api.deps import get_current_user
+from app.models.user import User
 from app.services.task_service import (
     build_breakdown,
     compose_note_subtasks,
+    derive_breakdown_scope,
     generate_revision_suggestions,
     parse_note_subtasks,
 )
