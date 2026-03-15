@@ -8,9 +8,9 @@ resource "aws_codebuild_project" "main" {
   }
 
   environment {
-    compute_type    = "BUILD_GENERAL1_SMALL"
-    image           = "aws/codebuild/amazonlinux2-x86_64-standard:4.0"
-    type            = "LINUX_CONTAINER"
+    compute_type  = "BUILD_GENERAL1_SMALL"
+    image  = "aws/codebuild/amazonlinux2023-x86_64-standard:3.0" # ←新しいAmazon Linux 2023に変更
+    type = "LINUX_CONTAINER"
     privileged_mode = true
     environment_variable {
       name  = "S3_BUCKET_NAME"
