@@ -17,7 +17,7 @@ from app.schemas.auth import (
     ResendVerificationRequest,
     VerifyRequest,
 )
-from app.services.auth_service import create_access_token, hash_password
+from app.services.auth_service import create_access_token, hash_password, verify_password
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 cognito_client = boto3.client("cognito-idp", region_name=settings.AWS_REGION)
@@ -185,15 +185,18 @@ def login(payload: LoginRequest):
             AuthParameters=auth_params,
         )
     except cognito_client.exceptions.UserNotConfirmedException:
+        # If app-side verification is already complete, allow login with local password hash
+        # to avoid a resend loop when Cognito state is temporarily inconsistent.
+        user = repo.get_user_by_email(payload.email)
+        if user and user.get("is_verified") and verify_password(payload.password, user.get("password_hash", "")):
+            access_token = create_access_token(str(user["id"]))
+            return AuthResponse(access_token=access_token, user_id=int(user["id"]))
+
         ok, message = _resend_confirmation_code(payload.email)
         if ok:
             raise HTTPException(status_code=403, detail="Email not verified. Verification code was re-sent.")
         raise HTTPException(status_code=403, detail=f"Email not verified. Resend failed: {message}")
     except cognito_client.exceptions.NotAuthorizedException:
-        # When Cognito app client settings changed, unconfirmed users can surface as NotAuthorized.
-        ok, _ = _resend_confirmation_code(payload.email)
-        if ok:
-            raise HTTPException(status_code=403, detail="Email not verified. Verification code was re-sent.")
         raise HTTPException(status_code=401, detail="Invalid credentials")
     except ClientError as e:
         raise HTTPException(status_code=400, detail=e.response["Error"]["Message"])

@@ -23,6 +23,22 @@ _local_tables: dict[str, list[dict[str, Any]]] = {}
 _local_sequences: dict[str, int] = {}
 
 
+def _coerce_id_like(field_name: str, value: Any) -> Any:
+    if value is None:
+        return None
+    if field_name == "id" or field_name.endswith("_id"):
+        return str(value)
+    return value
+
+
+def _coerce_item_for_dynamo(item: dict[str, Any]) -> dict[str, Any]:
+    return {k: _coerce_id_like(k, v) for k, v in item.items()}
+
+
+def _coerce_key_for_dynamo(key: dict[str, Any]) -> dict[str, Any]:
+    return {k: _coerce_id_like(k, v) for k, v in key.items()}
+
+
 def _is_local_mode() -> bool:
     return settings.ENVIRONMENT == "local"
 
@@ -95,47 +111,50 @@ def normalize(item: dict[str, Any] | None) -> dict[str, Any] | None:
 
 
 def put_item(table_name: str, item: dict[str, Any]) -> None:
+    normalized_item = _coerce_item_for_dynamo(item)
     if _is_local_mode():
-        _local_upsert(table_name, item)
+        _local_upsert(table_name, normalized_item)
         return
     try:
-        table(table_name).put_item(Item=item)
+        table(table_name).put_item(Item=normalized_item)
     except Exception as exc:
         if _is_missing_table_error(exc):
-            _local_upsert(table_name, item)
+            _local_upsert(table_name, normalized_item)
             return
         raise
 
 
 def get_item(table_name: str, key: dict[str, Any]) -> dict[str, Any] | None:
+    normalized_key = _coerce_key_for_dynamo(key)
     if _is_local_mode():
         for row in _local_tables.get(table_name, []):
-            if all(row.get(k) == v for k, v in key.items()):
+            if all(row.get(k) == v for k, v in normalized_key.items()):
                 return normalize(row)
         return None
     try:
-        res = table(table_name).get_item(Key=key)
+        res = table(table_name).get_item(Key=normalized_key)
         return normalize(res.get("Item"))
     except Exception as exc:
         if _is_missing_table_error(exc):
             for row in _local_tables.get(table_name, []):
-                if all(row.get(k) == v for k, v in key.items()):
+                if all(row.get(k) == v for k, v in normalized_key.items()):
                     return normalize(row)
             return None
         raise
 
 
 def delete_item(table_name: str, key: dict[str, Any]) -> None:
+    normalized_key = _coerce_key_for_dynamo(key)
     if _is_local_mode():
         rows = _local_tables.get(table_name, [])
-        _local_tables[table_name] = [row for row in rows if not all(row.get(k) == v for k, v in key.items())]
+        _local_tables[table_name] = [row for row in rows if not all(row.get(k) == v for k, v in normalized_key.items())]
         return
     try:
-        table(table_name).delete_item(Key=key)
+        table(table_name).delete_item(Key=normalized_key)
     except Exception as exc:
         if _is_missing_table_error(exc):
             rows = _local_tables.get(table_name, [])
-            _local_tables[table_name] = [row for row in rows if not all(row.get(k) == v for k, v in key.items())]
+            _local_tables[table_name] = [row for row in rows if not all(row.get(k) == v for k, v in normalized_key.items())]
             return
         raise
 
@@ -146,17 +165,18 @@ def query_gsi(
     key_name: str,
     key_value: Any,
 ) -> list[dict[str, Any]]:
+    normalized_key_value = _coerce_id_like(key_name, key_value)
     if _is_local_mode():
-        return [normalize(x) for x in _local_tables.get(table_name, []) if x.get(key_name) == key_value]
+        return [normalize(x) for x in _local_tables.get(table_name, []) if x.get(key_name) == normalized_key_value]
     try:
         res = table(table_name).query(
             IndexName=index_name,
-            KeyConditionExpression=Key(key_name).eq(key_value),
+            KeyConditionExpression=Key(key_name).eq(normalized_key_value),
         )
         return [normalize(x) for x in res.get("Items", []) if normalize(x) is not None]
     except Exception as exc:
         if _is_missing_table_error(exc):
-            return [normalize(x) for x in _local_tables.get(table_name, []) if x.get(key_name) == key_value]
+            return [normalize(x) for x in _local_tables.get(table_name, []) if x.get(key_name) == normalized_key_value]
         raise
 
 
