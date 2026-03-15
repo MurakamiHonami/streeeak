@@ -14,7 +14,7 @@ def lambda_handler(event, context):
         verify_url = (
             "https://streeeak.link/verify"
             f"?username={quote_plus(email)}"
-            f"&code={quote_plus(code_placeholder)}"
+            f"&code={code_placeholder}"
         )
         event["response"]["emailSubject"] = "【Streeeak】メール認証のご案内"
         event["response"]["emailMessage"] = (
