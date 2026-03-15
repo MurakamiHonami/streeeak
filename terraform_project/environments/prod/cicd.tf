@@ -180,3 +180,110 @@ resource "aws_codepipeline" "main" {
     }
   }
 }
+
+# CodePipeline service role needs access to the artifact S3 bucket.
+resource "aws_iam_role_policy" "codepipeline_artifact_s3" {
+  name = "streeeak-codepipeline-artifact-s3"
+  role = "AWSCodePipelineServiceRole-ap-northeast-1-streeeak-pipeline"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:GetBucketLocation",
+          "s3:GetBucketVersioning",
+          "s3:ListBucket"
+        ]
+        Resource = [
+          aws_s3_bucket.static_content.arn
+        ]
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject",
+          "s3:GetObjectVersion",
+          "s3:PutObject",
+          "s3:AbortMultipartUpload"
+        ]
+        Resource = [
+          "${aws_s3_bucket.static_content.arn}/*"
+        ]
+      }
+    ]
+  })
+}
+
+data "aws_iam_policy_document" "codepipeline_artifact_bucket_policy" {
+  statement {
+    sid    = "AllowCodePipelineArtifactRW"
+    effect = "Allow"
+
+    principals {
+      type        = "AWS"
+      identifiers = ["arn:aws:iam::382715181910:role/service-role/AWSCodePipelineServiceRole-ap-northeast-1-streeeak-pipeline"]
+    }
+
+    actions = [
+      "s3:GetBucketLocation",
+      "s3:GetBucketVersioning",
+      "s3:ListBucket"
+    ]
+
+    resources = [
+      aws_s3_bucket.static_content.arn
+    ]
+  }
+
+  statement {
+    sid    = "AllowCodePipelineArtifactObjectRW"
+    effect = "Allow"
+
+    principals {
+      type        = "AWS"
+      identifiers = ["arn:aws:iam::382715181910:role/service-role/AWSCodePipelineServiceRole-ap-northeast-1-streeeak-pipeline"]
+    }
+
+    actions = [
+      "s3:GetObject",
+      "s3:GetObjectVersion",
+      "s3:PutObject",
+      "s3:AbortMultipartUpload"
+    ]
+
+    resources = [
+      "${aws_s3_bucket.static_content.arn}/streeeak-pipeline/*"
+    ]
+  }
+
+  statement {
+    sid    = "AllowCloudFrontReadWithOAC"
+    effect = "Allow"
+
+    principals {
+      type        = "Service"
+      identifiers = ["cloudfront.amazonaws.com"]
+    }
+
+    actions = [
+      "s3:GetObject"
+    ]
+
+    resources = [
+      "${aws_s3_bucket.static_content.arn}/*"
+    ]
+
+    condition {
+      test     = "StringEquals"
+      variable = "AWS:SourceArn"
+      values   = [aws_cloudfront_distribution.main.arn]
+    }
+  }
+}
+
+resource "aws_s3_bucket_policy" "static_content_policy" {
+  bucket = aws_s3_bucket.static_content.id
+  policy = data.aws_iam_policy_document.codepipeline_artifact_bucket_policy.json
+}
