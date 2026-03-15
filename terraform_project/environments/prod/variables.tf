@@ -57,3 +57,9 @@ variable "cognito_client_id" {
   type        = string
   description = "Cognito User Pool Client ID"
 }
+
+variable "api_certificate_arn" {
+  type        = string
+  description = "ACM certificate ARN for api.streeeak.link"
+  default     = "arn:aws:acm:ap-northeast-1:382715181910:certificate/2c45a8c3-0b8c-42af-a7ce-3a393f19ae6c"
+}

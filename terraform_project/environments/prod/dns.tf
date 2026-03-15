@@ -83,3 +83,15 @@ resource "aws_cloudfront_distribution" "main" {
   }
 }
 
+resource "aws_route53_record" "api" {
+  zone_id = aws_route53_zone.main.zone_id
+  name    = "api.streeeak.link"
+  type    = "A"
+
+  alias {
+    name                   = aws_lb.api_nlb.dns_name
+    zone_id                = aws_lb.api_nlb.zone_id
+    evaluate_target_health = true
+  }
+}
+

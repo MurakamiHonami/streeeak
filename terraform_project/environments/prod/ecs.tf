@@ -2,6 +2,38 @@ resource "aws_ecs_cluster" "main" {
   name = "streeeak-prod-cluster"
 }
 
+resource "aws_lb" "api_nlb" {
+  name               = "streeeak-api-nlb"
+  internal           = false
+  load_balancer_type = "network"
+  subnets            = [aws_subnet.public_1a.id, aws_subnet.public_1c.id, aws_subnet.public_1d.id]
+}
+
+resource "aws_lb_target_group" "api_nlb_tg" {
+  name        = "streeeak-api-nlb-tg"
+  port        = 8000
+  protocol    = "TCP"
+  vpc_id      = aws_vpc.main.id
+  target_type = "ip"
+
+  health_check {
+    protocol = "TCP"
+    port     = "traffic-port"
+  }
+}
+
+resource "aws_lb_listener" "api_nlb_tls" {
+  load_balancer_arn = aws_lb.api_nlb.arn
+  port              = 443
+  protocol          = "TLS"
+  certificate_arn   = var.api_certificate_arn
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.api_nlb_tg.arn
+  }
+}
+
 resource "aws_iam_role" "ecs_task_execution_role" {
   name = "streeeak-ecs-task-execution-role"
   assume_role_policy = jsonencode({
@@ -21,6 +53,11 @@ resource "aws_iam_role" "ecs_task_execution_role" {
 resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_policy" {
   role       = aws_iam_role.ecs_task_execution_role.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+}
+
+resource "aws_cloudwatch_log_group" "ecs_backend" {
+  name              = "/ecs/streeeak-backend"
+  retention_in_days = 14
 }
 
 resource "aws_ecs_task_definition" "backend" {
@@ -59,6 +96,14 @@ resource "aws_ecs_task_definition" "backend" {
         { name = "COGNITO_CLIENT_ID", value = var.cognito_client_id },
         { name = "ENVIRONMENT", value = "prod" }
       ]
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          awslogs-group         = aws_cloudwatch_log_group.ecs_backend.name
+          awslogs-region        = var.aws_region
+          awslogs-stream-prefix = "ecs"
+        }
+      }
     }
   ])
 }
@@ -75,6 +120,14 @@ resource "aws_ecs_service" "backend" {
     security_groups  = [aws_security_group.web_sg.id]
     assign_public_ip = true
   }
+
+  load_balancer {
+    target_group_arn = aws_lb_target_group.api_nlb_tg.arn
+    container_name   = "streeeak-backend-container"
+    container_port   = 8000
+  }
+
+  depends_on = [aws_lb_listener.api_nlb_tls]
 }
 
 resource "aws_iam_role_policy_attachment" "ecs_cognito_policy" {
