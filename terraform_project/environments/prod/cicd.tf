@@ -137,7 +137,7 @@ resource "aws_codepipeline" "main" {
 
       configuration = {
         ConnectionArn    = "arn:aws:codeconnections:ap-northeast-1:382715181910:connection/4e9ee864-cc52-4c92-acc5-fe287f6b5b58"
-        FullRepositoryId = "https://github.com/MurakamiHonami/streeeak"
+        FullRepositoryId = "MurakamiHonami/streeeak"
         BranchName       = "main"
       }
     }
