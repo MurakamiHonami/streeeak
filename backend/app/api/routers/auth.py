@@ -1,5 +1,8 @@
 import uuid
 import zlib
+import base64
+import hashlib
+import hmac
 
 import boto3
 from botocore.exceptions import ClientError
@@ -16,6 +19,23 @@ cognito_client = boto3.client("cognito-idp", region_name=settings.AWS_REGION)
 def _local_user_id(email: str) -> int:
     return (zlib.crc32(email.encode("utf-8")) % 900000000) + 1000
 
+def _secret_hash(username: str) -> str | None:
+    secret = settings.COGNITO_CLIENT_SECRET
+    if not secret:
+        return None
+    digest = hmac.new(
+        secret.encode("utf-8"),
+        (username + settings.COGNITO_CLIENT_ID).encode("utf-8"),
+        hashlib.sha256,
+    ).digest()
+    return base64.b64encode(digest).decode("utf-8")
+
+def _with_secret_hash(username: str, params: dict) -> dict:
+    secret_hash = _secret_hash(username)
+    if secret_hash:
+        params["SecretHash"] = secret_hash
+    return params
+
 
 @router.post("/register", response_model=AuthResponse)
 def register(payload: RegisterRequest):
@@ -29,25 +49,34 @@ def register(payload: RegisterRequest):
         raise HTTPException(status_code=400, detail="Email already exists")
 
     try:
-        cognito_client.sign_up(
-            ClientId=settings.COGNITO_CLIENT_ID,
-            Username=payload.email,
-            Password=payload.password,
-            UserAttributes=[
-                {"Name": "email", "Value": payload.email},
-                {"Name": "name", "Value": payload.name},
-            ],
+        sign_up_req = _with_secret_hash(
+            payload.email,
+            {
+                "ClientId": settings.COGNITO_CLIENT_ID,
+                "Username": payload.email,
+                "Password": payload.password,
+                "UserAttributes": [
+                    {"Name": "email", "Value": payload.email},
+                    {"Name": "name", "Value": payload.name},
+                ],
+            },
         )
+        cognito_client.sign_up(**sign_up_req)
     except cognito_client.exceptions.UsernameExistsException:
         # Existing-but-unverified users are common in Cognito flows.
         # Try re-sending the confirmation code instead of hard-failing registration UX.
         try:
-            cognito_client.resend_confirmation_code(
-                ClientId=settings.COGNITO_CLIENT_ID,
-                Username=payload.email,
+            resend_req = _with_secret_hash(
+                payload.email,
+                {
+                    "ClientId": settings.COGNITO_CLIENT_ID,
+                    "Username": payload.email,
+                },
             )
+            cognito_client.resend_confirmation_code(**resend_req)
+            existing_user = repo.get_user_by_email(payload.email)
             return AuthResponse(
-                user_id=0,
+                user_id=int(existing_user["id"]) if existing_user else 0,
                 requires_verification=True,
                 message="Account already exists. A new verification code was sent.",
             )
@@ -80,11 +109,15 @@ def verify_email(payload: VerifyRequest):
         return {"message": "Local mode: verification bypassed"}
 
     try:
-        cognito_client.confirm_sign_up(
-            ClientId=settings.COGNITO_CLIENT_ID,
-            Username=payload.username,
-            ConfirmationCode=payload.code,
+        confirm_req = _with_secret_hash(
+            payload.username,
+            {
+                "ClientId": settings.COGNITO_CLIENT_ID,
+                "Username": payload.username,
+                "ConfirmationCode": payload.code,
+            },
         )
+        cognito_client.confirm_sign_up(**confirm_req)
     except ClientError as e:
         raise HTTPException(status_code=400, detail=e.response["Error"]["Message"])
 
@@ -102,16 +135,32 @@ def login(payload: LoginRequest):
         return AuthResponse(access_token=access_token, user_id=local_id)
 
     try:
+        auth_params = {
+                "USERNAME": payload.email,
+                "PASSWORD": payload.password,
+        }
+        secret_hash = _secret_hash(payload.email)
+        if secret_hash:
+            auth_params["SECRET_HASH"] = secret_hash
+
         cognito_client.initiate_auth(
             ClientId=settings.COGNITO_CLIENT_ID,
             AuthFlow="USER_PASSWORD_AUTH",
-            AuthParameters={
-                "USERNAME": payload.email,
-                "PASSWORD": payload.password,
-            },
+            AuthParameters=auth_params,
         )
     except cognito_client.exceptions.UserNotConfirmedException:
-        raise HTTPException(status_code=403, detail="Email not verified")
+        try:
+            resend_req = _with_secret_hash(
+                payload.email,
+                {
+                    "ClientId": settings.COGNITO_CLIENT_ID,
+                    "Username": payload.email,
+                },
+            )
+            cognito_client.resend_confirmation_code(**resend_req)
+            raise HTTPException(status_code=403, detail="Email not verified. Verification code was re-sent.")
+        except ClientError as e:
+            raise HTTPException(status_code=403, detail=f"Email not verified. Resend failed: {e.response['Error']['Message']}")
     except cognito_client.exceptions.NotAuthorizedException:
         raise HTTPException(status_code=401, detail="Invalid credentials")
     except ClientError as e:

@@ -5,6 +5,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     COGNITO_CLIENT_ID: str = ""
+    COGNITO_CLIENT_SECRET: Optional[str] = None
     ENVIRONMENT: str = "local"
     AWS_ACCESS_KEY_ID: Optional[str] = None
     AWS_SECRET_ACCESS_KEY: Optional[str] = None
