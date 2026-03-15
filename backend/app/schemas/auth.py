@@ -21,7 +21,8 @@ class AuthResponse(BaseModel):
 
 
 class VerifyRequest(BaseModel):
-    email: EmailStr
+    username: EmailStr | None = None
+    email: EmailStr | None = None
     code: str
 
 

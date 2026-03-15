@@ -122,8 +122,12 @@ def register(payload: RegisterRequest):
 
 @router.post("/verify")
 def verify_email(payload: VerifyRequest):
+    email = payload.email or payload.username
+    if not email:
+        raise HTTPException(status_code=422, detail="email or username is required")
+
     if settings.ENVIRONMENT == "local":
-        user = repo.get_user_by_email(payload.email)
+        user = repo.get_user_by_email(email)
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
         repo.update_user(int(user["id"]), {"is_verified": True, "verification_token": None})
@@ -131,10 +135,10 @@ def verify_email(payload: VerifyRequest):
 
     try:
         confirm_req = _with_secret_hash(
-            payload.email,
+            email,
             {
                 "ClientId": settings.COGNITO_CLIENT_ID,
-                "Username": payload.email,
+                "Username": email,
                 "ConfirmationCode": payload.code,
             },
         )
@@ -142,7 +146,7 @@ def verify_email(payload: VerifyRequest):
     except ClientError as e:
         raise HTTPException(status_code=400, detail=e.response["Error"]["Message"])
 
-    user = repo.get_user_by_email(payload.email)
+    user = repo.get_user_by_email(email)
     if user:
         repo.update_user(int(user["id"]), {"is_verified": True, "verification_token": None})
     return {"message": "Email verified successfully"}
