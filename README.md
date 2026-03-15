@@ -55,20 +55,15 @@ Gemini API（gemini-2.0-flash）を活用。<br>
 ### Infrastructure (IaC)
 | カテゴリ | 技術・ライブラリ | 用途・備考 |
 | :--- | :--- | :--- |
-| **Provisioning,Terraform** | 1.11 | インフラのコード化（IaC）による環境の再現性確保 |
-| **Remote State** | S3 & DynamoDB | ステートファイルの共有と排他制御（ロック機能）|
-| **Compute** | AWS ECS (Fargate) | アプリケーションコンテナのホスティング。サーバー管理不要なFargateでの運用。 |
-| **Registry** | Amazon ECR | Dockerイメージの保存と管理。CI/CDパイプラインとの連携。 |
-| **Storage & CDN** | S3 & CloudFront | 静的コンテンツ（React）の配信、アバター画像の保存 |
-| **Database** | RDS for PostgreSQL | Multi-AZ構成による高い可用性と自動フェイルオーバー |
-| **Networking** | ALB, Route53, ACM | 負荷分散、独自ドメイン運用、全通信の常時 HTTPS 化 |
-| **Monitoring** | Amazon CloudWatch | コンテナログ（FastAPI）の収集、インフラメトリクスの監視。 |
-| **CI/CD** | GitHub Actions | Terraformによるインフラ構築の自動化。本番環境適用前の手動承認プロセスを導入 |
-
-### 4. システム構成図
-<img width="2760" height="1504" alt="構成図2" src="https://github.com/user-attachments/assets/951b6ad7-5c5c-4a1d-806e-ceb82b3cc457" />
-
-
+| **Provisioning** | Terraform (1.11) | インフラのコード化（IaC）による環境の再現性確保 |
+| **Remote State** | Amazon S3 & DynamoDB | ステートファイルの共有と排他制御（ロック機能）|
+| **Compute** | AWS ECS (Fargate), AWS Lambda | アプリケーションのホスティング（サーバー管理不要なFargate）、およびCognito連携などのイベント駆動処理（Lambda） |
+| **Registry** | Amazon ECR | Dockerイメージの保存と管理。CI/CDパイプラインとのシームレスな連携 |
+| **Storage & CDN** | Amazon S3 & CloudFront | 静的コンテンツ（Reactアプリ）の高速配信、ユーザー画像やビルドアーティファクトの保存 |
+| **Database** | Amazon DynamoDB | フルマネージドなNoSQLデータベース。Multi-AZ構成による高可用性とスケーラビリティの確保 |
+| **Networking** | NLB, Route 53, ACM | コンテナへの負荷分散（高速なL4ルーティング）、独自ドメイン運用、全通信の常時HTTPS化 |
+| **Monitoring** | Amazon CloudWatch | ECSコンテナやLambdaのログ収集、インフラメトリクスの監視 |
+| **CI/CD** | GitHub Actions, AWS CodePipeline (CodeBuild / CodeDeploy) | GitHub Actionsによるインフラ（Terraform）の自動適用。CodePipeline群によるアプリの自動ビルド・コンテナデプロイ |
 
 
 
