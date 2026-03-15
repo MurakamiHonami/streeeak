@@ -22,6 +22,7 @@ resource "aws_lb_target_group" "api_nlb_tg" {
     protocol = "HTTP"
     path     = "/health"
     port     = "traffic-port"
+    matcher  = "200-399"
   }
 }
 
