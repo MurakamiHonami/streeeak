@@ -7,7 +7,7 @@ from app.api.deps import get_current_user
 from app.db import repositories as repo
 from app.schemas.goal import GoalCreate, GoalRead, GoalUpdate
 from app.schemas.task import TaskType
-from app.services.task_service import build_breakdown, parse_note_subtasks
+from app.services.task_service import build_breakdown, derive_breakdown_scope, parse_note_subtasks
 
 router = APIRouter(prefix="/goals", tags=["goals"])
 
@@ -73,16 +73,16 @@ def generate_breakdown(
     weeks_per_month = payload.weeks_per_month
     days_per_week = payload.days_per_week
     yearly_milestones = 0
-    if goal.deadline:
-        months, weeks_per_month, days_per_week, yearly_milestones = derive_breakdown_scope(goal.deadline)
+    if goal.get("deadline"):
+        months, weeks_per_month, days_per_week, yearly_milestones = derive_breakdown_scope(goal.get("deadline"))
 
     situation = (payload.current_situation or "").strip() or (getattr(goal, "current_situation", None) or "").strip() or None
     breakdown_res = build_breakdown(
         goal_title=goal["title"],
-        months=payload.months,
-        weeks_per_month=payload.weeks_per_month,
-        days_per_week=payload.days_per_week,
-        current_situation=payload.current_situation,
+        months=months,
+        weeks_per_month=weeks_per_month,
+        days_per_week=days_per_week,
+        current_situation=situation,
     )
 
     if payload.persist:
