@@ -103,28 +103,51 @@ export async function register(payload: {
   name: string;
   password: string;
 }) {
-  const res = await apiClient.post<{
-    access_token?: string;
-    token_type: string;
-    user_id: number;
-    requires_verification?: boolean;
-    message?: string;
-  }>(
-    "/auth/register",
-    payload
-  );
-  const session = res.data.access_token
-    ? { accessToken: res.data.access_token, userId: res.data.user_id }
-    : null;
-  if (session) {
-    setAuthSession(session);
+  try {
+    const res = await apiClient.post<{
+      access_token?: string;
+      token_type: string;
+      user_id: number;
+      requires_verification?: boolean;
+      message?: string;
+    }>(
+      "/auth/register",
+      payload
+    );
+    const session = res.data.access_token
+      ? { accessToken: res.data.access_token, userId: res.data.user_id }
+      : null;
+    if (session) {
+      setAuthSession(session);
+    }
+    return {
+      userId: res.data.user_id,
+      accessToken: res.data.access_token ?? null,
+      requiresVerification: Boolean(res.data.requires_verification),
+      message: res.data.message ?? null,
+    };
+  } catch (err: unknown) {
+    const detail =
+      typeof err === "object" &&
+      err !== null &&
+      "response" in err &&
+      typeof (err as { response?: { data?: { detail?: unknown } } }).response?.data?.detail === "string"
+        ? (err as { response: { data: { detail: string } } }).response.data.detail
+        : "";
+
+    if (detail.includes("Email already exists")) {
+      const resend = await apiClient.post<{ message: string }>("/auth/resend-verification", {
+        email: payload.email,
+      });
+      return {
+        userId: 0,
+        accessToken: null,
+        requiresVerification: true,
+        message: resend.data.message ?? "Verification code was re-sent.",
+      };
+    }
+    throw err;
   }
-  return {
-    userId: res.data.user_id,
-    accessToken: res.data.access_token ?? null,
-    requiresVerification: Boolean(res.data.requires_verification),
-    message: res.data.message ?? null,
-  };
 }
 
 export async function login(payload: { email: string; password: string }) {
