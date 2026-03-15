@@ -39,7 +39,20 @@ def register(payload: RegisterRequest):
             ],
         )
     except cognito_client.exceptions.UsernameExistsException:
-        raise HTTPException(status_code=400, detail="Email already exists in Cognito")
+        # Existing-but-unverified users are common in Cognito flows.
+        # Try re-sending the confirmation code instead of hard-failing registration UX.
+        try:
+            cognito_client.resend_confirmation_code(
+                ClientId=settings.COGNITO_CLIENT_ID,
+                Username=payload.email,
+            )
+            return AuthResponse(
+                user_id=0,
+                requires_verification=True,
+                message="Account already exists. A new verification code was sent.",
+            )
+        except ClientError as e:
+            raise HTTPException(status_code=400, detail=e.response["Error"]["Message"])
     except ClientError as e:
         raise HTTPException(status_code=400, detail=e.response["Error"]["Message"])
 
@@ -88,11 +101,6 @@ def login(payload: LoginRequest):
         access_token = create_access_token(str(local_id))
         return AuthResponse(access_token=access_token, user_id=local_id)
 
-    user = repo.get_user_by_email(payload.email)
-
-    if not user:
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-
     try:
         cognito_client.initiate_auth(
             ClientId=settings.COGNITO_CLIENT_ID,
@@ -108,6 +116,18 @@ def login(payload: LoginRequest):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     except ClientError as e:
         raise HTTPException(status_code=400, detail=e.response["Error"]["Message"])
+
+    user = repo.get_user_by_email(payload.email)
+    if not user:
+        # Recover from past inconsistent states where Cognito user exists but app DB user is missing.
+        auto_name = payload.email.split("@")[0] if "@" in payload.email else payload.email
+        user = repo.create_user(
+            email=payload.email,
+            name=auto_name or "user",
+            password_hash=hash_password(payload.password),
+            verification_token=None,
+        )
+        user = repo.update_user(int(user["id"]), {"is_verified": True}) or user
 
     if not user.get("is_verified", False):
         repo.update_user(int(user["id"]), {"is_verified": True, "verification_token": None})
