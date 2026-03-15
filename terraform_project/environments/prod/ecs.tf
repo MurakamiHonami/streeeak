@@ -98,6 +98,7 @@ resource "aws_ecs_task_definition" "backend" {
         { name = "STRIPE_PRICE_ID", value = var.stripe_price_id },
         { name = "AWS_REGION", value = var.aws_region_name },
         { name = "COGNITO_CLIENT_ID", value = var.cognito_client_id },
+        { name = "COGNITO_CLIENT_SECRET", value = var.cognito_client_secret },
         { name = "ENVIRONMENT", value = "prod" }
       ]
       logConfiguration = {
