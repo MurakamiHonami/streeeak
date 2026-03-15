@@ -69,6 +69,14 @@ def generate_breakdown(
     if not goal or int(goal["user_id"]) != int(current_user["id"]):
         raise HTTPException(status_code=404, detail="Goal not found")
 
+    months = payload.months
+    weeks_per_month = payload.weeks_per_month
+    days_per_week = payload.days_per_week
+    yearly_milestones = 0
+    if goal.deadline:
+        months, weeks_per_month, days_per_week, yearly_milestones = derive_breakdown_scope(goal.deadline)
+
+    situation = (payload.current_situation or "").strip() or (getattr(goal, "current_situation", None) or "").strip() or None
     breakdown_res = build_breakdown(
         goal_title=goal["title"],
         months=payload.months,

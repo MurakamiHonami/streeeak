@@ -1,6 +1,7 @@
 import datetime as dt
 import json
 import logging
+import math
 import re
 import uuid
 
@@ -96,15 +97,25 @@ def generate_revision_suggestions(
     if not settings.GEMINI_API_KEY:
         return RevisionChatResponse(source="fallback", assistant_message="Gemini key is not configured.", proposals=[])
 
-    draft_payload = [
-        {
+    today_ref = dt.date.today()
+    today_iso = today_ref.isoformat()
+
+    draft_payload = []
+    for task in draft_tasks:
+        item = {
             "task_id": task.task_id,
             "task_type": task.task_type.value,
             "title": task.title,
             "subtasks": task.subtasks,
         }
-        for task in draft_tasks
-    ]
+        if getattr(task, "date", None) is not None:
+            item["date"] = task.date.isoformat() if hasattr(task.date, "isoformat") else str(task.date)
+        if getattr(task, "month", None) is not None:
+            item["month"] = task.month
+        if getattr(task, "week_number", None) is not None:
+            item["week_number"] = task.week_number
+        draft_payload.append(item)
+
     history_payload = [{"role": m.role, "content": m.content} for m in chat_history]
 
     prompt = (
@@ -143,10 +154,18 @@ def generate_revision_suggestions(
             )
         )
 
+    if not proposals and proposals_raw:
+        logger.warning(
+            "Revision: AI returned %d raw proposals but all were filtered out. valid_task_ids=%s",
+            len(proposals_raw),
+            list(valid_task_map.keys()),
+        )
+
     return RevisionChatResponse(
         source="gemini",
         assistant_message=str(parsed.get("assistant_message", "Suggestions generated.")),
         proposals=proposals,
+        new_goal_title=new_goal_title,
     )
 
 
