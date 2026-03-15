@@ -8,8 +8,8 @@ resource "aws_codebuild_project" "main" {
   }
 
   environment {
-    compute_type  = "BUILD_GENERAL1_MEDIUM"
-    image  = "aws/codebuild/amazonlinux2023-x86_64-standard:3.0" # ←新しいAmazon Linux 2023に変更
+    compute_type  = "BUILD_GENERAL1_SMALL"
+    image  = "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
     type = "LINUX_CONTAINER"
     privileged_mode = true
     environment_variable {
