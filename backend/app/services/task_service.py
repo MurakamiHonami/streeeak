@@ -1,7 +1,6 @@
 import datetime as dt
 import json
 import logging
-import math
 import re
 import uuid
 
@@ -19,6 +18,30 @@ from app.schemas.task import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def derive_breakdown_scope(deadline: dt.date | str | None) -> tuple[int, int, int, int]:
+    if deadline is None:
+        return 12, 4, 7, 12
+
+    if isinstance(deadline, str):
+        try:
+            deadline_date = dt.date.fromisoformat(deadline)
+        except ValueError:
+            return 12, 4, 7, 12
+    else:
+        deadline_date = deadline
+
+    today = dt.date.today()
+    if deadline_date <= today:
+        return 1, 1, 1, 1
+
+    total_days = (deadline_date - today).days
+    months = max(1, min(24, (total_days + 29) // 30))
+    weeks_per_month = max(1, min(5, total_days // max(1, months * 7)))
+    days_per_week = 7
+    yearly_milestones = max(1, min(12, months))
+    return months, weeks_per_month, days_per_week, yearly_milestones
 
 
 def _fallback_breakdown(goal_title: str, months: int, weeks_per_month: int, days_per_week: int) -> BreakdownResponse:
@@ -97,9 +120,6 @@ def generate_revision_suggestions(
     if not settings.GEMINI_API_KEY:
         return RevisionChatResponse(source="fallback", assistant_message="Gemini key is not configured.", proposals=[])
 
-    today_ref = dt.date.today()
-    today_iso = today_ref.isoformat()
-
     draft_payload = []
     for task in draft_tasks:
         item = {
@@ -130,9 +150,10 @@ def generate_revision_suggestions(
         logger.exception("Gemini revision failed: %s", e)
         return RevisionChatResponse(source="fallback", assistant_message="Gemini request failed.", proposals=[])
 
+    proposals_raw = parsed.get("proposals", [])
     proposals = []
     valid_task_ids = {x.task_id for x in draft_tasks}
-    for item in parsed.get("proposals", []):
+    for item in proposals_raw:
         if not isinstance(item, dict):
             continue
         task_id = item.get("target_task_id")
@@ -158,14 +179,14 @@ def generate_revision_suggestions(
         logger.warning(
             "Revision: AI returned %d raw proposals but all were filtered out. valid_task_ids=%s",
             len(proposals_raw),
-            list(valid_task_map.keys()),
+            sorted(valid_task_ids),
         )
 
     return RevisionChatResponse(
         source="gemini",
         assistant_message=str(parsed.get("assistant_message", "Suggestions generated.")),
         proposals=proposals,
-        new_goal_title=new_goal_title,
+        new_goal_title=parsed.get("new_goal_title"),
     )
 
 
