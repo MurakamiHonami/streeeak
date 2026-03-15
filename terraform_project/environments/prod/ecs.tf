@@ -97,8 +97,8 @@ resource "aws_ecs_task_definition" "backend" {
         { name = "STRIPE_WEBHOOK_SECRET", value = var.stripe_webhook_secret },
         { name = "STRIPE_PRICE_ID", value = var.stripe_price_id },
         { name = "AWS_REGION", value = var.aws_region_name },
-        { name = "COGNITO_CLIENT_ID", value = var.cognito_client_id },
-        { name = "COGNITO_CLIENT_SECRET", value = var.cognito_client_secret },
+        { name = "COGNITO_CLIENT_ID", value = aws_cognito_user_pool_client.client.id },
+        { name = "COGNITO_CLIENT_SECRET", value = "" },
         { name = "ENVIRONMENT", value = "prod" }
       ]
       logConfiguration = {

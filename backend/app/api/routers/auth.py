@@ -43,6 +43,21 @@ def _with_secret_hash(username: str, params: dict) -> dict:
     return params
 
 
+def _resend_confirmation_code(email: str) -> tuple[bool, str]:
+    try:
+        resend_req = _with_secret_hash(
+            email,
+            {
+                "ClientId": settings.COGNITO_CLIENT_ID,
+                "Username": email,
+            },
+        )
+        cognito_client.resend_confirmation_code(**resend_req)
+        return True, "Verification code was re-sent."
+    except ClientError as e:
+        return False, e.response.get("Error", {}).get("Message", "Unknown error")
+
+
 @router.post("/register", response_model=AuthResponse)
 def register(payload: RegisterRequest):
     if settings.ENVIRONMENT == "local":
@@ -52,27 +67,16 @@ def register(payload: RegisterRequest):
 
     existing = repo.get_user_by_email(payload.email)
     if existing:
-        try:
-            resend_req = _with_secret_hash(
-                payload.email,
-                {
-                    "ClientId": settings.COGNITO_CLIENT_ID,
-                    "Username": payload.email,
-                },
-            )
-            cognito_client.resend_confirmation_code(**resend_req)
+        ok, message = _resend_confirmation_code(payload.email)
+        if ok:
             return AuthResponse(
                 user_id=int(existing["id"]),
                 requires_verification=True,
                 message="Verification code was re-sent.",
             )
-        except ClientError as e:
-            error_code = e.response.get("Error", {}).get("Code", "")
-            error_message = e.response.get("Error", {}).get("Message", "Unknown error")
-            # Already confirmed users cannot receive a confirmation code again.
-            if error_code in {"InvalidParameterException", "NotAuthorizedException"}:
-                raise HTTPException(status_code=400, detail="Email already exists and is already confirmed. Please login.")
-            raise HTTPException(status_code=400, detail=f"Existing user but resend failed: {error_message}")
+        if message.startswith("User is already confirmed"):
+            raise HTTPException(status_code=400, detail="Email already exists and is already confirmed. Please login.")
+        raise HTTPException(status_code=400, detail=f"Existing user but resend failed: {message}")
 
     try:
         sign_up_req = _with_secret_hash(
@@ -89,25 +93,16 @@ def register(payload: RegisterRequest):
         )
         cognito_client.sign_up(**sign_up_req)
     except cognito_client.exceptions.UsernameExistsException:
-        # Existing-but-unverified users are common in Cognito flows.
-        # Try re-sending the confirmation code instead of hard-failing registration UX.
-        try:
-            resend_req = _with_secret_hash(
-                payload.email,
-                {
-                    "ClientId": settings.COGNITO_CLIENT_ID,
-                    "Username": payload.email,
-                },
-            )
-            cognito_client.resend_confirmation_code(**resend_req)
+        # Existing-but-unverified users are common in Cognito flows. Re-send code.
+        ok, message = _resend_confirmation_code(payload.email)
+        if ok:
             existing_user = repo.get_user_by_email(payload.email)
             return AuthResponse(
                 user_id=int(existing_user["id"]) if existing_user else 0,
                 requires_verification=True,
                 message="Account already exists. A new verification code was sent.",
             )
-        except ClientError as e:
-            raise HTTPException(status_code=400, detail=e.response["Error"]["Message"])
+        raise HTTPException(status_code=400, detail=message)
     except ClientError as e:
         raise HTTPException(status_code=400, detail=e.response["Error"]["Message"])
 
@@ -158,18 +153,10 @@ def resend_verification(payload: ResendVerificationRequest):
     if settings.ENVIRONMENT == "local":
         return {"message": "Local mode: resend bypassed"}
 
-    try:
-        resend_req = _with_secret_hash(
-            payload.email,
-            {
-                "ClientId": settings.COGNITO_CLIENT_ID,
-                "Username": payload.email,
-            },
-        )
-        cognito_client.resend_confirmation_code(**resend_req)
+    ok, message = _resend_confirmation_code(payload.email)
+    if ok:
         return {"message": "Verification code re-sent"}
-    except ClientError as e:
-        raise HTTPException(status_code=400, detail=e.response["Error"]["Message"])
+    raise HTTPException(status_code=400, detail=message)
 
 
 @router.post("/login", response_model=AuthResponse)
@@ -194,19 +181,15 @@ def login(payload: LoginRequest):
             AuthParameters=auth_params,
         )
     except cognito_client.exceptions.UserNotConfirmedException:
-        try:
-            resend_req = _with_secret_hash(
-                payload.email,
-                {
-                    "ClientId": settings.COGNITO_CLIENT_ID,
-                    "Username": payload.email,
-                },
-            )
-            cognito_client.resend_confirmation_code(**resend_req)
+        ok, message = _resend_confirmation_code(payload.email)
+        if ok:
             raise HTTPException(status_code=403, detail="Email not verified. Verification code was re-sent.")
-        except ClientError as e:
-            raise HTTPException(status_code=403, detail=f"Email not verified. Resend failed: {e.response['Error']['Message']}")
+        raise HTTPException(status_code=403, detail=f"Email not verified. Resend failed: {message}")
     except cognito_client.exceptions.NotAuthorizedException:
+        # When Cognito app client settings changed, unconfirmed users can surface as NotAuthorized.
+        ok, _ = _resend_confirmation_code(payload.email)
+        if ok:
+            raise HTTPException(status_code=403, detail="Email not verified. Verification code was re-sent.")
         raise HTTPException(status_code=401, detail="Invalid credentials")
     except ClientError as e:
         raise HTTPException(status_code=400, detail=e.response["Error"]["Message"])
