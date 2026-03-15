@@ -180,3 +180,38 @@ resource "aws_codepipeline" "main" {
     }
   }
 }
+
+# CodePipeline service role needs access to the artifact S3 bucket.
+resource "aws_iam_role_policy" "codepipeline_artifact_s3" {
+  name = "streeeak-codepipeline-artifact-s3"
+  role = "AWSCodePipelineServiceRole-ap-northeast-1-streeeak-pipeline"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:GetBucketLocation",
+          "s3:GetBucketVersioning",
+          "s3:ListBucket"
+        ]
+        Resource = [
+          aws_s3_bucket.static_content.arn
+        ]
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject",
+          "s3:GetObjectVersion",
+          "s3:PutObject",
+          "s3:AbortMultipartUpload"
+        ]
+        Resource = [
+          "${aws_s3_bucket.static_content.arn}/*"
+        ]
+      }
+    ]
+  })
+}
