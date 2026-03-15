@@ -7,6 +7,8 @@ resource "aws_lb" "api_nlb" {
   internal           = false
   load_balancer_type = "network"
   subnets            = [aws_subnet.public_1a.id, aws_subnet.public_1c.id, aws_subnet.public_1d.id]
+
+  enable_cross_zone_load_balancing = true
 }
 
 resource "aws_lb_target_group" "api_nlb_tg" {
@@ -17,7 +19,8 @@ resource "aws_lb_target_group" "api_nlb_tg" {
   target_type = "ip"
 
   health_check {
-    protocol = "TCP"
+    protocol = "HTTP"
+    path     = "/health"
     port     = "traffic-port"
   }
 }
@@ -116,7 +119,7 @@ resource "aws_ecs_service" "backend" {
   launch_type     = "FARGATE"
 
   network_configuration {
-    subnets          = [aws_subnet.public_1a.id]
+    subnets          = [aws_subnet.public_1a.id, aws_subnet.public_1c.id, aws_subnet.public_1d.id]
     security_groups  = [aws_security_group.web_sg.id]
     assign_public_ip = true
   }
