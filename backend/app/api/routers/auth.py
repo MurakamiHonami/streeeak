@@ -10,7 +10,13 @@ from fastapi import APIRouter, HTTPException
 
 from app.core.config import settings
 from app.db import repositories as repo
-from app.schemas.auth import AuthResponse, LoginRequest, RegisterRequest, VerifyRequest
+from app.schemas.auth import (
+    AuthResponse,
+    LoginRequest,
+    RegisterRequest,
+    ResendVerificationRequest,
+    VerifyRequest,
+)
 from app.services.auth_service import create_access_token, hash_password
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -46,7 +52,24 @@ def register(payload: RegisterRequest):
 
     existing = repo.get_user_by_email(payload.email)
     if existing:
-        raise HTTPException(status_code=400, detail="Email already exists")
+        if existing.get("is_verified", False):
+            raise HTTPException(status_code=400, detail="Email already exists")
+        try:
+            resend_req = _with_secret_hash(
+                payload.email,
+                {
+                    "ClientId": settings.COGNITO_CLIENT_ID,
+                    "Username": payload.email,
+                },
+            )
+            cognito_client.resend_confirmation_code(**resend_req)
+            return AuthResponse(
+                user_id=int(existing["id"]),
+                requires_verification=True,
+                message="Verification code was re-sent.",
+            )
+        except ClientError as e:
+            raise HTTPException(status_code=400, detail=f"Existing user but resend failed: {e.response['Error']['Message']}")
 
     try:
         sign_up_req = _with_secret_hash(
@@ -125,6 +148,25 @@ def verify_email(payload: VerifyRequest):
     if user:
         repo.update_user(int(user["id"]), {"is_verified": True, "verification_token": None})
     return {"message": "Email verified successfully"}
+
+
+@router.post("/resend-verification")
+def resend_verification(payload: ResendVerificationRequest):
+    if settings.ENVIRONMENT == "local":
+        return {"message": "Local mode: resend bypassed"}
+
+    try:
+        resend_req = _with_secret_hash(
+            payload.email,
+            {
+                "ClientId": settings.COGNITO_CLIENT_ID,
+                "Username": payload.email,
+            },
+        )
+        cognito_client.resend_confirmation_code(**resend_req)
+        return {"message": "Verification code re-sent"}
+    except ClientError as e:
+        raise HTTPException(status_code=400, detail=e.response["Error"]["Message"])
 
 
 @router.post("/login", response_model=AuthResponse)
