@@ -23,3 +23,7 @@ class AuthResponse(BaseModel):
 class VerifyRequest(BaseModel):
     username: EmailStr
     code: str
+
+
+class ResendVerificationRequest(BaseModel):
+    email: EmailStr
