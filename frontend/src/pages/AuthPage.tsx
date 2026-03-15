@@ -38,6 +38,11 @@ export function AuthPage({ onAuthenticated, initialMode = "login" }: Props) {
       const session = isRegister
         ? await register({ email, name: name.trim(), password })
         : await login({ email, password });
+      if (isRegister && "requiresVerification" in session && session.requiresVerification) {
+        setError(session.message ?? "確認コードをメールで送信しました。認証後にログインしてください。");
+        setMode("login");
+        return;
+      }
       if (isRegister && avatarFile) {
         await uploadUserAvatar(avatarFile, session.userId);
       }

@@ -3,7 +3,7 @@ resource "aws_route53_zone" "main" {
   name = "streeeak.link"
 }
 
-# 2. ACM 証明書
+# 2. ACM 險ｼ譏取嶌
 resource "aws_acm_certificate" "cert" {
   domain_name       = "api.streeeak.link"
   validation_method = "DNS"
@@ -13,7 +13,7 @@ resource "aws_acm_certificate" "cert" {
   }
 }
 
-# 3. CloudFront ディストリビューション
+# 3. CloudFront 繝・ぅ繧ｹ繝医Μ繝薙Η繝ｼ繧ｷ繝ｧ繝ｳ
 resource "aws_cloudfront_distribution" "main" {
   origin {
     domain_name              = "streeeak-frontend-111.s3.ap-northeast-1.amazonaws.com"
@@ -26,7 +26,7 @@ resource "aws_cloudfront_distribution" "main" {
   is_ipv6_enabled     = true
   default_root_object = "index.html"
 
-  # 代替ドメイン名 (CNAME)
+  # 莉｣譖ｿ繝峨Γ繧､繝ｳ蜷・(CNAME)
   aliases = ["streeeak.link"]
 
   default_cache_behavior {
@@ -42,7 +42,7 @@ resource "aws_cloudfront_distribution" "main" {
     allowed_methods        = ["GET", "HEAD"]
     cached_methods         = ["GET", "HEAD"]
     target_origin_id       = "streeeak-frontend-111.s3.ap-northeast-1.amazonaws.com-mlyg120a0fn"
-    cache_policy_id        = "658327ea-f89d-4fab-a63d-7e88639e58f6" # Planに出ていたID
+    cache_policy_id        = "658327ea-f89d-4fab-a63d-7e88639e58f6" # Plan縺ｫ蜃ｺ縺ｦ縺・◆ID
     viewer_protocol_policy = "redirect-to-https"
     compress               = true
   }
@@ -83,14 +83,3 @@ resource "aws_cloudfront_distribution" "main" {
   }
 }
 
-resource "aws_route53_record" "route53_record" {
-  zone_id = aws_route53_zone.main.zone_id
-  name    = "api.streeeak.link"
-  type    = "A"
-
-  alias {
-    name                   = aws_lb.main.dns_name
-    zone_id                = aws_lb.main.zone_id
-    evaluate_target_health = true
-  }
-}

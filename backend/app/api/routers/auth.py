@@ -1,77 +1,120 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
-from sqlalchemy.orm import Session
 import uuid
+import zlib
 
-from app.db.session import get_db
-from app.models.user import User, UserSetting
-from app.schemas.auth import AuthResponse, LoginRequest, RegisterRequest
-from app.services.auth_service import create_access_token, hash_password, verify_password
-from app.utils.mail import send_verification_email
+import boto3
+from botocore.exceptions import ClientError
+from fastapi import APIRouter, HTTPException
+
 from app.core.config import settings
+from app.db import repositories as repo
+from app.schemas.auth import AuthResponse, LoginRequest, RegisterRequest, VerifyRequest
+from app.services.auth_service import create_access_token, hash_password
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+cognito_client = boto3.client("cognito-idp", region_name=settings.AWS_REGION)
+
+def _local_user_id(email: str) -> int:
+    return (zlib.crc32(email.encode("utf-8")) % 900000000) + 1000
+
 
 @router.post("/register", response_model=AuthResponse)
-def register(payload: RegisterRequest, db: Session = Depends(get_db)):
-    existing = db.scalar(select(User).where(User.email == payload.email))
+def register(payload: RegisterRequest):
+    if settings.ENVIRONMENT == "local":
+        local_id = _local_user_id(payload.email)
+        access_token = create_access_token(str(local_id))
+        return AuthResponse(access_token=access_token, user_id=local_id)
+
+    existing = repo.get_user_by_email(payload.email)
     if existing:
         raise HTTPException(status_code=400, detail="Email already exists")
 
-    v_token = str(uuid.uuid4())
+    try:
+        cognito_client.sign_up(
+            ClientId=settings.COGNITO_CLIENT_ID,
+            Username=payload.email,
+            Password=payload.password,
+            UserAttributes=[
+                {"Name": "email", "Value": payload.email},
+                {"Name": "name", "Value": payload.name},
+            ],
+        )
+    except cognito_client.exceptions.UsernameExistsException:
+        raise HTTPException(status_code=400, detail="Email already exists in Cognito")
+    except ClientError as e:
+        raise HTTPException(status_code=400, detail=e.response["Error"]["Message"])
 
-    user = User(
+    user = repo.create_user(
         email=payload.email,
         name=payload.name,
         password_hash=hash_password(payload.password),
-        is_verified=False,
-        verification_token=v_token
+        verification_token=None,
     )
-    db.add(user)
-    db.flush()
-    db.add(UserSetting(user_id=user.id))
-    db.commit()
-    db.refresh(user)
 
-    from app.core.config import settings
-    
-    if getattr(settings, "ENVIRONMENT", "local") == "local":
-        user.is_verified = True
-        db.commit()
-        print(f"DEBUG: Local mode - Verification skipped for {user.email}")
-    else:
-        try:
-            send_verification_email(user.email, v_token)
-        except Exception as e:
-            print(f"Email send error: {e}")
-
-    token = create_access_token(str(user.id))
-    return AuthResponse(access_token=token, user_id=user.id)
+    return AuthResponse(
+        user_id=int(user["id"]),
+        requires_verification=True,
+        message="Verification code was sent to your email.",
+    )
 
 
-@router.get("/verify")
-def verify_email(token: str, db: Session = Depends(get_db)):
-    user = db.scalar(select(User).where(User.verification_token == token))
-    if not user:
-        raise HTTPException(status_code=400, detail="無効なトークンです")
-    
-    user.is_verified = True
-    user.verification_token = None
-    db.commit()
+@router.post("/verify")
+def verify_email(payload: VerifyRequest):
+    if settings.ENVIRONMENT == "local":
+        user = repo.get_user_by_email(payload.username)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        repo.update_user(int(user["id"]), {"is_verified": True, "verification_token": None})
+        return {"message": "Local mode: verification bypassed"}
+
+    try:
+        cognito_client.confirm_sign_up(
+            ClientId=settings.COGNITO_CLIENT_ID,
+            Username=payload.username,
+            ConfirmationCode=payload.code,
+        )
+    except ClientError as e:
+        raise HTTPException(status_code=400, detail=e.response["Error"]["Message"])
+
+    user = repo.get_user_by_email(payload.username)
+    if user:
+        repo.update_user(int(user["id"]), {"is_verified": True, "verification_token": None})
     return {"message": "Email verified successfully"}
 
 
 @router.post("/login", response_model=AuthResponse)
-def login(payload: LoginRequest, db: Session = Depends(get_db)):
-    user = db.scalar(select(User).where(User.email == payload.email))
-    if not user or not verify_password(payload.password, user.password_hash):
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-    
-    if not user.is_verified and getattr(settings, "ENVIRONMENT", "local") != "local":
-        raise HTTPException(status_code=403, detail="Email not verified")
+def login(payload: LoginRequest):
+    if settings.ENVIRONMENT == "local":
+        local_id = _local_user_id(payload.email)
+        access_token = create_access_token(str(local_id))
+        return AuthResponse(access_token=access_token, user_id=local_id)
 
-    token = create_access_token(str(user.id))
-    return AuthResponse(access_token=token, user_id=user.id)
+    user = repo.get_user_by_email(payload.email)
+
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+
+    try:
+        cognito_client.initiate_auth(
+            ClientId=settings.COGNITO_CLIENT_ID,
+            AuthFlow="USER_PASSWORD_AUTH",
+            AuthParameters={
+                "USERNAME": payload.email,
+                "PASSWORD": payload.password,
+            },
+        )
+    except cognito_client.exceptions.UserNotConfirmedException:
+        raise HTTPException(status_code=403, detail="Email not verified")
+    except cognito_client.exceptions.NotAuthorizedException:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    except ClientError as e:
+        raise HTTPException(status_code=400, detail=e.response["Error"]["Message"])
+
+    if not user.get("is_verified", False):
+        repo.update_user(int(user["id"]), {"is_verified": True, "verification_token": None})
+        user = repo.get_user(int(user["id"])) or user
+
+    access_token = create_access_token(str(user["id"]))
+    return AuthResponse(access_token=access_token, user_id=int(user["id"]))
 
 
 @router.post("/logout")

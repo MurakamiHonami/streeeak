@@ -1,12 +1,8 @@
 from datetime import date, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import delete, select
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, HTTPException, Query, status
 
-from app.db.session import get_db
-from app.models.goal import Goal
-from app.models.task import Task, TaskType
+from app.db import repositories as repo
 from app.schemas.task import (
     ApplyRevisionsRequest,
     ApplyRevisionsResponse,
@@ -17,6 +13,7 @@ from app.schemas.task import (
     TaskBulkCreate,
     TaskCreate,
     TaskRead,
+    TaskType,
     TaskUpdate,
 )
 from app.api.deps import get_current_user
@@ -32,117 +29,74 @@ from app.services.task_service import (
 router = APIRouter(tags=["tasks"])
 
 
-def _merge_or_move_daily_task(db: Session, task: Task, target_date: date) -> Task:
-    """
-    Move a daily task to target_date.
-    If an equivalent task already exists on target_date, merge into the existing row
-    and delete the source row to avoid duplicate carry-over records.
-    """
-    duplicate = db.scalar(
-        select(Task).where(
-            Task.id != task.id,
-            Task.user_id == task.user_id,
-            Task.goal_id == task.goal_id,
-            Task.type == TaskType.daily,
-            Task.date == target_date,
-            Task.title == task.title,
-            Task.tags == task.tags,
-            Task.note == task.note,
-        )
-    )
-    if duplicate:
-        duplicate.carried_over = True
-        # 未完了タスクを持ち越した場合は、重複先も未完了に揃える
-        if not task.is_done:
-            duplicate.is_done = False
-        db.delete(task)
-        return duplicate
-
-    task.date = target_date
-    task.carried_over = True
-    return task
+def _sorted(tasks: list[dict]) -> list[dict]:
+    return sorted(tasks, key=lambda x: x.get("created_at", ""), reverse=True)
 
 
 @router.post("/goals/{goal_id}/tasks/breakdown", response_model=BreakdownResponse)
-def create_breakdown(
-    goal_id: int,
-    payload: BreakdownRequest,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    goal = db.get(Goal, goal_id)
-    if not goal or goal.user_id != current_user.id:
+def create_breakdown(goal_id: int, payload: BreakdownRequest):
+    goal = repo.get_goal(goal_id)
+    if not goal:
         raise HTTPException(status_code=404, detail="Goal not found")
 
-    months = payload.months
-    weeks_per_month = payload.weeks_per_month
-    days_per_week = payload.days_per_week
-    yearly_milestones = 0
-    if goal.deadline:
-        months, weeks_per_month, days_per_week, yearly_milestones = derive_breakdown_scope(goal.deadline)
-
     breakdown = build_breakdown(
-        db,
-        current_user,
-        goal,
-        months,
-        weeks_per_month,
-        days_per_week,
-        yearly_milestones=yearly_milestones,
+        goal_title=goal["title"],
+        months=payload.months,
+        weeks_per_month=payload.weeks_per_month,
+        days_per_week=payload.days_per_week,
         current_situation=payload.current_situation,
     )
+
     if payload.persist:
-        # 同じ目標の再生成でタスク重複が増えないように既存を消してから再作成
-        db.execute(delete(Task).where(Task.goal_id == goal.id))
+        repo.delete_tasks_by_goal(goal_id)
         for item in breakdown.monthly + breakdown.weekly + breakdown.daily:
             if item.type == TaskType.daily:
                 subtasks = parse_note_subtasks(item.note)
                 if subtasks:
                     for subtask in subtasks:
-                        db.add(
-                            Task(
-                                goal_id=goal.id,
-                                user_id=goal.user_id,
-                                type=item.type,
-                                title=subtask,
-                                month=item.month,
-                                week_number=item.week_number,
-                                date=item.date,
-                                note=None,
-                            )
+                        repo.create_task(
+                            {
+                                "goal_id": int(goal["id"]),
+                                "user_id": int(goal["user_id"]),
+                                "type": item.type,
+                                "title": subtask,
+                                "month": item.month,
+                                "week_number": item.week_number,
+                                "date": item.date,
+                                "note": None,
+                            }
                         )
                     continue
-            db.add(
-                Task(
-                    goal_id=goal.id,
-                    user_id=goal.user_id,
-                    type=item.type,
-                    title=item.title,
-                    month=item.month,
-                    week_number=item.week_number,
-                    date=item.date,
-                    note=item.note,
-                )
+            repo.create_task(
+                {
+                    "goal_id": int(goal["id"]),
+                    "user_id": int(goal["user_id"]),
+                    "type": item.type,
+                    "title": item.title,
+                    "month": item.month,
+                    "week_number": item.week_number,
+                    "date": item.date,
+                    "note": item.note,
+                }
             )
-        db.commit()
     return breakdown
 
 
 @router.get("/goals/{goal_id}/tasks", response_model=list[TaskRead])
-def list_goal_tasks(goal_id: int, db: Session = Depends(get_db)):
-    if not db.get(Goal, goal_id):
+def list_goal_tasks(goal_id: int):
+    if not repo.get_goal(goal_id):
         raise HTTPException(status_code=404, detail="Goal not found")
-    stmt = select(Task).where(Task.goal_id == goal_id).order_by(Task.type, Task.date, Task.id)
-    return list(db.scalars(stmt))
+    items = repo.list_tasks_by_goal(goal_id)
+    return [TaskRead.model_validate(repo.to_task_read(x)) for x in items]
 
 
 @router.post("/goals/{goal_id}/tasks/revision-chat", response_model=RevisionChatResponse)
-def revision_chat(goal_id: int, payload: RevisionChatRequest, db: Session = Depends(get_db)):
-    goal = db.get(Goal, goal_id)
+def revision_chat(goal_id: int, payload: RevisionChatRequest):
+    goal = repo.get_goal(goal_id)
     if not goal:
         raise HTTPException(status_code=404, detail="Goal not found")
     return generate_revision_suggestions(
-        goal_title=goal.title,
+        goal_title=goal["title"],
         message=payload.message,
         draft_tasks=payload.draft_tasks,
         chat_history=payload.chat_history,
@@ -150,57 +104,45 @@ def revision_chat(goal_id: int, payload: RevisionChatRequest, db: Session = Depe
 
 
 @router.post("/goals/{goal_id}/tasks/revisions/apply", response_model=ApplyRevisionsResponse)
-def apply_revisions(goal_id: int, payload: ApplyRevisionsRequest, db: Session = Depends(get_db)):
-    if not db.get(Goal, goal_id):
+def apply_revisions(goal_id: int, payload: ApplyRevisionsRequest):
+    if not repo.get_goal(goal_id):
         raise HTTPException(status_code=404, detail="Goal not found")
 
     touched_ids: set[int] = set()
     for proposal in payload.accepted_proposals:
-        task = db.get(Task, proposal.target_task_id)
-        if not task or task.goal_id != goal_id:
+        task = repo.get_task(proposal.target_task_id)
+        if not task or int(task.get("goal_id") or 0) != goal_id:
             continue
         if proposal.target_type == "subtask":
             if proposal.subtask_index is None:
                 continue
-            subtasks = parse_note_subtasks(task.note)
+            subtasks = parse_note_subtasks(task.get("note"))
             if proposal.subtask_index < 0 or proposal.subtask_index >= len(subtasks):
                 continue
             subtasks[proposal.subtask_index] = proposal.after
-            task.note = compose_note_subtasks(subtasks)
+            repo.update_task(task["id"], {"note": compose_note_subtasks(subtasks)})
         else:
-            task.title = proposal.after
-        touched_ids.add(task.id)
+            repo.update_task(task["id"], {"title": proposal.after})
+        touched_ids.add(int(task["id"]))
 
-    db.commit()
-    updated_tasks: list[Task] = []
+    updated_tasks = []
     for task_id in touched_ids:
-        task = db.get(Task, task_id)
+        task = repo.get_task(task_id)
         if task:
-            db.refresh(task)
-            updated_tasks.append(task)
+            updated_tasks.append(TaskRead.model_validate(repo.to_task_read(task)))
     return ApplyRevisionsResponse(updated_tasks=updated_tasks)
 
 
 @router.post("/tasks", response_model=TaskRead, status_code=status.HTTP_201_CREATED)
-def create_task(payload: TaskCreate, db: Session = Depends(get_db)):
-    task = Task(**payload.model_dump())
-    db.add(task)
-    db.commit()
-    db.refresh(task)
-    return task
+def create_task(payload: TaskCreate):
+    task = repo.create_task(payload.model_dump())
+    return TaskRead.model_validate(repo.to_task_read(task))
 
 
 @router.post("/tasks/bulk", response_model=list[TaskRead], status_code=status.HTTP_201_CREATED)
-def create_tasks_bulk(payload: TaskBulkCreate, db: Session = Depends(get_db)):
-    created: list[Task] = []
-    for raw in payload.tasks:
-        task = Task(**raw.model_dump())
-        db.add(task)
-        created.append(task)
-    db.commit()
-    for task in created:
-        db.refresh(task)
-    return created
+def create_tasks_bulk(payload: TaskBulkCreate):
+    created = [repo.create_task(raw.model_dump()) for raw in payload.tasks]
+    return [TaskRead.model_validate(repo.to_task_read(x)) for x in created]
 
 
 @router.get("/tasks", response_model=list[TaskRead])
@@ -210,110 +152,84 @@ def list_tasks(
     month: int | None = None,
     week_number: int | None = None,
     date_value: date | None = Query(default=None, alias="date"),
-    db: Session = Depends(get_db),
 ):
-    # 日次一覧取得時に、未完了タスクを日付変更に追従させる（翌日へ持ち越し）
-    if type == TaskType.daily and date_value is not None:
-        overdue_tasks = list(
-            db.scalars(
-                select(Task).where(
-                    Task.user_id == user_id,
-                    Task.type == TaskType.daily,
-                    Task.is_done.is_(False),
-                    Task.date.is_not(None),
-                    Task.date < date_value,
-                )
-            )
-        )
-        for task in overdue_tasks:
-            # 1日ずつ持ち越す意図を保ちつつ、取得対象日より未来にはしない
-            next_date = task.date + timedelta(days=1)
-            _merge_or_move_daily_task(db, task, min(next_date, date_value))
-        if overdue_tasks:
-            db.commit()
+    tasks = repo.list_tasks_by_user(user_id)
 
-    stmt = select(Task).where(Task.user_id == user_id, Task.type == type)
-    if type == TaskType.monthly and month is not None:
-        stmt = stmt.where(Task.month == month)
-    if type == TaskType.weekly and week_number is not None:
-        stmt = stmt.where(Task.week_number == week_number)
-    if type == TaskType.daily:
-        if week_number is not None:
-            stmt = stmt.where(Task.week_number == week_number)
-        if date_value is not None:
-            stmt = stmt.where(Task.date == date_value)
-    return list(db.scalars(stmt.order_by(Task.created_at.desc())))
+    if type == TaskType.daily and date_value is not None:
+        for task in tasks:
+            if (
+                task.get("type") == TaskType.daily.value
+                and not task.get("is_done", False)
+                and task.get("date")
+                and date.fromisoformat(task["date"]) < date_value
+            ):
+                next_date = min(date.fromisoformat(task["date"]) + timedelta(days=1), date_value)
+                repo.update_task(int(task["id"]), {"date": next_date, "carried_over": True, "is_done": False})
+        tasks = repo.list_tasks_by_user(user_id)
+
+    filtered: list[dict] = []
+    for t in tasks:
+        if t.get("type") != type.value:
+            continue
+        if type == TaskType.monthly and month is not None and t.get("month") != month:
+            continue
+        if type == TaskType.weekly and week_number is not None and t.get("week_number") != week_number:
+            continue
+        if type == TaskType.daily:
+            if week_number is not None and t.get("week_number") != week_number:
+                continue
+            if date_value is not None and t.get("date") != date_value.isoformat():
+                continue
+        filtered.append(t)
+
+    return [TaskRead.model_validate(repo.to_task_read(x)) for x in _sorted(filtered)]
 
 
 @router.put("/tasks/{task_id}", response_model=TaskRead)
-def update_task(task_id: int, payload: TaskUpdate, db: Session = Depends(get_db)):
-    task = db.get(Task, task_id)
+def update_task(task_id: int, payload: TaskUpdate):
+    task = repo.get_task(task_id)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
+
     updates = payload.model_dump(exclude_none=True)
+    if task.get("type") == TaskType.daily.value and task.get("is_done") and "date" in updates:
+        old = task.get("date")
+        new = updates["date"].isoformat() if hasattr(updates["date"], "isoformat") else str(updates["date"])
+        if old != new:
+            raise HTTPException(status_code=400, detail="Completed daily task cannot be carried over")
 
-    # 完了済みdailyタスクは日付変更(持ち越し)不可: 未完了のみ移動可能にする
-    if (
-        task.type == TaskType.daily
-        and task.is_done
-        and "date" in updates
-        and updates["date"] != task.date
-    ):
-        raise HTTPException(status_code=400, detail="Completed daily task cannot be carried over")
-
-    for field, value in updates.items():
-        setattr(task, field, value)
-    db.commit()
-    db.refresh(task)
-    return task
+    updated = repo.update_task(task_id, updates) or task
+    return TaskRead.model_validate(repo.to_task_read(updated))
 
 
 @router.patch("/tasks/{task_id}/done", response_model=TaskRead)
-def toggle_done(task_id: int, db: Session = Depends(get_db)):
-    task = db.get(Task, task_id)
+def toggle_done(task_id: int):
+    task = repo.get_task(task_id)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
-    task.is_done = not task.is_done
-    db.commit()
-    db.refresh(task)
-    return task
+    is_done = not bool(task.get("is_done", False))
+    status_value = "done" if is_done else "todo"
+    updated = repo.update_task(task_id, {"is_done": is_done, "status": status_value}) or task
+    return TaskRead.model_validate(repo.to_task_read(updated))
 
 
 @router.post("/tasks/{task_id}/carry-over", response_model=TaskRead)
-def carry_over_task(task_id: int, db: Session = Depends(get_db)):
-    task = db.get(Task, task_id)
+def carry_over_task(task_id: int):
+    task = repo.get_task(task_id)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
-    if task.type != TaskType.daily or task.date is None:
+    if task.get("type") != TaskType.daily.value or task.get("date") is None:
         raise HTTPException(status_code=400, detail="Carry-over is only for daily tasks")
-    if task.is_done:
+    if task.get("is_done"):
         raise HTTPException(status_code=400, detail="Completed task cannot be carried over")
 
-    # 同一タスクの日付を翌日に移動して持ち越す
-    task.is_done = False
-    moved_task = _merge_or_move_daily_task(db, task, task.date + timedelta(days=1))
-    db.commit()
-    db.refresh(moved_task)
-    return moved_task
+    next_date = date.fromisoformat(task["date"]) + timedelta(days=1)
+    updated = repo.update_task(task_id, {"date": next_date, "carried_over": True, "is_done": False}) or task
+    return TaskRead.model_validate(repo.to_task_read(updated))
 
 
 @router.delete("/tasks/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_task(task_id: int, db: Session = Depends(get_db)):
-    task = db.get(Task, task_id)
-    if not task:
+def delete_task(task_id: int):
+    if not repo.get_task(task_id):
         raise HTTPException(status_code=404, detail="Task not found")
-    db.delete(task)
-    db.commit()
-
-@router.patch("/tasks/{task_id}/done", response_model=TaskRead)
-def toggle_done(task_id: int, db: Session = Depends(get_db)):
-    task = db.get(Task, task_id)
-    if not task:
-        raise HTTPException(status_code=404, detail="Task not found")
-    task.is_done = not task.is_done
-    from app.models.task import TaskStatus
-    task.status = TaskStatus.done if task.is_done else TaskStatus.todo
-    
-    db.commit()
-    db.refresh(task)
-    return task
+    repo.delete_task(task_id)

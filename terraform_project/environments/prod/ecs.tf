@@ -1,9 +1,7 @@
-# 1. ECS クラスター
 resource "aws_ecs_cluster" "main" {
   name = "streeeak-prod-cluster"
 }
 
-# 2. タスク実行ロール 
 resource "aws_iam_role" "ecs_task_execution_role" {
   name = "streeeak-ecs-task-execution-role"
   assume_role_policy = jsonencode({
@@ -25,7 +23,6 @@ resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_policy" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
-# 3. タスク定義
 resource "aws_ecs_task_definition" "backend" {
   family                   = "streeeak-backend-task"
   network_mode             = "awsvpc"
@@ -33,7 +30,7 @@ resource "aws_ecs_task_definition" "backend" {
   cpu                      = "256"
   memory                   = "512"
   execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
-  task_role_arn = aws_iam_role.ecs_task_execution_role.arn
+  task_role_arn            = aws_iam_role.ecs_task_execution_role.arn
 
   container_definitions = jsonencode([
     {
@@ -60,32 +57,12 @@ resource "aws_ecs_task_definition" "backend" {
         { name = "STRIPE_PRICE_ID", value = var.stripe_price_id },
         { name = "AWS_REGION", value = var.aws_region_name },
         { name = "COGNITO_CLIENT_ID", value = var.cognito_client_id },
-        { name = "AWS_REGION", value = "ap-northeast-1" },
         { name = "ENVIRONMENT", value = "prod" }
       ]
     }
   ])
 }
 
-# 4. 新規ターゲットグループ(Fargate用)
-resource "aws_lb_target_group" "ecs" {
-  name        = "streeeak-ecs-tg"
-  port        = 8000
-  protocol    = "HTTP"
-  vpc_id      = aws_vpc.main.id
-  target_type = "ip"
-
-  health_check {
-    path                = "/health"
-    healthy_threshold   = 3
-    unhealthy_threshold = 3
-    timeout             = 5
-    interval            = 30
-    matcher             = "200"
-  }
-}
-
-# 5. ECS サービス
 resource "aws_ecs_service" "backend" {
   name            = "streeeak-backend-service"
   cluster         = aws_ecs_cluster.main.id
@@ -98,14 +75,8 @@ resource "aws_ecs_service" "backend" {
     security_groups  = [aws_security_group.web_sg.id]
     assign_public_ip = true
   }
-
-  load_balancer {
-    target_group_arn = aws_lb_target_group.ecs.arn
-    container_name   = "streeeak-backend-container"
-    container_port   = 8000
-  }
-  depends_on = [aws_lb_listener.http]
 }
+
 resource "aws_iam_role_policy_attachment" "ecs_cognito_policy" {
   role       = aws_iam_role.ecs_task_execution_role.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonCognitoPowerUser"

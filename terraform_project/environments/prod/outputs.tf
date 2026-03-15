@@ -17,7 +17,23 @@ output "web_sg_id" {
   description = "The ID of the Web Security Group"
   value       = aws_security_group.web_sg.id
 }
+
 output "cognito_client_id" {
   value       = aws_cognito_user_pool_client.client.id
-  description = "FastAPIやReactに設定するCognitoのクライアントID"
+  description = "Cognito User Pool Client ID"
+}
+
+output "ecr_backend_repository_url" {
+  description = "ECR repository URL for backend image"
+  value       = aws_ecr_repository.backend.repository_url
+}
+
+output "ecs_cluster_name" {
+  description = "ECS cluster name"
+  value       = aws_ecs_cluster.main.name
+}
+
+output "ecs_service_name" {
+  description = "ECS service name"
+  value       = aws_ecs_service.backend.name
 }
