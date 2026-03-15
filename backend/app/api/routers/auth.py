@@ -52,8 +52,6 @@ def register(payload: RegisterRequest):
 
     existing = repo.get_user_by_email(payload.email)
     if existing:
-        if existing.get("is_verified", False):
-            raise HTTPException(status_code=400, detail="Email already exists")
         try:
             resend_req = _with_secret_hash(
                 payload.email,
@@ -69,7 +67,12 @@ def register(payload: RegisterRequest):
                 message="Verification code was re-sent.",
             )
         except ClientError as e:
-            raise HTTPException(status_code=400, detail=f"Existing user but resend failed: {e.response['Error']['Message']}")
+            error_code = e.response.get("Error", {}).get("Code", "")
+            error_message = e.response.get("Error", {}).get("Message", "Unknown error")
+            # Already confirmed users cannot receive a confirmation code again.
+            if error_code in {"InvalidParameterException", "NotAuthorizedException"}:
+                raise HTTPException(status_code=400, detail="Email already exists and is already confirmed. Please login.")
+            raise HTTPException(status_code=400, detail=f"Existing user but resend failed: {error_message}")
 
     try:
         sign_up_req = _with_secret_hash(
