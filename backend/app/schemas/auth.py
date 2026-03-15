@@ -13,6 +13,13 @@ class LoginRequest(BaseModel):
 
 
 class AuthResponse(BaseModel):
-    access_token: str
+    access_token: str | None = None
     token_type: str = "bearer"
     user_id: int
+    requires_verification: bool = False
+    message: str | None = None
+
+
+class VerifyRequest(BaseModel):
+    username: EmailStr
+    code: str

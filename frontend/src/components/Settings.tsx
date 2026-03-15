@@ -16,7 +16,10 @@ import { loadStripe } from '@stripe/stripe-js';
 import { EmbeddedCheckoutProvider, EmbeddedCheckout } from '@stripe/react-stripe-js';
 
 const stripeKey = import.meta.env.VITE_STRIPE_PUBLIC_KEY;
-const stripePromise = loadStripe(stripeKey);
+const stripePromise =
+  typeof stripeKey === "string" && stripeKey.startsWith("pk_")
+    ? loadStripe(stripeKey)
+    : null;
 
 interface SettingsProps {
   open: boolean;
@@ -234,6 +237,10 @@ export function Settings({ open, onClose, onLogout }: SettingsProps) {
   });
 
   const handleUpgradeClick = async () => {
+    if (!stripePromise) {
+      alert("Stripe publishable key (pk_...) is not configured.");
+      return;
+    }
     try {
       const res = await apiClient.post('/stripe/create-checkout-session');
       setClientSecret(res.data.clientSecret);

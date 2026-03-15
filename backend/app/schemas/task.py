@@ -1,8 +1,22 @@
 import datetime as dt
+import enum
 from pydantic import BaseModel
 from typing import Literal
 
-from app.models.task import TaskType, TaskPriority, TaskStatus
+class TaskType(str, enum.Enum):
+    monthly = "monthly"
+    weekly = "weekly"
+    daily = "daily"
+
+class TaskPriority(str, enum.Enum):
+    high = "high"
+    mid = "mid"
+    low = "low"
+
+class TaskStatus(str, enum.Enum):
+    todo = "todo"
+    in_progress = "in_progress"
+    done = "done"
 
 class TaskBase(BaseModel):
     goal_id: int | None = None

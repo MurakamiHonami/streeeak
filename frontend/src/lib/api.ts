@@ -103,13 +103,28 @@ export async function register(payload: {
   name: string;
   password: string;
 }) {
-  const res = await apiClient.post<{ access_token: string; token_type: string; user_id: number }>(
+  const res = await apiClient.post<{
+    access_token?: string;
+    token_type: string;
+    user_id: number;
+    requires_verification?: boolean;
+    message?: string;
+  }>(
     "/auth/register",
     payload
   );
-  const session = { accessToken: res.data.access_token, userId: res.data.user_id };
-  setAuthSession(session);
-  return session;
+  const session = res.data.access_token
+    ? { accessToken: res.data.access_token, userId: res.data.user_id }
+    : null;
+  if (session) {
+    setAuthSession(session);
+  }
+  return {
+    userId: res.data.user_id,
+    accessToken: res.data.access_token ?? null,
+    requiresVerification: Boolean(res.data.requires_verification),
+    message: res.data.message ?? null,
+  };
 }
 
 export async function login(payload: { email: string; password: string }) {
