@@ -6,8 +6,7 @@ from pydantic import BaseModel
 from app.api.deps import get_current_user
 from app.db import repositories as repo
 from app.schemas.goal import GoalCreate, GoalRead, GoalUpdate
-from app.schemas.task import TaskType
-from app.services.task_service import build_breakdown, derive_breakdown_scope, parse_note_subtasks
+from app.services.task_service import build_breakdown, derive_breakdown_scope
 
 router = APIRouter(prefix="/goals", tags=["goals"])
 
@@ -86,24 +85,8 @@ def generate_breakdown(
     )
 
     if payload.persist:
+        repo.delete_tasks_by_goal(goal_id)
         for item in breakdown_res.monthly + breakdown_res.weekly + breakdown_res.daily:
-            if item.type == TaskType.daily:
-                subtasks = parse_note_subtasks(item.note)
-                if subtasks:
-                    for sub in subtasks:
-                        repo.create_task(
-                            {
-                                "goal_id": int(goal["id"]),
-                                "user_id": int(goal["user_id"]),
-                                "type": TaskType.daily,
-                                "title": sub,
-                                "month": item.month,
-                                "week_number": item.week_number,
-                                "date": item.date,
-                                "note": None,
-                            }
-                        )
-                    continue
             repo.create_task(
                 {
                     "goal_id": int(goal["id"]),

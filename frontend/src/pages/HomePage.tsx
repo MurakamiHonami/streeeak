@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { appContext, carryOverTask, fetchDailyTasks, fetchRanking, toggleTaskDone, updateTask, fetchGoals, resolveApiAssetUrl } from "../lib/api";
+import { appContext, carryOverTask, fetchDailyTasks, fetchRanking, toggleTaskDone, updateTask, fetchGoals, resolveApiAssetUrl, getTodayIsoLocal } from "../lib/api";
 import CheckIcon from '@mui/icons-material/Check';
 import MoveDownIcon from '@mui/icons-material/MoveDown';
 import UndoIcon from '@mui/icons-material/Undo';
@@ -26,7 +26,10 @@ const PRIORITY: Record<string, { label: string; color: string }> = {
 export function HomePage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const dailyTasks = useQuery({ queryKey: ["dailyTasks"], queryFn: fetchDailyTasks });
+  const dailyTasks = useQuery({
+    queryKey: ["dailyTasks", getTodayIsoLocal()],
+    queryFn: fetchDailyTasks,
+  });
   const ranking = useQuery({ queryKey: ["ranking", "home"], queryFn: () => fetchRanking(50) });
   const goals = useQuery({ queryKey: ["goals"], queryFn: fetchGoals });
 

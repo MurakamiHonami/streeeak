@@ -50,23 +50,6 @@ def create_breakdown(goal_id: int, payload: BreakdownRequest):
     if payload.persist:
         repo.delete_tasks_by_goal(goal_id)
         for item in breakdown.monthly + breakdown.weekly + breakdown.daily:
-            if item.type == TaskType.daily:
-                subtasks = parse_note_subtasks(item.note)
-                if subtasks:
-                    for subtask in subtasks:
-                        repo.create_task(
-                            {
-                                "goal_id": int(goal["id"]),
-                                "user_id": int(goal["user_id"]),
-                                "type": item.type,
-                                "title": subtask,
-                                "month": item.month,
-                                "week_number": item.week_number,
-                                "date": item.date,
-                                "note": None,
-                            }
-                        )
-                    continue
             repo.create_task(
                 {
                     "goal_id": int(goal["id"]),
@@ -155,17 +138,8 @@ def list_tasks(
 ):
     tasks = repo.list_tasks_by_user(user_id)
 
-    if type == TaskType.daily and date_value is not None:
-        for task in tasks:
-            if (
-                task.get("type") == TaskType.daily.value
-                and not task.get("is_done", False)
-                and task.get("date")
-                and date.fromisoformat(task["date"]) < date_value
-            ):
-                next_date = min(date.fromisoformat(task["date"]) + timedelta(days=1), date_value)
-                repo.update_task(int(task["id"]), {"date": next_date, "carried_over": True, "is_done": False})
-        tasks = repo.list_tasks_by_user(user_id)
+    # NOTE: Do not auto-advance past daily tasks on read. That merged many per-day
+    # tasks onto "today" on each fetch and inflated Home's task list. Use POST carry-over instead.
 
     filtered: list[dict] = []
     for t in tasks:

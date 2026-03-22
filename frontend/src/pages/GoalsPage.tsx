@@ -190,6 +190,11 @@ export function GoalsPage() {
   const weeklyTasks = appliedDraftTasks.filter((t) => t.task_type === "weekly");
   const yearlyTasks = monthlyTasks.filter((t) => t.title.startsWith("1年目の目標:") || t.title.includes("年目の目標:"));
   const monthlyPlanTasks = monthlyTasks.filter((t) => !t.title.includes("年目の目標:"));
+  /** ブレイクダウン生成順（task_id）で並べる — カレンダー月の数値で並べると年をまたぐと順序が崩れる */
+  const monthlyPlanTasksSorted = useMemo(
+    () => [...monthlyPlanTasks].sort((a, b) => a.task_id - b.task_id),
+    [monthlyPlanTasks]
+  );
   const dailyTasks = appliedDraftTasks.filter((t) => t.task_type === "daily");
 
   const taskDisplayOrder = useMemo(() => {
@@ -650,12 +655,12 @@ export function GoalsPage() {
   const currentTasksToDisplay = useMemo(() => {
     switch (planTab) {
       case "yearly": return yearlyTasks;
-      case "monthly": return monthlyPlanTasks;
+      case "monthly": return monthlyPlanTasksSorted;
       case "weekly": return weeklyTasks;
       case "daily": return dailyTasks;
       default: return [];
     }
-  }, [planTab, yearlyTasks, monthlyPlanTasks, weeklyTasks, dailyTasks]);
+  }, [planTab, yearlyTasks, monthlyPlanTasksSorted, weeklyTasks, dailyTasks]);
 
   const currentMonth = useMemo(() => {
     const [y, m] = (appContext.today || "").split("-").map(Number);
@@ -666,8 +671,16 @@ export function GoalsPage() {
     switch (planTab) {
       case "yearly":
         return task.title.includes("1年目");
-      case "monthly":
-        return task.month === currentMonth;
+      case "monthly": {
+        // DB の month は 1–12 で循環するため、13ヶ月目などが 1ヶ月目と同じ月番号になり二重に緑になる。
+        // 「今月のカレンダー月」と一致するものが複数あっても、プラン上最初の 1 件だけをハイライトする。
+        const sameCalendarMonth = monthlyPlanTasksSorted.filter((t) => t.month === currentMonth);
+        if (sameCalendarMonth.length === 0) {
+          return false;
+        }
+        const primaryTaskId = Math.min(...sameCalendarMonth.map((t) => t.task_id));
+        return task.task_id === primaryTaskId;
+      }
       case "weekly":
         return task.week_number === appContext.week;
       default:
@@ -718,8 +731,9 @@ export function GoalsPage() {
       return m[1] === "1" ? "今年" : `${m[1]}年目`;
     }
     if (planTab === "monthly") {
-      const monthOffset = ((task.month ?? 0) - currentMonth + 12) % 12;
-      return monthOffset === 0 ? "今月" : `${monthOffset + 1}ヶ月目`;
+      const idx = monthlyPlanTasksSorted.findIndex((t) => t.task_id === task.task_id);
+      if (idx < 0) return "";
+      return idx === 0 ? "1ヶ月目（今月）" : `${idx + 1}ヶ月目`;
     }
     if (planTab === "weekly") {
       const weekOffset = (task.week_number ?? 0) - appContext.week;
@@ -855,7 +869,10 @@ export function GoalsPage() {
 
   const renderPlanList = () => {
     const sorted = [...currentTasksToDisplay].sort(
-      (a, b) => COLUMNS.findIndex(c => c.id === a.status) - COLUMNS.findIndex(c => c.id === b.status) || PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority]
+      (a, b) =>
+        COLUMNS.findIndex((c) => c.id === a.status) - COLUMNS.findIndex((c) => c.id === b.status) ||
+        PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority] ||
+        a.task_id - b.task_id
     );
     return (
       <div style={{ display: "flex", flexDirection: "column", background: "#f8faf8", borderRadius: "16px", overflow: "hidden", marginTop: "16px", padding: "16px" }}>

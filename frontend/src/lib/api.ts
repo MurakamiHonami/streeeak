@@ -1,4 +1,8 @@
 import axios from "axios";
+import dayjs from "dayjs";
+import isoWeekPlugin from "dayjs/plugin/isoWeek";
+
+dayjs.extend(isoWeekPlugin);
 import type {
   DraftTask,
   Goal,
@@ -80,22 +84,26 @@ if (existingSession?.accessToken) {
   apiClient.defaults.headers.common.Authorization = `Bearer ${existingSession.accessToken}`;
 }
 
-const today = new Date().toISOString().slice(0, 10);
-const isoWeek = (() => {
-  const now = new Date();
-  const jan4 = new Date(Date.UTC(now.getUTCFullYear(), 0, 4));
-  const dayOfWeek = jan4.getUTCDay() || 7;
-  jan4.setUTCDate(jan4.getUTCDate() - dayOfWeek + 1);
-  const diff = now.getTime() - jan4.getTime();
-  return Math.floor(diff / 604800000) + 1;
-})();
+/** Local calendar date YYYY-MM-DD (aligns with typical user "today", not UTC midnight). */
+export function getTodayIsoLocal(): string {
+  return dayjs().format("YYYY-MM-DD");
+}
+
+/** ISO week number for local date (matches backend datetime.isocalendar().week in typical TZ). */
+export function getIsoWeekNumber(): number {
+  return dayjs().isoWeek();
+}
 
 export const appContext = {
   get userId() {
     return getCurrentUserId();
   },
-  today,
-  week: isoWeek,
+  get today() {
+    return getTodayIsoLocal();
+  },
+  get week() {
+    return getIsoWeekNumber();
+  },
 };
 
 export async function register(payload: {
@@ -163,7 +171,7 @@ export async function login(payload: { email: string; password: string }) {
 export async function fetchDailyTasks() {
   const userId = getCurrentUserId();
   const res = await apiClient.get<Task[]>("/tasks", {
-    params: { user_id: userId, type: "daily", date: today },
+    params: { user_id: userId, type: "daily", date: getTodayIsoLocal() },
   });
   return res.data;
 }
@@ -276,7 +284,7 @@ export async function applyAcceptedRevisions(payload: {
 export async function fetchWeeklyTasks() {
   const userId = getCurrentUserId();
   const res = await apiClient.get<Task[]>("/tasks", {
-    params: { user_id: userId, type: "weekly", week_number: isoWeek },
+    params: { user_id: userId, type: "weekly", week_number: getIsoWeekNumber() },
   });
   return res.data;
 }
@@ -284,7 +292,7 @@ export async function fetchWeeklyTasks() {
 export async function fetchWeeklyDailyTasks() {
   const userId = getCurrentUserId();
   const res = await apiClient.get<Task[]>("/tasks", {
-    params: { user_id: userId, type: "daily", week_number: isoWeek },
+    params: { user_id: userId, type: "daily", week_number: getIsoWeekNumber() },
   });
   return res.data;
 }
@@ -326,7 +334,7 @@ export async function createTask(payload: {
 export async function fetchPosts() {
   const userId = getCurrentUserId();
   const res = await apiClient.get<Post[]>("/posts", {
-    params: { user_id: userId, week: isoWeek },
+    params: { user_id: userId, week: getIsoWeekNumber() },
   });
   return res.data;
 }
@@ -335,7 +343,7 @@ export async function createPost(payload: { comment: string; achieved: number; g
   const userId = getCurrentUserId();
   const res = await apiClient.post<Post>("/posts", {
     user_id: userId,
-    date: today,
+    date: getTodayIsoLocal(),
     comment: payload.comment,
     achieved: payload.achieved,
     group_id: payload.group_id ?? null,
@@ -346,7 +354,7 @@ export async function createPost(payload: { comment: string; achieved: number; g
 export async function fetchRanking(topN = 3) {
   const userId = getCurrentUserId();
   const res = await apiClient.get<RankingItem[]>("/analytics/ranking", {
-    params: { user_id: userId, week: isoWeek, top_n: topN },
+    params: { user_id: userId, week: getIsoWeekNumber(), top_n: topN },
   });
   return res.data;
 }
