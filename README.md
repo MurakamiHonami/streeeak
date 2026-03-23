@@ -65,6 +65,9 @@ Gemini API（gemini-2.0-flash）を活用。<br>
 | **Monitoring** | Amazon CloudWatch | ECSコンテナやLambdaのログ収集、インフラメトリクスの監視 |
 | **CI/CD** | GitHub Actions, AWS CodePipeline (CodeBuild / CodeDeploy) | GitHub Actionsによるインフラ（Terraform）の自動適用。CodePipeline群によるアプリの自動ビルド・コンテナデプロイ |
 
+ - インフラ構成図
+<img width="495" height="701" alt="image" src="https://github.com/user-attachments/assets/61c8a26a-505a-4f58-b883-b8e708032c7f" />
+
 
 
 ### 5. 起動方法
