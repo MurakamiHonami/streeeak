@@ -98,11 +98,17 @@ jobs:
 
       - name: Detach protected resources from Terraform state
         run: |
-          terraform state rm aws_route53_zone.main || true
-          terraform state rm aws_s3_bucket.terraform_state || true
-          terraform state rm aws_s3_bucket_versioning.terraform_state || true
-          terraform state rm aws_dynamodb_table.terraform_lock || true
-          terraform state rm aws_vpc.main || true
+          for resource in \
+            aws_route53_zone.main \
+            aws_s3_bucket.terraform_state \
+            aws_s3_bucket_versioning.terraform_state \
+            aws_dynamodb_table.terraform_lock \
+            aws_vpc.main
+          do
+            if terraform state list | grep -Fx "${resource}" >/dev/null 2>&1; then
+              terraform state rm "${resource}"
+            fi
+          done
 
       - name: Empty ECR repository before destroy
         run: |
@@ -127,13 +133,35 @@ jobs:
           if aws s3api head-bucket --bucket "${BUCKET_NAME}" 2>/dev/null; then
             aws s3 rm "s3://${BUCKET_NAME}" --recursive || true
 
-            aws s3api delete-objects \
-              --bucket "${BUCKET_NAME}" \
-              --delete "$(aws s3api list-object-versions \
+            while read -r key version_id; do
+              if [ -n "${key}" ] && [ -n "${version_id}" ] && [ "${key}" != "None" ] && [ "${version_id}" != "None" ]; then
+                aws s3api delete-object \
+                  --bucket "${BUCKET_NAME}" \
+                  --key "${key}" \
+                  --version-id "${version_id}" \
+                  >/dev/null
+              fi
+            done < <(
+              aws s3api list-object-versions \
                 --bucket "${BUCKET_NAME}" \
-                --output json \
-                --query '{Objects: (Versions[].{Key:Key,VersionId:VersionId} || `[]`) + (DeleteMarkers[].{Key:Key,VersionId:VersionId} || `[]`), Quiet: true}')" \
-              >/dev/null 2>&1 || true
+                --query 'Versions[].[Key,VersionId]' \
+                --output text 2>/dev/null || true
+            )
+
+            while read -r key version_id; do
+              if [ -n "${key}" ] && [ -n "${version_id}" ] && [ "${key}" != "None" ] && [ "${version_id}" != "None" ]; then
+                aws s3api delete-object \
+                  --bucket "${BUCKET_NAME}" \
+                  --key "${key}" \
+                  --version-id "${version_id}" \
+                  >/dev/null
+              fi
+            done < <(
+              aws s3api list-object-versions \
+                --bucket "${BUCKET_NAME}" \
+                --query 'DeleteMarkers[].[Key,VersionId]' \
+                --output text 2>/dev/null || true
+            )
           fi
 
       - name: Terraform Destroy Plan
