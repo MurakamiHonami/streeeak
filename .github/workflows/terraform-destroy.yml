@@ -133,35 +133,27 @@ jobs:
           if aws s3api head-bucket --bucket "${BUCKET_NAME}" 2>/dev/null; then
             aws s3 rm "s3://${BUCKET_NAME}" --recursive || true
 
-            while read -r key version_id; do
-              if [ -n "${key}" ] && [ -n "${version_id}" ] && [ "${key}" != "None" ] && [ "${version_id}" != "None" ]; then
-                aws s3api delete-object \
-                  --bucket "${BUCKET_NAME}" \
-                  --key "${key}" \
-                  --version-id "${version_id}" \
-                  >/dev/null
-              fi
-            done < <(
+            while true; do
               aws s3api list-object-versions \
                 --bucket "${BUCKET_NAME}" \
-                --query 'Versions[].[Key,VersionId]' \
-                --output text 2>/dev/null || true
-            )
+                --max-items 1000 \
+                --output json > /tmp/s3-versions.json
 
-            while read -r key version_id; do
-              if [ -n "${key}" ] && [ -n "${version_id}" ] && [ "${key}" != "None" ] && [ "${version_id}" != "None" ]; then
-                aws s3api delete-object \
-                  --bucket "${BUCKET_NAME}" \
-                  --key "${key}" \
-                  --version-id "${version_id}" \
-                  >/dev/null
+              if jq -e '.Versions == null and .DeleteMarkers == null' /tmp/s3-versions.json >/dev/null; then
+                break
               fi
-            done < <(
-              aws s3api list-object-versions \
+
+              jq -c '{Objects: ((.Versions // []) + (.DeleteMarkers // []) | map({Key, VersionId})), Quiet: true}' /tmp/s3-versions.json > /tmp/s3-delete.json
+
+              if jq -e '.Objects | length == 0' /tmp/s3-delete.json >/dev/null; then
+                break
+              fi
+
+              aws s3api delete-objects \
                 --bucket "${BUCKET_NAME}" \
-                --query 'DeleteMarkers[].[Key,VersionId]' \
-                --output text 2>/dev/null || true
-            )
+                --delete file:///tmp/s3-delete.json \
+                >/dev/null
+            done
           fi
 
       - name: Terraform Destroy Plan
