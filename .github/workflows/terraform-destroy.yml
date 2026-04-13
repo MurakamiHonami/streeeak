@@ -139,13 +139,25 @@ jobs:
                 --max-items 1000 \
                 --output json > /tmp/s3-versions.json
 
-              if jq -e '.Versions == null and .DeleteMarkers == null' /tmp/s3-versions.json >/dev/null; then
-                break
-              fi
+              python - <<'PY'
+import json
 
-              jq -c '{Objects: ((.Versions // []) + (.DeleteMarkers // []) | map({Key, VersionId})), Quiet: true}' /tmp/s3-versions.json > /tmp/s3-delete.json
+with open("/tmp/s3-versions.json", "r", encoding="utf-8") as f:
+    data = json.load(f)
 
-              if jq -e '.Objects | length == 0' /tmp/s3-delete.json >/dev/null; then
+objects = []
+for section in ("Versions", "DeleteMarkers"):
+    for item in data.get(section, []) or []:
+        key = item.get("Key")
+        version_id = item.get("VersionId")
+        if key and version_id:
+            objects.append({"Key": key, "VersionId": version_id})
+
+with open("/tmp/s3-delete.json", "w", encoding="utf-8") as f:
+    json.dump({"Objects": objects, "Quiet": True}, f, separators=(",", ":"))
+PY
+
+              if jq -e '.Objects | length == 0' /tmp/s3-delete.json >/dev/null 2>&1; then
                 break
               fi
 
