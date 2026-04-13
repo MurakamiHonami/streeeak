@@ -1,17 +1,22 @@
-# Stateファイル保存用のS3バケット
+# Terraform backend state bucket
 resource "aws_s3_bucket" "terraform_state" {
-  bucket = "streeeak-terraform-state-storage" # 世界で唯一の名前に変更してください
+  bucket = "streeeak-terraform-state-storage"
+
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
-# バケットのバージョニングを有効化
+# Enable versioning for the backend bucket
 resource "aws_s3_bucket_versioning" "terraform_state" {
   bucket = aws_s3_bucket.terraform_state.id
+
   versioning_configuration {
     status = "Enabled"
   }
 }
 
-# 排他制御用のDynamoDBテーブル
+# DynamoDB table for Terraform state locking
 resource "aws_dynamodb_table" "terraform_lock" {
   name         = "streeeak-terraform-lock"
   billing_mode = "PAY_PER_REQUEST"
@@ -20,5 +25,9 @@ resource "aws_dynamodb_table" "terraform_lock" {
   attribute {
     name = "LockID"
     type = "S"
+  }
+
+  lifecycle {
+    prevent_destroy = true
   }
 }

@@ -1,6 +1,10 @@
 # 1. Route53
 resource "aws_route53_zone" "main" {
   name = "streeeak.link"
+
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 # 2. ACM 險ｼ譏取嶌
