@@ -96,6 +96,13 @@ jobs:
       - name: Terraform Init
         run: terraform init
 
+      - name: Detach protected resources from Terraform state
+        run: |
+          terraform state rm aws_route53_zone.main || true
+          terraform state rm aws_s3_bucket.terraform_state || true
+          terraform state rm aws_s3_bucket_versioning.terraform_state || true
+          terraform state rm aws_dynamodb_table.terraform_lock || true
+
       - name: Terraform Destroy Plan
         run: terraform plan -destroy -no-color
 
