@@ -140,22 +140,22 @@ jobs:
                 --output json > /tmp/s3-versions.json
 
               python - <<'PY'
-import json
+              import json
 
-with open("/tmp/s3-versions.json", "r", encoding="utf-8") as f:
-    data = json.load(f)
+              with open("/tmp/s3-versions.json", "r", encoding="utf-8") as f:
+                  data = json.load(f)
 
-objects = []
-for section in ("Versions", "DeleteMarkers"):
-    for item in data.get(section, []) or []:
-        key = item.get("Key")
-        version_id = item.get("VersionId")
-        if key and version_id:
-            objects.append({"Key": key, "VersionId": version_id})
+              objects = []
+              for section in ("Versions", "DeleteMarkers"):
+                  for item in data.get(section, []) or []:
+                      key = item.get("Key")
+                      version_id = item.get("VersionId")
+                      if key and version_id:
+                          objects.append({"Key": key, "VersionId": version_id})
 
-with open("/tmp/s3-delete.json", "w", encoding="utf-8") as f:
-    json.dump({"Objects": objects, "Quiet": True}, f, separators=(",", ":"))
-PY
+              with open("/tmp/s3-delete.json", "w", encoding="utf-8") as f:
+                  json.dump({"Objects": objects, "Quiet": True}, f, separators=(",", ":"))
+              PY
 
               if jq -e '.Objects | length == 0' /tmp/s3-delete.json >/dev/null 2>&1; then
                 break
