@@ -1,0 +1,88 @@
+name: Terraform Destroy
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_destroy:
+        description: "Type destroy-prod to destroy the prod Terraform stack"
+        required: true
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: terraform-prod
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ap-northeast-1
+  TF_WORKING_DIR: terraform_project/environments/prod
+  TF_INPUT: false
+
+  # Infrastructure Variables
+  TF_VAR_s3_bucket_name: ${{ secrets.S3_BUCKET_NAME }}
+  TF_VAR_cloudfront_id: ${{ secrets.CLOUDFRONT_ID }}
+
+  # Frontend Variables
+  TF_VAR_vite_api_base_url: "https://api.streeeak.link"
+  TF_VAR_vite_default_user_id: "1"
+  TF_VAR_vite_supabase_url: ${{ secrets.VITE_SUPABASE_URL }}
+  TF_VAR_vite_supabase_anon_key: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+  TF_VAR_vite_stripe_public_key: ${{ secrets.VITE_STRIPE_PUBLIC_KEY }}
+
+  # Backend Variables
+  TF_VAR_app_name: "Streeeak API"
+  TF_VAR_env_name: "production"
+  TF_VAR_database_url: ${{ secrets.DATABASE_URL }}
+  TF_VAR_secret_key: ${{ secrets.SECRET_KEY }}
+  TF_VAR_access_token_expire_minutes: "60"
+  TF_VAR_gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
+  TF_VAR_gemini_model: "gemini-1.5-flash"
+  TF_VAR_stripe_api_key: ${{ secrets.STRIPE_API_KEY }}
+  TF_VAR_stripe_webhook_secret: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+  TF_VAR_stripe_price_id: ${{ secrets.STRIPE_PRICE_ID }}
+  TF_VAR_aws_region_name: "ap-northeast-1"
+  TF_VAR_aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  TF_VAR_aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  TF_VAR_cognito_client_id: ${{ secrets.COGNITO_CLIENT_ID }}
+  TF_VAR_cognito_client_secret: ${{ secrets.COGNITO_CLIENT_SECRET }}
+
+jobs:
+  destroy:
+    name: Terraform Destroy
+    runs-on: ubuntu-latest
+    environment: production
+    defaults:
+      run:
+        working-directory: ${{ env.TF_WORKING_DIR }}
+    steps:
+      - name: Validate confirmation input
+        if: ${{ github.event.inputs.confirm_destroy != 'destroy-prod' }}
+        run: |
+          echo "Confirmation text did not match. Type destroy-prod to proceed."
+          exit 1
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.11.0"
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Destroy Plan
+        run: terraform plan -destroy -no-color
+
+      - name: Terraform Destroy
+        run: terraform destroy -auto-approve -no-color
