@@ -133,23 +133,15 @@ jobs:
           if aws s3api head-bucket --bucket "${BUCKET_NAME}" 2>/dev/null; then
             aws s3 rm "s3://${BUCKET_NAME}" --recursive || true
 
-            while true; do
-              aws s3api list-object-versions \
-                --bucket "${BUCKET_NAME}" \
-                --max-items 1000 \
-                --output json > /tmp/s3-versions.json
+            aws s3api list-object-versions \
+              --bucket "${BUCKET_NAME}" \
+              --output json > /tmp/s3-versions.json
 
-              python -c "import json; data=json.load(open('/tmp/s3-versions.json', encoding='utf-8')); objects=[]; [objects.append({'Key': item['Key'], 'VersionId': item['VersionId']}) for section in ('Versions','DeleteMarkers') for item in (data.get(section) or []) if item.get('Key') and item.get('VersionId')]; json.dump({'Objects': objects, 'Quiet': True}, open('/tmp/s3-delete.json', 'w', encoding='utf-8'), separators=(',', ':'))"
+            python -c "import json; data=json.load(open('/tmp/s3-versions.json', encoding='utf-8')); rows=[]; [rows.append((item['Key'], item['VersionId'])) for section in ('Versions','DeleteMarkers') for item in (data.get(section) or []) if item.get('Key') and item.get('VersionId')]; open('/tmp/s3-versions.tsv','w',encoding='utf-8').write(''.join(f'{k}\t{v}\n' for k,v in rows))"
 
-              if jq -e '.Objects | length == 0' /tmp/s3-delete.json >/dev/null 2>&1; then
-                break
-              fi
-
-              aws s3api delete-objects \
-                --bucket "${BUCKET_NAME}" \
-                --delete file:///tmp/s3-delete.json \
-                >/dev/null
-            done
+            if [ -s /tmp/s3-versions.tsv ]; then
+              cat /tmp/s3-versions.tsv | xargs -P 8 -n 2 bash -c 'aws s3api delete-object --bucket "$0" --key "$1" --version-id "$2" >/dev/null' "${BUCKET_NAME}"
+            fi
           fi
 
       - name: Terraform Destroy Plan
