@@ -5,6 +5,7 @@
 # 静的コンテンツ用S3バケット
 resource "aws_s3_bucket" "static_content" {
   bucket = "streeeak-frontend-111"
+  force_destroy = true
 }
 
 
