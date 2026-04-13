@@ -102,6 +102,39 @@ jobs:
           terraform state rm aws_s3_bucket.terraform_state || true
           terraform state rm aws_s3_bucket_versioning.terraform_state || true
           terraform state rm aws_dynamodb_table.terraform_lock || true
+          terraform state rm aws_vpc.main || true
+
+      - name: Empty ECR repository before destroy
+        run: |
+          if aws ecr describe-repositories --repository-names streeeak-backend --region "${AWS_REGION}" >/dev/null 2>&1; then
+            IMAGE_IDS=$(aws ecr list-images \
+              --repository-name streeeak-backend \
+              --region "${AWS_REGION}" \
+              --query 'imageIds[*]' \
+              --output json)
+            if [ "${IMAGE_IDS}" != "[]" ]; then
+              aws ecr batch-delete-image \
+                --repository-name streeeak-backend \
+                --region "${AWS_REGION}" \
+                --image-ids "${IMAGE_IDS}"
+            fi
+          fi
+
+      - name: Empty frontend bucket before destroy
+        env:
+          BUCKET_NAME: ${{ secrets.S3_BUCKET_NAME }}
+        run: |
+          if aws s3api head-bucket --bucket "${BUCKET_NAME}" 2>/dev/null; then
+            aws s3 rm "s3://${BUCKET_NAME}" --recursive || true
+
+            aws s3api delete-objects \
+              --bucket "${BUCKET_NAME}" \
+              --delete "$(aws s3api list-object-versions \
+                --bucket "${BUCKET_NAME}" \
+                --output json \
+                --query '{Objects: (Versions[].{Key:Key,VersionId:VersionId} || `[]`) + (DeleteMarkers[].{Key:Key,VersionId:VersionId} || `[]`), Quiet: true}')" \
+              >/dev/null 2>&1 || true
+          fi
 
       - name: Terraform Destroy Plan
         run: terraform plan -destroy -no-color
