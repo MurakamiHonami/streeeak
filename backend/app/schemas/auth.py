@@ -16,7 +16,6 @@ class AuthResponse(BaseModel):
     access_token: str | None = None
     token_type: str = "bearer"
     user_id: int
-    requires_verification: bool = False
     message: str | None = None
 
 

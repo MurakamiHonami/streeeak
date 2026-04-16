@@ -4,8 +4,6 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
-    COGNITO_CLIENT_ID: str = ""
-    COGNITO_CLIENT_SECRET: Optional[str] = None
     ENVIRONMENT: str = "local"
     AWS_ACCESS_KEY_ID: Optional[str] = None
     AWS_SECRET_ACCESS_KEY: Optional[str] = None
@@ -24,6 +22,7 @@ class Settings(BaseSettings):
     STRIPE_API_KEY: Optional[str] = None
     STRIPE_WEBHOOK_SECRET: Optional[str] = None
     STRIPE_PRICE_ID: Optional[str] = None
+    BACKEND_CORS_ORIGINS: str = ""
 
     USERS_TABLE: str = "streeeak-users"
     USER_SETTINGS_TABLE: str = "streeeak-user-settings"

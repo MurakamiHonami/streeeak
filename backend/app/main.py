@@ -14,17 +14,23 @@ uploads_dir.mkdir(parents=True, exist_ok=True)
 app = FastAPI(title=settings.APP_NAME)
 app.mount("/uploads", StaticFiles(directory=str(uploads_dir)), name="uploads")
 
-allowed_origins = [
+default_allowed_origins = [
     "https://streeeak.link",
     "https://www.streeeak.link",
     "http://localhost:5173",
     "http://127.0.0.1:5173",
 ]
+env_allowed_origins = [
+    origin.strip()
+    for origin in settings.BACKEND_CORS_ORIGINS.split(",")
+    if origin.strip()
+]
+allowed_origins = list(dict.fromkeys(default_allowed_origins + env_allowed_origins))
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
-    allow_origin_regex=r"https://.*\.streeeak\.link",
+    allow_origin_regex=r"^(https://.*\.streeeak\.link|https?://(?:localhost|127\.0\.0\.1|\d{1,3}(?:\.\d{1,3}){3})(?::\d+)?)$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

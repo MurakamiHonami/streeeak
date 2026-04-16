@@ -2,7 +2,6 @@ import uuid
 from pathlib import Path
 
 import boto3
-from botocore.exceptions import ClientError
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
@@ -15,33 +14,20 @@ from app.services.auth_service import hash_password
 
 router = APIRouter(prefix="/users", tags=["users"])
 
-cognito_client = boto3.client("cognito-idp", region_name=settings.AWS_REGION)
-
-
 @router.post("", response_model=UserRead, status_code=status.HTTP_201_CREATED)
 def create_user(payload: UserCreate):
     if repo.get_user_by_email(payload.email):
         raise HTTPException(status_code=400, detail="Email already exists")
-
-    if settings.ENVIRONMENT != "local":
-        try:
-            cognito_client.sign_up(
-                ClientId=settings.COGNITO_CLIENT_ID,
-                Username=payload.email,
-                Password=payload.password,
-                UserAttributes=[{"Name": "email", "Value": payload.email}],
-            )
-        except cognito_client.exceptions.UsernameExistsException:
-            raise HTTPException(status_code=400, detail="User already exists in Cognito")
-        except ClientError as e:
-            raise HTTPException(status_code=400, detail=e.response["Error"]["Message"])
 
     user = repo.create_user(
         email=payload.email,
         name=payload.name,
         password_hash=hash_password(payload.password),
     )
-    user = repo.update_user(int(user["id"]), {"avatar_url": payload.avatar_url}) or user
+    user = repo.update_user(
+        int(user["id"]),
+        {"avatar_url": payload.avatar_url, "is_verified": True, "verification_token": None},
+    ) or user
     user_settings = repo.get_user_settings(int(user["id"]))
     return UserRead.model_validate(repo.to_user_read(user, user_settings))
 
@@ -140,14 +126,7 @@ class VerifyPayload(BaseModel):
 
 @router.post("/verify")
 def verify_user(payload: VerifyPayload):
-    if settings.ENVIRONMENT == "local":
-        return {"message": "Local mode: Verification bypassed"}
-    try:
-        cognito_client.confirm_sign_up(
-            ClientId=settings.COGNITO_CLIENT_ID,
-            Username=payload.username,
-            ConfirmationCode=payload.code,
-        )
-        return {"message": "Verification successful"}
-    except ClientError as e:
-        raise HTTPException(status_code=400, detail=e.response["Error"]["Message"])
+    return {
+        "message": "Email verification is no longer required.",
+        "username": payload.username,
+    }
