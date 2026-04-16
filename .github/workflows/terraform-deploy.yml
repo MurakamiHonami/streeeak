@@ -30,7 +30,7 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }} # 自動で発行されるトークンを使用
+          password: ${{ secrets.GHCR_PAT }} # 自動で発行されるトークンを使用
 
       - name: Build and push Backend
         uses: docker/build-push-action@v5
