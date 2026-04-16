@@ -72,9 +72,3 @@ jobs:
             docker compose pull
             docker compose up -d
             docker image prune -f
-            # 最新のイメージをダウンロード
-            sudo docker compose pull
-            # 古いコンテナを破棄して最新版で立ち上げ直す
-            sudo docker compose up -d
-            # 不要になった古いイメージを削除して容量を節約
-            sudo docker image prune -f
