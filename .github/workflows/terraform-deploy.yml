@@ -51,7 +51,7 @@ jobs:
   # ---------------------------------------------------
   deploy:
     name: Deploy to Home Server
-    needs: build-and-push # ①が終わったら実行する
+    needs: build-and-push
     runs-on: ubuntu-latest
     
     steps:
@@ -59,17 +59,24 @@ jobs:
         uses: tailscale/github-action@v2
         with:
           authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
-          version: 1.66.4 # 安定版を指定
+          version: 1.66.4
 
       - name: Execute deployment commands via SSH
         uses: appleboy/ssh-action@v1.0.3
+        # ↓ 追加：ロボットにパスワードを変数として持たせる
+        env:
+          PASSWORD: ${{ secrets.SERVER_PASSWORD }}
         with:
           host: ${{ secrets.SERVER_IP }}
           username: ${{ secrets.SERVER_USER }}
           password: ${{ secrets.SERVER_PASSWORD }}
-          # サーバーに接続したあとにロボットが打ち込むコマンド
+          envs: PASSWORD # ← 追加：サーバー内に変数を持ち込む
           script: |
             cd ~/streeeak
+            # ↓ 変更：echoを使ってロボットにパスワードを自動入力させる
+            echo $PASSWORD | sudo -S docker compose pull
+            echo $PASSWORD | sudo -S docker compose up -d
+            echo $PASSWORD | sudo -S docker image prune -f
             # 最新のイメージをダウンロード
             sudo docker compose pull
             # 古いコンテナを破棄して最新版で立ち上げ直す
