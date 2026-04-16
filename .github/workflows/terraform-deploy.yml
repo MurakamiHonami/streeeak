@@ -1,120 +1,78 @@
-name: Terraform Deploy
+name: Home Server CI/CD
 
 on:
   push:
     branches:
       - main
-  pull_request:
-    branches:
-      - main
-
-permissions:
-  id-token: write
-  contents: read
-  pull-requests: write
 
 env:
-  AWS_REGION: ap-northeast-1
-  TF_WORKING_DIR: terraform_project/environments/prod
-  
-  # Infrastructure Variables
-  TF_VAR_s3_bucket_name: ${{ secrets.S3_BUCKET_NAME }}
-  TF_VAR_cloudfront_id: ${{ secrets.CLOUDFRONT_ID }}
-
-  # Frontend Variables
-  TF_VAR_vite_api_base_url: "https://api.streeeak.link"
-  TF_VAR_vite_default_user_id: "1"
-  TF_VAR_vite_supabase_url: ${{ secrets.VITE_SUPABASE_URL }}
-  TF_VAR_vite_supabase_anon_key: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-  TF_VAR_vite_stripe_public_key: ${{ secrets.VITE_STRIPE_PUBLIC_KEY }}
-
-  # Backend Variables
-  TF_VAR_app_name: "Streeeak API"
-  TF_VAR_env_name: "production"
-  TF_VAR_database_url: ${{ secrets.DATABASE_URL }}
-  TF_VAR_secret_key: ${{ secrets.SECRET_KEY }}
-  TF_VAR_access_token_expire_minutes: "60"
-  TF_VAR_gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
-  TF_VAR_gemini_model: "gemini-1.5-flash"
-  TF_VAR_stripe_api_key: ${{ secrets.STRIPE_API_KEY }}
-  TF_VAR_stripe_webhook_secret: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
-  TF_VAR_stripe_price_id: ${{ secrets.STRIPE_PRICE_ID }}
-  TF_VAR_aws_region_name: "ap-northeast-1"
-  TF_VAR_aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-  TF_VAR_aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-  TF_VAR_cognito_client_id: ${{ secrets.COGNITO_CLIENT_ID }}
-  TF_VAR_cognito_client_secret: ${{ secrets.COGNITO_CLIENT_SECRET }}
+  # イメージの宛先（※すべて小文字で指定）
+  BACKEND_IMAGE: ghcr.io/murakamihonami/streeeak-backend
+  FRONTEND_IMAGE: ghcr.io/murakamihonami/streeeak-frontend
 
 jobs:
-  plan:
-    name: Terraform Plan
+  # ---------------------------------------------------
+  # ① ビルド＆プッシュ（GHCRへ）
+  # ---------------------------------------------------
+  build-and-push:
+    name: Build and Push Docker Images
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ${{ env.TF_WORKING_DIR }}
+    permissions:
+      contents: read
+      packages: write # GHCRにアップロードするための権限
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+      - name: Log in to GitHub Container Registry (GHCR)
+        uses: docker/login-action@v3
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
-          
-      - name: Setup tfcmt
-        env:
-          TFCMT_VERSION: v4.7.1
-        run: |
-          wget -q "https://github.com/suzuki-shunsuke/tfcmt/releases/download/${TFCMT_VERSION}/tfcmt_linux_amd64.tar.gz" -O /tmp/tfcmt.tar.gz
-          tar xzf /tmp/tfcmt.tar.gz -C /tmp
-          sudo mv /tmp/tfcmt /usr/local/bin
-          tfcmt --version
-          
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }} # 自動で発行されるトークンを使用
+
+      - name: Build and push Backend
+        uses: docker/build-push-action@v5
         with:
-          terraform_version: "1.11.0"
+          context: ./backend
+          push: true
+          tags: ${{ env.BACKEND_IMAGE }}:latest
 
-      - name: Terraform Init
-        run: terraform init
+      - name: Build and push Frontend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          push: true
+          tags: ${{ env.FRONTEND_IMAGE }}:latest
 
-      - name: Terraform Plan
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          if [ "${{ github.event_name }}" == "pull_request" ]; then
-            tfcmt plan -patch -- terraform plan
-          else
-            terraform plan
-          fi
-
-  apply:
-    name: Terraform Apply
-    needs: plan
+  # ---------------------------------------------------
+  # ② デプロイ（自宅サーバーへの遠隔操作）
+  # ---------------------------------------------------
+  deploy:
+    name: Deploy to Home Server
+    needs: build-and-push # ①が終わったら実行する
     runs-on: ubuntu-latest
-    environment: production
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    defaults:
-      run:
-        working-directory: ${{ env.TF_WORKING_DIR }}
+    
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+      - name: Connect to Tailscale
+        uses: tailscale/github-action@v2
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
+          authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
+          version: 1.66.4 # 安定版を指定
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+      - name: Execute deployment commands via SSH
+        uses: appleboy/ssh-action@v1.0.3
         with:
-          terraform_version: "1.11.0"
-
-      - name: Terraform Init
-        run: terraform init
-
-      - name: Terraform Apply
-        run: terraform apply -auto-approve -no-color
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          password: ${{ secrets.SERVER_PASSWORD }}
+          # サーバーに接続したあとにロボットが打ち込むコマンド
+          script: |
+            cd ~/streeeak
+            # 最新のイメージをダウンロード
+            sudo docker compose pull
+            # 古いコンテナを破棄して最新版で立ち上げ直す
+            sudo docker compose up -d
+            # 不要になった古いイメージを削除して容量を節約
+            sudo docker image prune -f

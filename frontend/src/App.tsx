@@ -9,7 +9,6 @@ import { LandingPage } from "./pages/LandingPage";
 import { ResultsPage } from "./pages/ResultsPage";
 import { SharePage } from "./pages/SharePage";
 import { Tokushoho } from "./pages/Tokushoho";
-import VerifyPage from "./pages/VerifyPage";
 
 import { Settings } from "./components/Settings";
 import SettingsIcon from '@mui/icons-material/Settings';
@@ -101,7 +100,6 @@ function App() {
         <div className={`routeTransition ${routeDirectionClass}`} key={location.pathname}>
           <Routes>
             <Route path="/tokushoho" element={<Tokushoho />} />
-            <Route path="/verify" element={<VerifyPage />} />
 
             {currentUserId ? (
               <>

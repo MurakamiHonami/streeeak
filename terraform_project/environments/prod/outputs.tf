@@ -18,11 +18,6 @@ output "web_sg_id" {
   value       = aws_security_group.web_sg.id
 }
 
-output "cognito_client_id" {
-  value       = aws_cognito_user_pool_client.client.id
-  description = "Cognito User Pool Client ID"
-}
-
 output "ecr_backend_repository_url" {
   description = "ECR repository URL for backend image"
   value       = aws_ecr_repository.backend.repository_url

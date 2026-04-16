@@ -53,18 +53,6 @@ variable "access_token_expire_minutes" {
   type = string
 }
 
-variable "cognito_client_id" {
-  type        = string
-  description = "Cognito User Pool Client ID"
-}
-
-variable "cognito_client_secret" {
-  type        = string
-  description = "Cognito User Pool Client Secret"
-  default     = ""
-  sensitive   = true
-}
-
 variable "api_certificate_arn" {
   type        = string
   description = "ACM certificate ARN for api.streeeak.link"

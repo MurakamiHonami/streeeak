@@ -34,18 +34,16 @@ export function AuthPage({ onAuthenticated, initialMode = "login" }: Props) {
     e.preventDefault();
     setError("");
     setLoading(true);
+
     try {
       const session = isRegister
         ? await register({ email, name: name.trim(), password })
         : await login({ email, password });
-      if (isRegister && "requiresVerification" in session && session.requiresVerification) {
-        setError(session.message ?? "確認コードをメールで送信しました。認証後にログインしてください。");
-        setMode("login");
-        return;
-      }
+
       if (isRegister && avatarFile) {
         await uploadUserAvatar(avatarFile, session.userId);
       }
+
       onAuthenticated(session.userId);
     } catch (err: unknown) {
       const message =
@@ -55,7 +53,7 @@ export function AuthPage({ onAuthenticated, initialMode = "login" }: Props) {
         typeof (err as { response?: { data?: { detail?: unknown } } }).response?.data?.detail ===
           "string"
           ? (err as { response: { data: { detail: string } } }).response.data.detail
-          : "認証に失敗しました。入力内容を確認してください。";
+          : "Authentication failed. Please check your input and try again.";
       setError(message);
     } finally {
       setLoading(false);
@@ -65,7 +63,6 @@ export function AuthPage({ onAuthenticated, initialMode = "login" }: Props) {
   return (
     <section className="page authPage">
       <div className="authContainer">
-
         <div className="tabRow authTabs">
           <button
             className={`tabBtn ${!isRegister ? "active" : ""}`}
@@ -73,6 +70,7 @@ export function AuthPage({ onAuthenticated, initialMode = "login" }: Props) {
               setMode("login");
               setError("");
             }}
+            type="button"
           >
             LOGIN
           </button>
@@ -82,6 +80,7 @@ export function AuthPage({ onAuthenticated, initialMode = "login" }: Props) {
               setMode("register");
               setError("");
             }}
+            type="button"
           >
             REGISTER
           </button>
@@ -131,7 +130,7 @@ export function AuthPage({ onAuthenticated, initialMode = "login" }: Props) {
               className="gameInput"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
+              placeholder="********"
             />
           </div>
 
@@ -143,8 +142,8 @@ export function AuthPage({ onAuthenticated, initialMode = "login" }: Props) {
         </form>
 
         <div className="mt-8 flex flex-col items-center gap-3 text-sm pb-2">
-          <Link 
-            to="/tokushoho" 
+          <Link
+            to="/tokushoho"
             className="text-gray-400 text-xs hover:text-[#13ec37] transition-colors underline"
           >
             特定商取引法に基づく表記
