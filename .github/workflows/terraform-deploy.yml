@@ -71,5 +71,6 @@ jobs:
           script: |
             cd ~/streeeak
             docker compose pull
-            docker compose up -d
+            docker compose down
+            docker compose up -d --build
             docker image prune -f
