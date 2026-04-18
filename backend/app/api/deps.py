@@ -1,3 +1,5 @@
+from typing import Optional
+
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
@@ -6,10 +8,10 @@ from app.core.config import settings
 from app.db import repositories as repo
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+oauth2_scheme_optional = OAuth2PasswordBearer(tokenUrl="/auth/login", auto_error=False)
 
-def get_current_user(
-    token: str = Depends(oauth2_scheme)
-) -> dict:
+
+def _decode_user_from_token(token: str) -> dict:
     unauthorized = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Invalid authentication credentials",
@@ -31,3 +33,16 @@ def get_current_user(
     if not user:
         raise unauthorized
     return user
+
+def get_current_user(
+    token: str = Depends(oauth2_scheme)
+) -> dict:
+    return _decode_user_from_token(token)
+
+
+def get_optional_current_user(
+    token: Optional[str] = Depends(oauth2_scheme_optional)
+) -> dict | None:
+    if not token:
+        return None
+    return _decode_user_from_token(token)
