@@ -158,7 +158,6 @@ function App() {
             {authenticated ? (
               <>
                 <Route path="/" element={<HomePage />} />
-                <Route path="/home" element={<HomePage />} />
                 <Route path="/goals" element={<GoalsPage />} />
                 <Route path="/results" element={<ResultsPage />} />
                 <Route path="/share" element={<SharePage />} />
@@ -166,6 +165,7 @@ function App() {
               </>
             ) : (
               <>
+                <Route path="/home" element={<HomePage />} />
                 <Route path="/" element={<GoalsPage />} />
                 <Route path="/goals" element={<GoalsPage />} />
                 <Route
