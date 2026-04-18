@@ -165,8 +165,7 @@ function App() {
               </>
             ) : (
               <>
-                <Route path="/home" element={<HomePage />} />
-                <Route path="/" element={<GoalsPage />} />
+                <Route path="/" element={<HomePage />} />
                 <Route path="/goals" element={<GoalsPage />} />
                 <Route
                   path="/results"
