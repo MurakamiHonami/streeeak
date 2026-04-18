@@ -18,6 +18,7 @@ import type {
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 const DEFAULT_USER_ID = Number(import.meta.env.VITE_DEFAULT_USER_ID ?? "1");
 const AUTH_STORAGE_KEY = "streeeak_auth_session";
+const GUEST_STORAGE_KEY = "streeeak_guest_user_id";
 
 type AuthSession = {
   accessToken: string;
@@ -45,6 +46,10 @@ function parseAuthSession(raw: string | null): AuthSession | null {
 
 export function getAuthSession(): AuthSession | null {
   return parseAuthSession(localStorage.getItem(AUTH_STORAGE_KEY));
+}
+
+export function isAuthenticated() {
+  return getAuthSession() !== null;
 }
 
 export function setAuthSession(session: AuthSession) {
@@ -76,7 +81,25 @@ apiClient.interceptors.response.use(
 
 function getCurrentUserId() {
   const session = getAuthSession();
-  return session?.userId ?? DEFAULT_USER_ID;
+  return session?.userId ?? getGuestUserId();
+}
+
+function getGuestUserId() {
+  const stored =
+    typeof window !== "undefined" ? window.localStorage.getItem(GUEST_STORAGE_KEY) : null;
+  const parsed = stored ? Number(stored) : Number.NaN;
+  if (Number.isInteger(parsed) && parsed < 0) {
+    return parsed;
+  }
+
+  const fallbackGuestId = Number.isInteger(DEFAULT_USER_ID) && DEFAULT_USER_ID < 0
+    ? DEFAULT_USER_ID
+    : -Math.floor(Math.random() * 1_000_000_000_000) - 1;
+
+  if (typeof window !== "undefined") {
+    window.localStorage.setItem(GUEST_STORAGE_KEY, String(fallbackGuestId));
+  }
+  return fallbackGuestId;
 }
 
 const existingSession = getAuthSession();
